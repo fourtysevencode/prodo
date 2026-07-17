@@ -12,5 +12,11 @@
 	},
 	"observability": {
 		"enabled": true
-	}
+	},
+	"routes": [
+		{
+			"pattern": "api.prodo.live",
+			"custom_domain": true
+		}
+	]
 }
