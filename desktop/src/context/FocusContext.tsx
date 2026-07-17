@@ -64,7 +64,7 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [netLink, setNetLink] = useState(0);
   const [threatSeconds, setThreatSeconds] = useState(15);
   const [isTracking, setIsTracking] = useState(false);
-  const [trackingStatus, setTrackingStatus] = useState("UNCERTAIN");
+  const [trackingStatus, setTrackingStatus] = useState<"FOCUSED" | "DISTRACTED" | "UNCERTAIN">("UNCERTAIN");
   
   // Configuration Variables
   const [gazeTolerance, setGazeTolerance] = useState(15);
@@ -94,8 +94,8 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     { timestamp: "2026-07-17 21:02:45", type: "ERROR", code: "ERR_CTX_SW", message: "Operator switched context to unapproved application." }
   ]);
 
-  const sessionInterval = useRef<NodeJS.Timeout | null>(null);
-  const simulationInterval = useRef<NodeJS.Timeout | null>(null);
+  const sessionInterval = useRef<any>(null);
+  const simulationInterval = useRef<any>(null);
 
   // Format Helper
   const getTimestamp = () => {
@@ -266,7 +266,7 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Threat decay timer
   useEffect(() => {
-    let interval: NodeJS.Timeout | null = null;
+    let interval: any = null;
     if (isTracking && trackingStatus === "DISTRACTED") {
       interval = setInterval(() => {
         setThreatSeconds(prev => {
