@@ -1,5 +1,9 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from "react";
 
+const API_BASE = "http://127.0.0.1:8000";
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+
 export interface Infraction {
   timestamp: string;
   code: string;
@@ -12,7 +16,7 @@ export interface AppVaultItem {
   name: string;
   cost: number;
   unlocked: boolean;
-  timerRemaining?: number; // in seconds
+  timerRemaining?: number;
   icon: string;
 }
 
@@ -28,7 +32,7 @@ interface FocusContextType {
   coreTemp: number;
   multiplier: number;
   netLink: number;
-  threatSeconds: number; // 0 to 15
+  threatSeconds: number;
   isTracking: boolean;
   trackingStatus: "FOCUSED" | "DISTRACTED" | "UNCERTAIN";
   infractions: Infraction[];
@@ -38,7 +42,7 @@ interface FocusContextType {
   graceDuration: number;
   basePenalty: number;
   cameraDevice: string;
-  sessionTime: number; // in seconds
+  sessionTime: number;
   startTracking: () => void;
   stopTracking: () => void;
   purchaseApp: (id: string) => void;
@@ -57,6 +61,8 @@ export const useFocus = () => {
   return context;
 };
 
+// ── Provider ──────────────────────────────────────────────────────────────────
+
 export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [xp, setXp] = useState(8450);
   const [coreTemp, setCoreTemp] = useState(36);
@@ -65,15 +71,15 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [threatSeconds, setThreatSeconds] = useState(15);
   const [isTracking, setIsTracking] = useState(false);
   const [trackingStatus, setTrackingStatus] = useState<"FOCUSED" | "DISTRACTED" | "UNCERTAIN">("UNCERTAIN");
-  
-  // Configuration Variables
+
+  // Config
   const [gazeTolerance, setGazeTolerance] = useState(15);
   const [graceDuration, setGraceDuration] = useState(15);
   const [basePenalty, setBasePenalty] = useState(50);
-  const [cameraDevice, setCameraDevice] = useState(""); // "" = use OS default camera
+  const [cameraDevice, setCameraDevice] = useState("");
 
   const [sessionTime, setSessionTime] = useState(0);
-  
+
   const [infractions, setInfractions] = useState<Infraction[]>([
     { timestamp: "14:02:45", code: "ERR_CTX_SW", name: "Context Switch", details: "-50 XP Applied" },
     { timestamp: "13:45:12", code: "ERR_FCS_BRK", name: "Focus Break > 30s", details: "Multiplier Reset to 1.0x" },
@@ -94,224 +100,290 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     { timestamp: "2026-07-17 21:02:45", type: "ERROR", code: "ERR_CTX_SW", message: "Operator switched context to unapproved application." }
   ]);
 
+  // ── CV Camera Refs ──────────────────────────────────────────────────────────
+  // These live as refs so they don't trigger re-renders
+  const cvStreamRef   = useRef<MediaStream | null>(null);
+  const cvVideoRef    = useRef<HTMLVideoElement | null>(null);
+  const cvCanvasRef   = useRef<HTMLCanvasElement | null>(null);
+  const cvIntervalRef = useRef<any>(null);
+
+  // Session / XP interval
   const sessionInterval = useRef<any>(null);
-  const simulationInterval = useRef<any>(null);
+  const multiplierRef   = useRef(multiplier);
+  useEffect(() => { multiplierRef.current = multiplier; }, [multiplier]);
 
-  // Format Helper
-  const getTimestamp = () => {
-    const d = new Date();
-    return d.toTimeString().split(" ")[0];
-  };
+  // Ref for graceDuration so callbacks don't close over stale value
+  const graceDurationRef = useRef(graceDuration);
+  useEffect(() => { graceDurationRef.current = graceDuration; }, [graceDuration]);
+  const basePenaltyRef   = useRef(basePenalty);
+  useEffect(() => { basePenaltyRef.current = basePenalty; }, [basePenalty]);
 
+  // ── Helpers ─────────────────────────────────────────────────────────────────
+
+  const getTimestamp = () => new Date().toTimeString().split(" ")[0];
   const getFullTimestamp = () => {
     const d = new Date();
-    const dateStr = d.toISOString().split("T")[0];
-    const timeStr = d.toTimeString().split(" ")[0];
-    return `${dateStr} ${timeStr}`;
+    return `${d.toISOString().split("T")[0]} ${d.toTimeString().split(" ")[0]}`;
   };
 
-  // Start Focus Tracking
+  const appendLog = (type: SystemLog["type"], code: string, message: string) => {
+    setSystemLogs(prev => [{ timestamp: getFullTimestamp(), type, code, message }, ...prev]);
+  };
+
+  // ── CV: Send a frame to /check-focus ────────────────────────────────────────
+
+  const captureAndSendFrame = () => {
+    const video  = cvVideoRef.current;
+    const canvas = cvCanvasRef.current;
+    if (!video || !canvas || video.readyState < 2) return;
+
+    canvas.width  = video.videoWidth  || 640;
+    canvas.height = video.videoHeight || 480;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.drawImage(video, 0, 0);
+
+    canvas.toBlob(async (blob) => {
+      if (!blob) return;
+
+      const form = new FormData();
+      form.append("frame", blob, "frame.jpg");
+      form.append("session_id", "desktop-session");
+      form.append("include_debug", "false");
+
+      try {
+        const res = await fetch(`${API_BASE}/check-focus`, { method: "POST", body: form });
+        if (!res.ok) return;
+        const data = await res.json();
+
+        const status: "FOCUSED" | "DISTRACTED" | "UNCERTAIN" = data.status ?? "UNCERTAIN";
+        const focusScore: number  = data.rolling_focus_score ?? 0;
+        const facePresence: number = data.signals?.face_presence ?? 0;
+
+        setTrackingStatus(status);
+        // netLink = rolling focus score as percentage (0–100)
+        setNetLink(Math.round(focusScore * 100));
+        // coreTemp = 37–45 range driven by face presence confidence
+        setCoreTemp(Math.round(37 + facePresence * 8));
+
+        if (status === "DISTRACTED") {
+          appendLog("ERROR", "ERR_GAZE_LOST", `Gaze lost. Focus: ${(focusScore * 100).toFixed(0)}%. Grace timer active.`);
+        } else if (status === "FOCUSED") {
+          // On recovery from distracted state, reset the threat timer
+          setThreatSeconds(graceDurationRef.current);
+        }
+
+      } catch {
+        // Server unreachable — degrade gracefully
+        setNetLink(0);
+        setTrackingStatus("UNCERTAIN");
+      }
+    }, "image/jpeg", 0.75);
+  };
+
+  // ── startTracking ─────────────────────────────────────────────────────────
+
   const startTracking = () => {
     if (isTracking) return;
-    setIsTracking(true);
-    setTrackingStatus("FOCUSED");
-    setNetLink(99);
-    setCoreTemp(38);
-    setThreatSeconds(graceDuration);
-    
-    // Log start
-    setSystemLogs(prev => [
-      { timestamp: getFullTimestamp(), type: "SYSTEM", code: "FCS_START", message: "Continuous focus session initiated." },
-      ...prev
-    ]);
+
+    const constraints: MediaStreamConstraints = {
+      video: cameraDevice
+        ? { deviceId: { exact: cameraDevice } }
+        : { facingMode: "user" }
+    };
+
+    navigator.mediaDevices.getUserMedia(constraints)
+      .then(stream => {
+        // Set up hidden video element for frame capture
+        const video = document.createElement("video");
+        video.srcObject = stream;
+        video.autoplay  = true;
+        video.playsInline = true;
+        video.muted    = true;
+
+        cvStreamRef.current = stream;
+        cvVideoRef.current  = video;
+        cvCanvasRef.current = document.createElement("canvas");
+
+        setIsTracking(true);
+        setTrackingStatus("UNCERTAIN");
+        setNetLink(0);
+        setCoreTemp(38);
+        setThreatSeconds(graceDurationRef.current);
+
+        appendLog("SYSTEM", "FCS_START", "Focus session initiated. Camera online. CV model linking...");
+
+        // Start capturing frames every 1 second
+        cvIntervalRef.current = setInterval(captureAndSendFrame, 1000);
+      })
+      .catch(err => {
+        appendLog("ERROR", "CAM_FAIL", `Camera access failed: ${err.message}. Check Config → Camera permissions.`);
+      });
   };
 
-  // Stop Focus Tracking
+  // ── stopTracking ───────────────────────────────────────────────────────────
+
   const stopTracking = () => {
     if (!isTracking) return;
+
+    // Kill CV capture loop
+    if (cvIntervalRef.current) {
+      clearInterval(cvIntervalRef.current);
+      cvIntervalRef.current = null;
+    }
+
+    // Release camera
+    if (cvStreamRef.current) {
+      cvStreamRef.current.getTracks().forEach(t => t.stop());
+      cvStreamRef.current = null;
+    }
+
+    cvVideoRef.current  = null;
+    cvCanvasRef.current = null;
+
     setIsTracking(false);
     setTrackingStatus("UNCERTAIN");
     setNetLink(0);
     setCoreTemp(36);
     setMultiplier(1.0);
-    
-    // Log stop
-    setSystemLogs(prev => [
-      { timestamp: getFullTimestamp(), type: "INFO", code: "FCS_STOP", message: "Focus session stopped by operator." },
-      ...prev
-    ]);
+
+    appendLog("INFO", "FCS_STOP", "Focus session stopped. Camera released.");
   };
 
-  // Purchase apps from vault
+  // ── Purchase Apps ───────────────────────────────────────────────────────────
+
   const purchaseApp = (id: string) => {
     const item = vaultItems.find(i => i.id === id);
     if (!item) return;
 
     if (xp < item.cost) {
-      setSystemLogs(prev => [
-        { timestamp: getFullTimestamp(), type: "ERROR", code: "ERR_XP_LACK", message: `Insufficient points to bypass restriction for ${item.name}.` },
-        ...prev
-      ]);
+      appendLog("ERROR", "ERR_XP_LACK", `Insufficient points to bypass restriction for ${item.name}.`);
       return;
     }
 
     setXp(prev => prev - item.cost);
-    setVaultItems(prev => prev.map(i => {
-      if (i.id === id) {
-        return { ...i, unlocked: true, timerRemaining: 300 }; // Unlocks for 5 mins (300s)
-      }
-      return i;
-    }));
-
-    setSystemLogs(prev => [
-      { timestamp: getFullTimestamp(), type: "SUCCESS", code: "VLT_BYPASS", message: `Unlocked restriction bypass for ${item.name} (300 seconds).` },
-      ...prev
-    ]);
+    setVaultItems(prev => prev.map(i =>
+      i.id === id ? { ...i, unlocked: true, timerRemaining: 300 } : i
+    ));
+    appendLog("SUCCESS", "VLT_BYPASS", `Unlocked restriction bypass for ${item.name} (300 seconds).`);
   };
 
-  // Command Line override command execution
+  // ── Command Line ───────────────────────────────────────────────────────────
+
   const executeCommand = (cmd: string): string => {
-    const parts = cmd.trim().split(" ");
+    const parts   = cmd.trim().split(" ");
     const command = parts[0].toLowerCase();
-    
-    setSystemLogs(prev => [
-      { timestamp: getFullTimestamp(), type: "INFO", code: "CMD_EXEC", message: `Shell executed: ${cmd}` },
-      ...prev
-    ]);
+
+    appendLog("INFO", "CMD_EXEC", `Shell executed: ${cmd}`);
 
     switch (command) {
       case "help":
-        return "Available commands: help, start, stop, unlock <app_name>, addxp <val>, clear";
+        return "Available commands: help, start, stop, unlock <app>, addxp <val>, clear";
       case "start":
         startTracking();
         return "Initiating neural focus links...";
       case "stop":
         stopTracking();
         return "Deactivating focus systems.";
-      case "unlock":
+      case "unlock": {
         if (!parts[1]) return "ERR: unlock requires application name.";
         const appName = parts[1].toUpperCase();
-        const found = vaultItems.find(i => i.name === appName);
+        const found   = vaultItems.find(i => i.name === appName);
         if (!found) return `ERR: App ${appName} not found in vault.`;
         purchaseApp(found.id);
         return `Initiating authorization protocol for ${appName}...`;
-      case "addxp":
+      }
+      case "addxp": {
         const val = parseInt(parts[1]);
         if (isNaN(val)) return "ERR: addxp requires numeric value.";
         setXp(prev => prev + val);
-        return `Added ${val} focus XP points to core node bank.`;
+        return `Added ${val} focus XP to core node bank.`;
+      }
       case "clear":
         return "SYSTEM_SHELL_CLEAR";
       default:
-        return `ERR: Command not recognized: '${command}'. Type 'help' for support.`;
+        return `ERR: Command not recognized: '${command}'. Type 'help'.`;
     }
   };
 
-  // Timers and Simulation Effect
+  // ── Session timer + XP accumulation (frontend-side, always run while tracking) ──
+
   useEffect(() => {
     if (isTracking) {
       sessionInterval.current = setInterval(() => {
         setSessionTime(prev => prev + 1);
-        
-        // Multiplier progression
+
+        // Multiplier climbs the longer you're focused
         setMultiplier(prev => {
-          const next = parseFloat((prev + 0.05).toFixed(2));
+          const next = parseFloat((prev + 0.02).toFixed(2));
           return next > 4.5 ? 4.5 : next;
         });
 
-        // XP accumulation based on multiplier
-        setXp(prev => prev + Math.round(1 * multiplier));
-
-        // Core Temp flux
-        setCoreTemp(prev => {
-          const flux = Math.random() > 0.6 ? (Math.random() > 0.5 ? 1 : -1) : 0;
-          const next = prev + flux;
-          return next < 37 ? 37 : next > 45 ? 45 : next;
+        // XP accrues every second (1 × multiplier, only when FOCUSED)
+        setXp(prev => {
+          if (trackingStatus !== "FOCUSED") return prev;
+          return prev + Math.round(1 * multiplierRef.current);
         });
       }, 1000);
-
-      // Simulate Gaze and Tracking fluctuations
-      simulationInterval.current = setInterval(() => {
-        // 10% chance to simulate user looking away
-        const chance = Math.random();
-        if (chance > 0.90) {
-          setTrackingStatus("DISTRACTED");
-          setNetLink(0);
-          setSystemLogs(prev => [
-            { timestamp: getFullTimestamp(), type: "ERROR", code: "ERR_GAZE_LOST", message: "Gaze contact lost. Grace timer initiated." },
-            ...prev
-          ]);
-        } else if (chance > 0.60 && trackingStatus === "DISTRACTED") {
-          // Recover
-          setTrackingStatus("FOCUSED");
-          setNetLink(99);
-          setThreatSeconds(graceDuration);
-          setSystemLogs(prev => [
-            { timestamp: getFullTimestamp(), type: "SUCCESS", code: "GAZE_RECON", message: "Gaze contact re-established." },
-            ...prev
-          ]);
-        }
-      }, 3000);
     } else {
       if (sessionInterval.current) clearInterval(sessionInterval.current);
-      if (simulationInterval.current) clearInterval(simulationInterval.current);
       setSessionTime(0);
     }
 
     return () => {
       if (sessionInterval.current) clearInterval(sessionInterval.current);
-      if (simulationInterval.current) clearInterval(simulationInterval.current);
     };
-  }, [isTracking, multiplier, trackingStatus, graceDuration]);
+  }, [isTracking, trackingStatus]);
 
-  // Threat decay timer
+  // ── Threat (grace period) decay ────────────────────────────────────────────
+
   useEffect(() => {
     let interval: any = null;
+
     if (isTracking && trackingStatus === "DISTRACTED") {
       interval = setInterval(() => {
         setThreatSeconds(prev => {
           if (prev <= 1) {
-            // Focus completely broken!
+            // Grace period expired → apply penalty and force-stop
             setIsTracking(false);
             setTrackingStatus("UNCERTAIN");
             setMultiplier(1.0);
             setNetLink(0);
-            
-            // Apply Penalty
-            setXp(prevXp => Math.max(0, prevXp - basePenalty));
+
+            // Release camera
+            if (cvIntervalRef.current) clearInterval(cvIntervalRef.current);
+            if (cvStreamRef.current) cvStreamRef.current.getTracks().forEach(t => t.stop());
+            cvStreamRef.current = null;
+            cvVideoRef.current  = null;
+
+            const penalty = basePenaltyRef.current;
+            setXp(prevXp => Math.max(0, prevXp - penalty));
             setInfractions(prevInf => [
-              { timestamp: getTimestamp(), code: "ERR_FCS_BRK", name: "Focus Break", details: `-${basePenalty} XP Applied` },
+              { timestamp: getTimestamp(), code: "ERR_FCS_BRK", name: "Focus Break", details: `-${penalty} XP Applied` },
               ...prevInf
             ]);
-            setSystemLogs(prevLogs => [
-              { timestamp: getFullTimestamp(), type: "ERROR", code: "ERR_FCS_FAIL", message: `Focus grace period expired. Distraction penalty applied (-${basePenalty} XP).` },
-              ...prevLogs
-            ]);
-            return graceDuration;
+            appendLog("ERROR", "ERR_FCS_FAIL", `Grace period expired. Distraction penalty applied (-${penalty} XP). Camera released.`);
+
+            return graceDurationRef.current;
           }
           return prev - 1;
         });
       }, 1000);
-    } else {
-      setThreatSeconds(graceDuration);
+    } else if (trackingStatus === "FOCUSED") {
+      setThreatSeconds(graceDurationRef.current);
     }
 
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [isTracking, trackingStatus, basePenalty, graceDuration]);
+    return () => { if (interval) clearInterval(interval); };
+  }, [isTracking, trackingStatus]);
 
-  // Vault countdown timers
+  // ── Vault countdown ─────────────────────────────────────────────────────────
+
   useEffect(() => {
     const timer = setInterval(() => {
       setVaultItems(prev => prev.map(item => {
         if (item.unlocked && item.timerRemaining !== undefined) {
           if (item.timerRemaining <= 1) {
-            // Relock
-            setSystemLogs(prevLogs => [
-              { timestamp: getFullTimestamp(), type: "SYSTEM", code: "VLT_LOCK", message: `Bypass authorization window closed for ${item.name}. Re-locking process.` },
-              ...prevLogs
-            ]);
+            appendLog("SYSTEM", "VLT_LOCK", `Bypass authorization closed for ${item.name}. Re-locking.`);
             return { ...item, unlocked: false, timerRemaining: undefined };
           }
           return { ...item, timerRemaining: item.timerRemaining - 1 };
@@ -321,6 +393,15 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }, 1000);
 
     return () => clearInterval(timer);
+  }, []);
+
+  // ── Cleanup on unmount ───────────────────────────────────────────────────────
+
+  useEffect(() => {
+    return () => {
+      if (cvIntervalRef.current) clearInterval(cvIntervalRef.current);
+      if (cvStreamRef.current) cvStreamRef.current.getTracks().forEach(t => t.stop());
+    };
   }, []);
 
   return (
