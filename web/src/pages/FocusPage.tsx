@@ -1,0 +1,234 @@
+import React, { useState } from "react";
+import { useFocus } from "../context/FocusContext";
+
+const FocusPage: React.FC = () => {
+  const {
+    xp,
+    coreTemp,
+    multiplier,
+    trackingStatus,
+    threatSeconds,
+    isTracking,
+    infractions,
+    vaultItems,
+    graceDuration,
+    purchaseApp,
+    executeCommand
+  } = useFocus();
+
+  const [cmdInput, setCmdInput] = useState("");
+  const [shellFeedback, setShellFeedback] = useState<string | null>(null);
+
+  const handleCommandSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!cmdInput.trim()) return;
+
+    const feedback = executeCommand(cmdInput);
+    if (feedback === "SYSTEM_SHELL_CLEAR") {
+      setShellFeedback(null);
+    } else {
+      setShellFeedback(feedback);
+    }
+    setCmdInput("");
+  };
+
+  // Threat bar rendering
+  const threatPercent = isTracking && trackingStatus === "DISTRACTED" 
+    ? (threatSeconds / graceDuration) * 100 
+    : 100;
+
+  // Render 10 blocks for the threat meter
+  const activeBlocksCount = Math.ceil(threatPercent / 10);
+
+  return (
+    <div className="flex-grow flex flex-col lg:flex-row gap-6 p-6 h-full overflow-hidden select-none">
+      {/* Center Combat Hero Panel */}
+      <section className="flex-1 flex flex-col h-full gap-6 overflow-hidden">
+        {/* Top Stats Header */}
+        <div className="flex gap-6 h-20 flex-shrink-0">
+          <div className="flex-1 bg-surface-container-lowest border border-outline-variant p-3 flex flex-col justify-center">
+            <div className="flex justify-between items-center mb-1">
+              <span className="font-technical-prefix text-technical-prefix text-outline-variant uppercase">XP_VAL</span>
+              <span className="font-technical-prefix text-technical-prefix text-outline-variant">SYSTEM CORE</span>
+            </div>
+            <div className="font-value-lg text-[24px] text-primary">{xp.toLocaleString()}</div>
+          </div>
+          <div className="flex-1 bg-surface-container-lowest border border-outline-variant p-3 flex flex-col justify-center">
+            <div className="flex justify-between items-center mb-1">
+              <span className="font-technical-prefix text-technical-prefix text-outline-variant uppercase">CORE_TEMP</span>
+              <span className={`font-technical-prefix text-technical-prefix ${
+                trackingStatus === "FOCUSED" ? "text-emerald" : trackingStatus === "DISTRACTED" ? "text-crimson" : "text-amber"
+              }`}>
+                {trackingStatus}
+              </span>
+            </div>
+            <div className="font-value-lg text-[24px] text-primary">{isTracking ? `${coreTemp}°C` : "--°C"}</div>
+          </div>
+        </div>
+
+        {/* Multiplier Core Module */}
+        <div className="flex-grow bg-surface-container-lowest border border-outline-variant relative flex flex-col items-center justify-center p-8 overflow-hidden">
+          <div className="absolute top-4 left-4 font-technical-prefix text-technical-prefix text-outline-variant">MULTIPLIER_CORE</div>
+          <div className="absolute top-4 right-4 font-technical-prefix text-technical-prefix text-outline-variant blink-cursor">
+            {isTracking ? "CV_LINK_OK" : "CV_OFFLINE"}
+          </div>
+
+          {/* Glowing central indicator */}
+          <div className={`relative w-[240px] h-[240px] border flex items-center justify-center transition-all duration-300 ${
+            isTracking 
+              ? trackingStatus === "DISTRACTED" 
+                ? "border-crimson/30 threat-pulse" 
+                : "border-amber/30 core-glow"
+              : "border-outline-variant opacity-40"
+          }`}>
+            <div className="absolute inset-2 border border-dashed border-outline-variant opacity-30"></div>
+            <div className="text-center z-10 flex flex-col items-center justify-center">
+              <span className={`font-value-xl text-[80px] leading-none transition-colors duration-300 ${
+                isTracking 
+                  ? trackingStatus === "DISTRACTED" 
+                    ? "text-crimson drop-shadow-[0_0_8px_rgba(220,20,60,0.6)]" 
+                    : "text-amber drop-shadow-[0_0_8px_rgba(255,191,0,0.6)]"
+                  : "text-outline"
+              }`}>
+                {isTracking ? `${multiplier.toFixed(1)}X` : "1.0X"}
+              </span>
+              <div className="font-technical-prefix text-technical-prefix text-outline-variant uppercase tracking-widest mt-4">
+                {trackingStatus === "DISTRACTED" ? "THREAT DECAY ACTIVE" : "MULTIPLIER"}
+              </div>
+            </div>
+          </div>
+
+          {/* Threat Meter bar */}
+          <div className="absolute bottom-6 w-full max-w-sm px-6">
+            <div className="flex justify-between mb-2">
+              <span className="font-technical-prefix text-technical-prefix text-outline-variant uppercase">THREAT</span>
+              <span className={`font-technical-prefix text-technical-prefix ${
+                trackingStatus === "DISTRACTED" ? "text-crimson" : "text-emerald"
+              }`}>
+                {trackingStatus === "DISTRACTED" ? `WARNING: ${threatSeconds}s` : "NOMINAL"}
+              </span>
+            </div>
+            <div className="h-2 w-full bg-surface-container-highest flex gap-[2px]">
+              {Array.from({ length: 10 }).map((_, i) => {
+                const isActive = isTracking && trackingStatus === "DISTRACTED" 
+                  ? i < activeBlocksCount 
+                  : true;
+                return (
+                  <div
+                    key={i}
+                    className={`h-full flex-1 transition-colors duration-200 ${
+                      isActive 
+                        ? trackingStatus === "DISTRACTED" 
+                          ? "bg-crimson opacity-80" 
+                          : "bg-emerald opacity-60"
+                        : "bg-transparent border border-surface-variant opacity-10"
+                    }`}
+                  ></div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Right Stakes Panel */}
+      <section className="w-full lg:w-[320px] flex flex-col gap-6 h-full flex-shrink-0 overflow-hidden">
+        {/* Penalty Log */}
+        <div className="flex-1 flex flex-col min-h-[180px] overflow-hidden">
+          <div className="font-technical-prefix text-technical-prefix text-outline-variant uppercase mb-3">PENALTY_LOG</div>
+          <div className="bg-surface-container-lowest border border-outline-variant p-4 flex flex-col gap-2 font-log-body text-[12px] text-outline-variant flex-grow overflow-y-auto">
+            {infractions.length === 0 ? (
+              <div className="opacity-40 italic">No focus infractions recorded.</div>
+            ) : (
+              infractions.map((inf, idx) => (
+                <div key={idx} className="flex flex-col gap-1 text-crimson pb-2 border-b border-surface-variant">
+                  <div className="flex justify-between opacity-70 text-[10px]">
+                    <span>{inf.timestamp}</span>
+                    <span>{inf.code}</span>
+                  </div>
+                  <div className="uppercase font-bold">{inf.name}</div>
+                  <div className="opacity-80">&gt; {inf.details}</div>
+                </div>
+              ))
+            )}
+            <div className="opacity-40 mt-1 blink-cursor">_waiting for telemetry...</div>
+          </div>
+        </div>
+
+        {/* Distraction Vault Quick Buy */}
+        <div className="flex-1 flex flex-col min-h-[220px] overflow-hidden">
+          <div className="font-technical-prefix text-technical-prefix text-outline-variant uppercase mb-3">MINI_VAULT</div>
+          <div className="bg-surface-container-lowest border border-outline-variant p-4 flex flex-col gap-3 flex-grow overflow-y-auto">
+            <div className="grid grid-cols-2 gap-3 flex-grow max-h-[140px]">
+              {vaultItems.filter(i => !i.unlocked).slice(0, 2).map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => purchaseApp(item.id)}
+                  disabled={xp < item.cost}
+                  className={`border flex flex-col items-center justify-center p-3 transition-colors text-center group cursor-pointer ${
+                    xp >= item.cost 
+                      ? "border-surface-variant bg-surface-container-high hover:border-amber text-on-surface" 
+                      : "border-outline-variant/20 bg-surface-container-lowest opacity-40 cursor-not-allowed text-outline"
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[20px] mb-1">{item.icon}</span>
+                  <span className="font-technical-prefix text-[10px] truncate w-full">{item.name}</span>
+                  <div className="font-technical-prefix text-[8px] text-amber mt-2">{item.cost} XP</div>
+                </button>
+              ))}
+            </div>
+
+            {/* Active Unlocked Item */}
+            {vaultItems.find(i => i.unlocked && i.timerRemaining) ? (
+              (() => {
+                const unlocked = vaultItems.find(i => i.unlocked && i.timerRemaining);
+                if (!unlocked) return null;
+                const min = Math.floor(unlocked.timerRemaining! / 60);
+                const sec = unlocked.timerRemaining! % 60;
+                return (
+                  <div className="border border-emerald bg-background flex items-center justify-between p-3 unlocked-pulse mt-auto">
+                    <div className="flex items-center gap-2">
+                      <span className="material-symbols-outlined text-[18px] text-emerald">{unlocked.icon}</span>
+                      <div>
+                        <div className="font-technical-prefix text-[8px] text-emerald uppercase">UNLOCKED</div>
+                        <div className="font-technical-prefix text-xs uppercase text-primary">{unlocked.name}</div>
+                      </div>
+                    </div>
+                    <span className="font-technical-prefix text-emerald font-bold">
+                      {min}:{sec.toString().padStart(2, '0')}
+                    </span>
+                  </div>
+                );
+              })()
+            ) : (
+              <div className="border border-dashed border-outline-variant p-3 text-center text-[10px] opacity-40 mt-auto">
+                No active bypasses authorized.
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Command Line Input */}
+        <div className="flex flex-col gap-1 flex-shrink-0">
+          <form onSubmit={handleCommandSubmit} className="h-10 border border-outline-variant bg-surface-container-lowest flex items-center px-3">
+            <span className="font-technical-prefix text-technical-prefix text-outline-variant mr-2">$_</span>
+            <input
+              value={cmdInput}
+              onChange={(e) => setCmdInput(e.target.value)}
+              className="bg-transparent border-none outline-none font-technical-prefix text-[12px] text-on-surface w-full focus:ring-0 p-0 placeholder-outline-variant"
+              placeholder="enter override command..."
+              type="text"
+            />
+          </form>
+          {shellFeedback && (
+            <div className="bg-[#141313] border border-outline-variant p-2 font-technical-prefix text-[10px] text-amber max-h-16 overflow-y-auto">
+              &gt; {shellFeedback}
+            </div>
+          )}
+        </div>
+      </section>
+    </div>
+  );
+};
+
+export default FocusPage;
