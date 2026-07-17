@@ -30,6 +30,10 @@ app.add_middleware(
 
 BASE_DIR = Path(__file__).resolve().parent
 
+# Global in-memory cache for focus session rolling scores
+_rolling_scores_by_session = {}
+
+
 leaderboard_data = [
     {"username": "A", "points": 2450},
     {"username": "B", "points": 1980},
