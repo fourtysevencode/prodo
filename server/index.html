@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Prodo API</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --panel: #121a33;
+      --panel-2: #192446;
+      --text: #e8ecff;
+      --muted: #a8b3d9;
+      --accent: #7c9cff;
+      --accent-2: #5eead4;
+      --ok: #34d399;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Inter, Segoe UI, Roboto, Arial, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 20% 0%, #1f2b55 0%, transparent 30%),
+        radial-gradient(circle at 90% 10%, #0f7a6f 0%, transparent 20%),
+        var(--bg);
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 2.5rem 1rem 3rem;
+    }
+
+    .hero {
+      background: linear-gradient(135deg, #273b80, #1f4f7a);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 18px;
+      padding: 2rem;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.28);
+      margin-bottom: 1.25rem;
+    }
+
+    .hero h1 {
+      margin: 0 0 0.4rem;
+      font-size: clamp(1.6rem, 3.5vw, 2.35rem);
+    }
+
+    .hero p {
+      margin: 0;
+      color: #d8e2ff;
+      line-height: 1.55;
+      max-width: 72ch;
+    }
+
+    .hint {
+      color: var(--muted);
+      margin: 0.85rem 0 1.5rem;
+      font-size: 0.95rem;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1rem;
+    }
+
+    .demo {
+      margin: 0 0 1rem;
+      background: linear-gradient(180deg, var(--panel), var(--panel-2));
+      border: 1px solid rgba(124, 156, 255, 0.25);
+      border-radius: 14px;
+      padding: 1rem;
+      display: grid;
+      gap: 0.9rem;
+    }
+
+    .demo-layout {
+      display: grid;
+      gap: 1rem;
+      grid-template-columns: 1.2fr 1fr;
+    }
+
+    @media (max-width: 860px) {
+      .demo-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    video {
+      width: 100%;
+      aspect-ratio: 4 / 3;
+      object-fit: cover;
+      background: #000;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      align-items: center;
+    }
+
+    button {
+      border: 0;
+      border-radius: 10px;
+      padding: 0.55rem 0.8rem;
+      font-weight: 600;
+      background: #5b7cf3;
+      color: #fff;
+      cursor: pointer;
+    }
+
+    button[disabled] {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    label {
+      font-size: 0.9rem;
+      color: var(--muted);
+      display: inline-flex;
+      gap: 0.35rem;
+      align-items: center;
+    }
+
+    input[type="number"],
+    input[type="text"] {
+      background: rgba(7, 12, 30, 0.75);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 8px;
+      padding: 0.4rem 0.5rem;
+      width: 100%;
+      max-width: 220px;
+    }
+
+    .metric-grid {
+      display: grid;
+      gap: 0.5rem;
+      grid-template-columns: repeat(2, minmax(140px, 1fr));
+    }
+
+    .metric {
+      background: rgba(7, 12, 30, 0.75);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      padding: 0.65rem;
+    }
+
+    .metric .label {
+      color: var(--muted);
+      font-size: 0.8rem;
+    }
+
+    .metric .value {
+      margin-top: 0.15rem;
+      font-weight: 700;
+      font-size: 1.05rem;
+    }
+
+    .status-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 0.5rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    #focus-status {
+      font-weight: 800;
+      letter-spacing: 0.02em;
+    }
+
+    #focus-status.FOCUSED { color: #34d399; }
+    #focus-status.UNCERTAIN { color: #fbbf24; }
+    #focus-status.DISTRACTED { color: #fb7185; }
+
+    .error {
+      color: #fb7185;
+      font-size: 0.9rem;
+      min-height: 1.2rem;
+    }
+
+    .card {
+      background: linear-gradient(180deg, var(--panel), var(--panel-2));
+      border: 1px solid rgba(124, 156, 255, 0.25);
+      border-radius: 14px;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+      min-height: 220px;
+    }
+
+    .method {
+      display: inline-block;
+      padding: 0.22rem 0.55rem;
+      border-radius: 999px;
+      font-size: 0.76rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      color: #031014;
+      width: fit-content;
+      background: var(--accent-2);
+    }
+
+    .method.post { background: #fbbf24; color: #1f1300; }
+    .method.get { background: var(--ok); color: #072815; }
+
+    h2 {
+      margin: 0;
+      font-size: 1.1rem;
+      word-break: break-word;
+    }
+
+    p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    .code {
+      margin-top: auto;
+      background: rgba(7, 12, 30, 0.75);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      padding: 0.6rem;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.8rem;
+      color: #d7ddff;
+      overflow-x: auto;
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <section class="hero">
+      <h1>Prodo API Dashboard</h1>
+      <p>
+        This FastAPI service powers focus scoring and authentication flows for Prodo.
+        Use the endpoint reference below to test each route quickly.
+      </p>
+    </section>
+
+    <p class="hint">Tip: Interactive docs are also available at <strong>/docs</strong>.</p>
+
+    <section class="demo">
+      <h2>Live /check-focus Webcam Demo</h2>
+      <p>Allow camera access, then capture one frame or run auto-checks on a timer.</p>
+
+      <div class="demo-layout">
+        <div>
+          <video id="camera" autoplay playsinline muted></video>
+          <canvas id="snapshot" style="display:none;"></canvas>
+          <div class="controls" style="margin-top:0.7rem;">
+            <button id="start-camera">Start camera</button>
+            <button id="stop-camera" disabled>Stop camera</button>
+            <button id="check-once" disabled>Check once</button>
+            <button id="toggle-auto" disabled>Start auto check</button>
+          </div>
+        </div>
+
+        <div>
+          <div class="status-row">
+            <div>
+              <div class="label">Status</div>
+              <div id="focus-status">WAITING</div>
+            </div>
+            <label>
+              Session ID
+              <input id="session-id" type="text" value="" />
+            </label>
+          </div>
+
+          <div class="controls" style="margin:0.7rem 0;">
+            <label>
+              Interval (seconds)
+              <input id="interval-seconds" type="number" min="0.5" step="0.5" value="2" />
+            </label>
+          </div>
+
+          <div class="controls" style="margin-bottom:0.7rem;">
+            <label><input id="include-debug" type="checkbox" /> include_debug</label>
+            <label><input id="prefer-mediapipe" type="checkbox" checked /> prefer_mediapipe</label>
+          </div>
+
+          <div class="metric-grid">
+            <div class="metric"><div class="label">focus_score</div><div class="value" id="focus-score">-</div></div>
+            <div class="metric"><div class="label">rolling_focus_score</div><div class="value" id="rolling-score">-</div></div>
+            <div class="metric"><div class="label">face_presence</div><div class="value" id="sig-face">-</div></div>
+            <div class="metric"><div class="label">head_pose</div><div class="value" id="sig-head">-</div></div>
+            <div class="metric"><div class="label">gaze</div><div class="value" id="sig-gaze">-</div></div>
+            <div class="metric"><div class="label">eyes_open</div><div class="value" id="sig-eyes">-</div></div>
+          </div>
+
+          <div class="error" id="demo-error"></div>
+          <div class="code" id="raw-response">Waiting for first response...</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="grid">
+      <article class="card">
+        <span class="method get">GET</span>
+        <h2>/</h2>
+        <p>Serves this HTML dashboard page.</p>
+        <div class="code">Response: HTML file (index.html)</div>
+      </article>
+
+      <article class="card">
+        <span class="method post">POST</span>
+        <h2>/check-focus</h2>
+        <p>Analyzes an uploaded image frame and returns focus status and score signals.</p>
+        <div class="code">Form-data:
+frame: image file (required)
+session_id: string (optional)
+include_debug: bool (optional)
+prefer_mediapipe: bool (optional)</div>
+      </article>
+
+      <article class="card">
+        <span class="method post">POST</span>
+        <h2>/auth/register</h2>
+        <p>Registers a user (placeholder implementation).</p>
+        <div class="code">JSON:
+{
+  "username": "string",
+  "email": "string",
+  "password": "string"
+}</div>
+      </article>
+
+      <article class="card">
+        <span class="method post">POST</span>
+        <h2>/auth/login</h2>
+        <p>Logs in a user (placeholder implementation).</p>
+        <div class="code">JSON:
+{
+  "email": "string",
+  "password": "string"
+}</div>
+      </article>
+
+      <article class="card">
+        <span class="method get">GET</span>
+        <h2>/users/me</h2>
+        <p>Returns mock current-user stats and profile values.</p>
+        <div class="code">Response includes username, email, points, and balance.</div>
+      </article>
+
+      <article class="card">
+        <span class="method post">POST</span>
+        <h2>/users/sync</h2>
+        <p>Syncs locally-earned points and the current multiplier.</p>
+        <div class="code">JSON:
+{
+  "points_earned_since_last_sync": 10,
+  "current_multiplier": 1.2
+}</div>
+      </article>
+    </section>
+  </main>
+
+  <script>
+    const camera = document.getElementById("camera");
+    const snapshot = document.getElementById("snapshot");
+    const ctx = snapshot.getContext("2d");
+
+    const startCameraBtn = document.getElementById("start-camera");
+    const stopCameraBtn = document.getElementById("stop-camera");
+    const checkOnceBtn = document.getElementById("check-once");
+    const toggleAutoBtn = document.getElementById("toggle-auto");
+
+    const sessionIdInput = document.getElementById("session-id");
+    const intervalInput = document.getElementById("interval-seconds");
+    const includeDebugCheckbox = document.getElementById("include-debug");
+    const preferMediapipeCheckbox = document.getElementById("prefer-mediapipe");
+
+    const focusStatus = document.getElementById("focus-status");
+    const focusScore = document.getElementById("focus-score");
+    const rollingScore = document.getElementById("rolling-score");
+    const sigFace = document.getElementById("sig-face");
+    const sigHead = document.getElementById("sig-head");
+    const sigGaze = document.getElementById("sig-gaze");
+    const sigEyes = document.getElementById("sig-eyes");
+    const rawResponse = document.getElementById("raw-response");
+    const demoError = document.getElementById("demo-error");
+
+    sessionIdInput.value = `web-${Math.random().toString(36).slice(2, 10)}`;
+
+    let mediaStream = null;
+    let autoTimer = null;
+    let requestInFlight = false;
+
+    function setError(message) {
+      demoError.textContent = message || "";
+    }
+
+    function setStatus(status) {
+      focusStatus.textContent = status;
+      focusStatus.className = "";
+      if (status === "FOCUSED" || status === "UNCERTAIN" || status === "DISTRACTED") {
+        focusStatus.classList.add(status);
+      }
+    }
+
+    function formatNumber(value) {
+      return typeof value === "number" ? value.toFixed(4) : "-";
+    }
+
+    function updateUi(payload) {
+      setStatus(payload.status || "UNKNOWN");
+      focusScore.textContent = formatNumber(payload.focus_score);
+      rollingScore.textContent = formatNumber(payload.rolling_focus_score);
+      sigFace.textContent = formatNumber(payload.signals?.face_presence);
+      sigHead.textContent = formatNumber(payload.signals?.head_pose);
+      sigGaze.textContent = formatNumber(payload.signals?.gaze);
+      sigEyes.textContent = formatNumber(payload.signals?.eyes_open);
+      rawResponse.textContent = JSON.stringify(payload, null, 2);
+    }
+
+    async function captureFrameBlob() {
+      if (!mediaStream || !camera.videoWidth || !camera.videoHeight) {
+        throw new Error("Camera is not ready yet.");
+      }
+
+      snapshot.width = camera.videoWidth;
+      snapshot.height = camera.videoHeight;
+      ctx.drawImage(camera, 0, 0, snapshot.width, snapshot.height);
+
+      return new Promise((resolve, reject) => {
+        snapshot.toBlob((blob) => {
+          if (!blob) {
+            reject(new Error("Failed to capture frame."));
+            return;
+          }
+          resolve(blob);
+        }, "image/jpeg", 0.9);
+      });
+    }
+
+    async function checkFocusOnce() {
+      if (requestInFlight) return;
+      requestInFlight = true;
+      setError("");
+
+      try {
+        const frameBlob = await captureFrameBlob();
+        const formData = new FormData();
+        formData.append("frame", frameBlob, "frame.jpg");
+        formData.append("session_id", sessionIdInput.value.trim() || "web-default");
+        formData.append("include_debug", String(includeDebugCheckbox.checked));
+        formData.append("prefer_mediapipe", String(preferMediapipeCheckbox.checked));
+
+        const response = await fetch("/check-focus", {
+          method: "POST",
+          body: formData
+        });
+
+        const payload = await response.json();
+        if (!response.ok) {
+          throw new Error(payload.detail || "Focus check failed.");
+        }
+
+        updateUi(payload);
+      } catch (error) {
+        setError(error.message || "Unexpected error.");
+      } finally {
+        requestInFlight = false;
+      }
+    }
+
+    async function startCamera() {
+      setError("");
+      try {
+        mediaStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "user" },
+          audio: false
+        });
+        camera.srcObject = mediaStream;
+        setStatus("CAMERA_READY");
+        startCameraBtn.disabled = true;
+        stopCameraBtn.disabled = false;
+        checkOnceBtn.disabled = false;
+        toggleAutoBtn.disabled = false;
+      } catch (error) {
+        setError(`Camera access failed: ${error.message || error}`);
+      }
+    }
+
+    function stopAutoCheck() {
+      if (autoTimer) {
+        clearInterval(autoTimer);
+        autoTimer = null;
+      }
+      toggleAutoBtn.textContent = "Start auto check";
+    }
+
+    function stopCamera() {
+      stopAutoCheck();
+
+      if (mediaStream) {
+        mediaStream.getTracks().forEach((track) => track.stop());
+        mediaStream = null;
+      }
+
+      camera.srcObject = null;
+      setStatus("WAITING");
+      startCameraBtn.disabled = false;
+      stopCameraBtn.disabled = true;
+      checkOnceBtn.disabled = true;
+      toggleAutoBtn.disabled = true;
+    }
+
+    function toggleAutoCheck() {
+      if (!mediaStream) return;
+
+      if (autoTimer) {
+        stopAutoCheck();
+        return;
+      }
+
+      const intervalMs = Math.max(500, Number(intervalInput.value || 2) * 1000);
+      autoTimer = setInterval(checkFocusOnce, intervalMs);
+      toggleAutoBtn.textContent = "Stop auto check";
+      checkFocusOnce();
+    }
+
+    startCameraBtn.addEventListener("click", startCamera);
+    stopCameraBtn.addEventListener("click", stopCamera);
+    checkOnceBtn.addEventListener("click", checkFocusOnce);
+    toggleAutoBtn.addEventListener("click", toggleAutoCheck);
+    window.addEventListener("beforeunload", stopCamera);
+  </script>
+</body>
+</html>

@@ -1,4 +1,6 @@
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi.responses import FileResponse
+from pathlib import Path
 from pydantic import BaseModel
 
 from utils.focus_score import calculate_focus_score
@@ -10,11 +12,12 @@ from utils.focus_score import calculate_focus_score
 
 app = FastAPI()
 _rolling_scores_by_session: dict[str, list[float]] = {}
+BASE_DIR = Path(__file__).resolve().parent
 
 
 @app.get("/")
 async def root():
-    return "alive"
+    return FileResponse(BASE_DIR / "index.html")
 
 # ---------- CV Model Functionality ----------
 @app.post("/check-focus")
