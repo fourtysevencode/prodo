@@ -447,6 +447,20 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return () => clearInterval(timer);
   }, []);
 
+  // Sync allowlist to desktop backend whenever vaultItems changes
+  useEffect(() => {
+    const unlockedIds = vaultItems.filter(i => i.unlocked).map(i => i.id);
+    import("@tauri-apps/api/core")
+      .then(({ invoke }) => {
+        invoke("save_allowlist", { apps: unlockedIds }).catch(err => {
+          console.error("Failed to save allowlist to backend:", err);
+        });
+      })
+      .catch(() => {
+        // Not running in Tauri / desktop environment
+      });
+  }, [vaultItems]);
+
   return (
     <FocusContext.Provider value={{
       xp, coreTemp, multiplier, netLink, threatSeconds, isTracking, trackingStatus,

@@ -19,6 +19,7 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
     { path: "/logs", label: "LOGS", icon: "receipt_long" },
     { path: "/leaderboard", label: "RANKINGS", icon: "leaderboard" },
     { path: "/vault", label: "VAULT", icon: "lock" },
+    { path: "/friends", label: "FRIENDS", icon: "group" },
     { path: "/config", label: "CONFIG", icon: "settings_input_component" },
     { path: "/help", label: "HELP", icon: "help" },
     { path: "/settings", label: "SETTINGS", icon: "settings" },
