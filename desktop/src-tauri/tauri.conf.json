@@ -32,10 +32,7 @@
       "icons/icon.ico"
     ],
     "macOS": {
-      "infoPlist": {
-        "NSCameraUsageDescription": "Prodo needs camera access to track your focus and gaze using computer vision.",
-        "NSMicrophoneUsageDescription": "Prodo does not use the microphone but macOS may request this alongside camera access."
-      }
+      "infoPlist": "Info.plist"
     }
   }
 }

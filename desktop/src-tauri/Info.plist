@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>NSCameraUsageDescription</key>
+  <string>Prodo needs camera access to track your focus and gaze using computer vision.</string>
+  <key>NSMicrophoneUsageDescription</key>
+  <string>Prodo does not use the microphone. macOS may bundle this alongside camera access requests.</string>
+</dict>
+</plist>
