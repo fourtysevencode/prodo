@@ -9,8 +9,20 @@ const LoginPage: React.FC = () => {
   const [apiEndpoint, setApiEndpoint] = useState(getApiBaseUrl());
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [clickCount, setClickCount] = useState(0);
+  const [showApiConfig, setShowApiConfig] = useState(false);
   const navigate = useNavigate();
   const { startTracking, setIsAuthenticated } = useFocus();
+
+  const handleLogoClick = () => {
+    const nextCount = clickCount + 1;
+    if (nextCount >= 5) {
+      setShowApiConfig(!showApiConfig);
+      setClickCount(0);
+    } else {
+      setClickCount(nextCount);
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -116,7 +128,10 @@ const LoginPage: React.FC = () => {
 
         {/* Brand Banner */}
         <div className="p-6 text-center border-b border-surface-variant flex flex-col gap-2">
-          <h1 className="font-value-xl text-[42px] leading-none text-primary uppercase tracking-widest drop-shadow-[0_0_5px_rgba(229,226,225,0.4)]">
+          <h1 
+            onClick={handleLogoClick}
+            className="font-value-xl text-[42px] leading-none text-primary uppercase tracking-widest drop-shadow-[0_0_5px_rgba(229,226,225,0.4)] cursor-pointer select-none"
+          >
             PRODO
           </h1>
           <p className="font-technical-prefix text-[8px] text-outline-variant uppercase tracking-widest">
@@ -205,24 +220,26 @@ const LoginPage: React.FC = () => {
         </div>
 
         {/* Dynamic API Base Override */}
-        <div className="px-6 pb-4 border-t border-outline-variant/30 pt-4 flex flex-col gap-1.5">
-          <label className="font-technical-prefix text-[8px] text-outline-variant tracking-wider uppercase">
-            Neural Net Gateway (API Endpoint)
-          </label>
-          <div className="flex border border-outline-variant bg-background items-center px-3 h-8">
-            <span className="font-technical-prefix text-[8px] text-outline-variant mr-2">API&gt;</span>
-            <input
-              type="text"
-              value={apiEndpoint}
-              onChange={(e) => {
-                setApiEndpoint(e.target.value);
-                setApiBaseUrl(e.target.value);
-              }}
-              placeholder="http://127.0.0.1:8000"
-              className="bg-transparent border-none outline-none text-[10px] font-technical-prefix text-primary w-full focus:ring-0 p-0 placeholder-outline-variant"
-            />
+        {showApiConfig && (
+          <div className="px-6 pb-4 border-t border-outline-variant/30 pt-4 flex flex-col gap-1.5">
+            <label className="font-technical-prefix text-[8px] text-outline-variant tracking-wider uppercase">
+              Neural Net Gateway (API Endpoint)
+            </label>
+            <div className="flex border border-outline-variant bg-background items-center px-3 h-8">
+              <span className="font-technical-prefix text-[8px] text-outline-variant mr-2">API&gt;</span>
+              <input
+                type="text"
+                value={apiEndpoint}
+                onChange={(e) => {
+                  setApiEndpoint(e.target.value);
+                  setApiBaseUrl(e.target.value);
+                }}
+                placeholder="http://127.0.0.1:8000"
+                className="bg-transparent border-none outline-none text-[10px] font-technical-prefix text-primary w-full focus:ring-0 p-0 placeholder-outline-variant"
+              />
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Footer info */}
         <div className="border-t border-surface-variant p-4 bg-[#0E0E0E] text-center font-technical-prefix text-[8px] text-outline-variant flex flex-col gap-1">
