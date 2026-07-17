@@ -22,6 +22,15 @@ class FocusScoreConfig:
     focused_threshold: float = 0.75
     distracted_threshold: float = 0.50
 
+    face_presence_weight: float = 0.25
+    head_pose_weight: float = 0.15
+    gaze_weight: float = 0.40
+    eyes_open_weight: float = 0.20
+
+    desk_focus_face_min: float = 0.30
+    desk_focus_head_pose_min: float = 0.78
+    desk_focus_gaze_min: float = 0.55
+
     yaw_ok_degrees: float = 15.0
     yaw_max_degrees: float = 45.0
     pitch_ok_degrees: float = 12.0
@@ -62,6 +71,8 @@ def calculate_focus_score(
     *,
     frame_is_bgr: bool = True,
     config: Optional[FocusScoreConfig] = None,
+    include_debug: bool = False,
+    prefer_mediapipe: bool = True,
 ) -> Dict[str, Any]:
     """Calculate focus status and signal scores from one webcam frame.
 
@@ -81,14 +92,32 @@ def calculate_focus_score(
     """
 
     cfg = config or FocusScoreConfig()
-    cv2, face_mesh_module, np = _load_vision_modules()
+    cv2, face_mesh_module, np = _load_vision_modules(prefer_mediapipe=prefer_mediapipe)
 
     if frame is None:
-        return _build_payload(0.0, 0.0, 0.0, 0.0, rolling_scores, cfg)
+        return _build_payload(
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            rolling_scores,
+            cfg,
+            update_rolling=False,
+        )
 
     image = np.asarray(frame)
     if image.ndim != 3 or image.shape[2] < 3:
         raise ValueError("frame must be a color image shaped like (height, width, channels)")
+
+    if face_mesh_module is None:
+        return _calculate_focus_score_with_opencv(
+            image,
+            rolling_scores,
+            frame_is_bgr=frame_is_bgr,
+            cv2=cv2,
+            config=cfg,
+            include_debug=include_debug,
+        )
 
     height, width = image.shape[:2]
     rgb_frame = cv2.cvtColor(image, cv2.COLOR_BGR2RGB) if frame_is_bgr else image
@@ -107,7 +136,16 @@ def calculate_focus_score(
         face_mesh.close()
 
     if not result.multi_face_landmarks:
-        return _build_payload(0.0, 0.0, 0.0, 0.0, rolling_scores, cfg)
+        return _build_payload(
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            rolling_scores,
+            cfg,
+            debug={"backend": "mediapipe", "face_count": 0} if include_debug else None,
+            update_rolling=False,
+        )
 
     landmarks = result.multi_face_landmarks[0].landmark
     points = _landmarks_to_points(landmarks, width, height, np)
@@ -117,32 +155,155 @@ def calculate_focus_score(
     eyes_open = _score_eyes_open(points, cfg)
     gaze = _score_gaze(points, head_pose, cfg, np)
 
-    return _build_payload(face_presence, head_pose, gaze, eyes_open, rolling_scores, cfg)
+    return _build_payload(
+        face_presence,
+        head_pose,
+        gaze,
+        eyes_open,
+        rolling_scores,
+        cfg,
+        debug={"backend": "mediapipe", "face_count": 1} if include_debug else None,
+    )
 
 
-def _load_vision_modules() -> tuple[Any, Any, Any]:
+def _load_vision_modules(*, prefer_mediapipe: bool) -> tuple[Any, Any, Any]:
     try:
         import cv2
-        import mediapipe as mp
         import numpy as np
     except ImportError as exc:
         raise ImportError(
-            "calculate_focus_score requires opencv-python, mediapipe, and numpy. "
+            "calculate_focus_score requires opencv-python and numpy. "
             "Install them in the environment that processes webcam snapshots."
         ) from exc
 
+    face_mesh_module = None
+    if not prefer_mediapipe:
+        return cv2, face_mesh_module, np
+
     try:
-        face_mesh_module = mp.solutions.face_mesh
-    except AttributeError:
+        import mediapipe as mp
+
         try:
-            face_mesh_module = import_module("mediapipe.python.solutions.face_mesh")
-        except ImportError as exc:
-            raise ImportError(
-                "The installed mediapipe package does not expose FaceMesh. "
-                "Try reinstalling mediapipe in this Python environment."
-            ) from exc
+            face_mesh_module = mp.solutions.face_mesh
+        except AttributeError:
+            for module_name in (
+                "mediapipe.solutions.face_mesh",
+                "mediapipe.python.solutions.face_mesh",
+            ):
+                try:
+                    face_mesh_module = import_module(module_name)
+                    break
+                except ImportError:
+                    continue
+    except ImportError:
+        face_mesh_module = None
 
     return cv2, face_mesh_module, np
+
+
+def _calculate_focus_score_with_opencv(
+    image: Any,
+    rolling_scores: Optional[MutableSequence[float]],
+    *,
+    frame_is_bgr: bool,
+    cv2: Any,
+    config: FocusScoreConfig,
+    include_debug: bool,
+) -> Dict[str, Any]:
+    gray_code = cv2.COLOR_BGR2GRAY if frame_is_bgr else cv2.COLOR_RGB2GRAY
+    gray = cv2.cvtColor(image, gray_code)
+    gray = cv2.equalizeHist(gray)
+    height, width = gray.shape[:2]
+
+    face_cascades = [
+        cv2.CascadeClassifier(cv2.data.haarcascades + filename)
+        for filename in (
+            "haarcascade_frontalface_default.xml",
+            "haarcascade_frontalface_alt2.xml",
+            "haarcascade_profileface.xml",
+        )
+    ]
+    eye_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_eye.xml")
+
+    min_face_size = max(40, int(min(width, height) * 0.08))
+    faces = []
+    for face_cascade in face_cascades:
+        if face_cascade.empty():
+            continue
+
+        detected = face_cascade.detectMultiScale(
+            gray,
+            scaleFactor=1.05,
+            minNeighbors=3,
+            minSize=(min_face_size, min_face_size),
+        )
+        faces.extend(tuple(face) for face in detected)
+
+    if len(faces) == 0:
+        return _build_payload(
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            rolling_scores,
+            config,
+            debug={
+                "backend": "opencv_haar",
+                "face_count": 0,
+                "min_face_size": min_face_size,
+                "frame_size": [width, height],
+            }
+            if include_debug
+            else None,
+            update_rolling=False,
+        )
+
+    x, y, face_width, face_height = max(faces, key=lambda face: face[2] * face[3])
+    face_area_ratio = (face_width * face_height) / float(width * height)
+    face_presence = _scale_between(face_area_ratio, low=0.015, high=0.080)
+
+    face_center_x = x + face_width / 2.0
+    face_center_y = y + face_height / 2.0
+    horizontal_offset = abs((face_center_x / width) - 0.5)
+    vertical_offset = abs((face_center_y / height) - 0.48)
+    horizontal_score = _offset_score(horizontal_offset, ok_offset=0.14, max_offset=0.34)
+    vertical_score = _offset_score(vertical_offset, ok_offset=0.16, max_offset=0.36)
+    head_pose = 0.70 * horizontal_score + 0.30 * vertical_score
+
+    face_gray = gray[y : y + face_height, x : x + face_width]
+    eyes = eye_cascade.detectMultiScale(
+        face_gray,
+        scaleFactor=1.1,
+        minNeighbors=5,
+        minSize=(18, 18),
+    )
+    eyes_open = _clamp(len(eyes) / 2.0)
+    if len(eyes) == 0:
+        # Haar eye detection is unreliable when the user is looking down at a
+        # notebook/book, so treat missing eyes as neutral instead of closed.
+        eyes_open = 0.70
+
+    # Haar cascades do not provide iris position, so approximate gaze from
+    # centered face position and eye visibility until MediaPipe FaceMesh works.
+    gaze = 0.65 * head_pose + 0.35 * eyes_open
+
+    return _build_payload(
+        face_presence,
+        head_pose,
+        gaze,
+        eyes_open,
+        rolling_scores,
+        config,
+        debug={
+            "backend": "opencv_haar",
+            "face_count": len(faces),
+            "face_box": [int(x), int(y), int(face_width), int(face_height)],
+            "eye_count": int(len(eyes)),
+            "frame_size": [width, height],
+        }
+        if include_debug
+        else None,
+    )
 
 
 def _build_payload(
@@ -152,6 +313,8 @@ def _build_payload(
     eyes_open: float,
     rolling_scores: Optional[MutableSequence[float]],
     config: FocusScoreConfig,
+    debug: Optional[Dict[str, Any]] = None,
+    update_rolling: bool = True,
 ) -> Dict[str, Any]:
     signals = {
         "face_presence": round(_clamp(face_presence), 4),
@@ -160,34 +323,52 @@ def _build_payload(
         "eyes_open": round(_clamp(eyes_open), 4),
     }
 
-    focus_score = (
-        0.25 * signals["face_presence"]
-        + 0.25 * signals["head_pose"]
-        + 0.35 * signals["gaze"]
-        + 0.15 * signals["eyes_open"]
+    total_weight = (
+        config.face_presence_weight
+        + config.head_pose_weight
+        + config.gaze_weight
+        + config.eyes_open_weight
     )
+    focus_score = (
+        config.face_presence_weight * signals["face_presence"]
+        + config.head_pose_weight * signals["head_pose"]
+        + config.gaze_weight * signals["gaze"]
+        + config.eyes_open_weight * signals["eyes_open"]
+    ) / total_weight
     focus_score = round(_clamp(focus_score), 4)
 
-    if rolling_scores is not None:
+    desk_focus = (
+        signals["face_presence"] >= config.desk_focus_face_min
+        and signals["head_pose"] >= config.desk_focus_head_pose_min
+        and signals["gaze"] >= config.desk_focus_gaze_min
+    )
+
+    if rolling_scores is not None and update_rolling:
         rolling_scores.append(focus_score)
         del rolling_scores[:-config.rolling_window]
+        rolling_focus_score = round(_clamp(fmean(rolling_scores)), 4)
+    elif rolling_scores:
         rolling_focus_score = round(_clamp(fmean(rolling_scores)), 4)
     else:
         rolling_focus_score = focus_score
 
-    if rolling_focus_score >= config.focused_threshold:
+    if desk_focus or rolling_focus_score >= config.focused_threshold:
         status = "FOCUSED"
     elif rolling_focus_score < config.distracted_threshold:
         status = "DISTRACTED"
     else:
         status = "UNCERTAIN"
 
-    return {
+    payload = {
         "status": status,
         "focus_score": focus_score,
         "rolling_focus_score": rolling_focus_score,
         "signals": signals,
     }
+    if debug is not None:
+        payload["debug"] = debug
+
+    return payload
 
 
 def _landmarks_to_points(landmarks: Sequence[Any], width: int, height: int, np: Any) -> Any:

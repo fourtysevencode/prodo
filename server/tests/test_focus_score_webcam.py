@@ -31,6 +31,8 @@ def main() -> int:
     parser.add_argument("--camera", type=int, default=0, help="OpenCV camera index.")
     parser.add_argument("--interval", type=float, default=3.0, help="Seconds between samples.")
     parser.add_argument("--preview", action="store_true", help="Show a webcam preview window.")
+    parser.add_argument("--debug", action="store_true", help="Print backend detection details.")
+    parser.add_argument("--mediapipe", action="store_true", help="Try MediaPipe FaceMesh first.")
     args = parser.parse_args()
 
     try:
@@ -46,11 +48,12 @@ def main() -> int:
 
     rolling_scores: list[float] = []
     next_sample_at = time.monotonic() + 1.0
+    latest_debug: dict | None = None
 
     print("Webcam focus test running. Press Ctrl+C to quit.")
     if args.preview:
         print("Preview enabled. Press q in the preview window to quit.")
-    print("The first score can take a little while because MediaPipe loads its model.")
+    print("The first score can take a little while while the vision model initializes.")
 
     try:
         while True:
@@ -60,7 +63,17 @@ def main() -> int:
                 return 1
 
             if args.preview:
-                cv2.imshow("Prodo focus score test", frame)
+                preview_frame = frame.copy()
+                if latest_debug and latest_debug.get("face_box"):
+                    x, y, width, height = latest_debug["face_box"]
+                    cv2.rectangle(
+                        preview_frame,
+                        (x, y),
+                        (x + width, y + height),
+                        (0, 255, 0),
+                        2,
+                    )
+                cv2.imshow("Prodo focus score test", preview_frame)
                 if cv2.waitKey(1) & 0xFF == ord("q"):
                     break
             else:
@@ -69,7 +82,13 @@ def main() -> int:
             now = time.monotonic()
             if now >= next_sample_at:
                 print("Calculating focus score...")
-                result = calculate_focus_score(frame, rolling_scores)
+                result = calculate_focus_score(
+                    frame,
+                    rolling_scores,
+                    include_debug=args.debug,
+                    prefer_mediapipe=args.mediapipe,
+                )
+                latest_debug = result.get("debug")
                 print(json.dumps(result, indent=2))
                 next_sample_at = time.monotonic() + args.interval
     finally:
