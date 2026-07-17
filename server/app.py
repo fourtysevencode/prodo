@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Request
-from pydantic import basemodel
+from pydantic import BaseModel
 
 #  Serve HTML on / later
 # environment = jinja2.Environment()
