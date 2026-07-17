@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "desktop",
+  "productName": "Prodo",
   "version": "0.1.0",
   "identifier": "com.ivansamuel.desktop",
   "build": {
@@ -12,13 +12,13 @@
   "app": {
     "windows": [
       {
-        "title": "desktop",
-        "width": 800,
-        "height": 600
+        "title": "Prodo Focus Engine",
+        "width": 1200,
+        "height": 800
       }
     ],
     "security": {
-      "csp": null
+      "csp": "default-src 'self'; media-src 'self' mediastream: blob:; img-src 'self' data: blob:; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com"
     }
   },
   "bundle": {
@@ -30,6 +30,13 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "macOS": {
+      "infoPlist": {
+        "NSCameraUsageDescription": "Prodo needs camera access to track your focus and gaze using computer vision.",
+        "NSMicrophoneUsageDescription": "Prodo does not use the microphone but macOS may request this alongside camera access."
+      }
+    }
   }
 }
+

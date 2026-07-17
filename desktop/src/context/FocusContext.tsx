@@ -70,7 +70,7 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [gazeTolerance, setGazeTolerance] = useState(15);
   const [graceDuration, setGraceDuration] = useState(15);
   const [basePenalty, setBasePenalty] = useState(50);
-  const [cameraDevice, setCameraDevice] = useState("FaceTime HD Camera (Built-in)");
+  const [cameraDevice, setCameraDevice] = useState(""); // "" = use OS default camera
 
   const [sessionTime, setSessionTime] = useState(0);
   
