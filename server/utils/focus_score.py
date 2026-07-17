@@ -21,20 +21,20 @@ class FocusScoreConfig:
     rolling_window: int = 5
     focused_threshold: float = 0.75
     distracted_threshold: float = 0.50
+    current_focus_status_weight: float = 0.85
+    rolling_focus_status_weight: float = 0.15
 
     face_presence_weight: float = 0.25
-    head_pose_weight: float = 0.15
-    gaze_weight: float = 0.40
-    eyes_open_weight: float = 0.20
-
-    desk_focus_face_min: float = 0.30
-    desk_focus_head_pose_min: float = 0.78
-    desk_focus_gaze_min: float = 0.55
+    head_pose_weight: float = 0.25
+    gaze_weight: float = 0.35
+    eyes_open_weight: float = 0.15
 
     yaw_ok_degrees: float = 15.0
     yaw_max_degrees: float = 45.0
     pitch_ok_degrees: float = 12.0
     pitch_max_degrees: float = 35.0
+    pitch_down_ok_degrees: float = 25.0
+    pitch_down_max_degrees: float = 55.0
     roll_ok_degrees: float = 12.0
     roll_max_degrees: float = 35.0
 
@@ -102,7 +102,6 @@ def calculate_focus_score(
             0.0,
             rolling_scores,
             cfg,
-            update_rolling=False,
         )
 
     image = np.asarray(frame)
@@ -144,7 +143,6 @@ def calculate_focus_score(
             rolling_scores,
             cfg,
             debug={"backend": "mediapipe", "face_count": 0} if include_debug else None,
-            update_rolling=False,
         )
 
     landmarks = result.multi_face_landmarks[0].landmark
@@ -255,7 +253,6 @@ def _calculate_focus_score_with_opencv(
             }
             if include_debug
             else None,
-            update_rolling=False,
         )
 
     x, y, face_width, face_height = max(faces, key=lambda face: face[2] * face[3])
@@ -265,9 +262,12 @@ def _calculate_focus_score_with_opencv(
     face_center_x = x + face_width / 2.0
     face_center_y = y + face_height / 2.0
     horizontal_offset = abs((face_center_x / width) - 0.5)
-    vertical_offset = abs((face_center_y / height) - 0.48)
+    vertical_delta = (face_center_y / height) - 0.48
     horizontal_score = _offset_score(horizontal_offset, ok_offset=0.14, max_offset=0.34)
-    vertical_score = _offset_score(vertical_offset, ok_offset=0.16, max_offset=0.36)
+    if vertical_delta > 0:
+        vertical_score = _offset_score(vertical_delta, ok_offset=0.24, max_offset=0.45)
+    else:
+        vertical_score = _offset_score(abs(vertical_delta), ok_offset=0.16, max_offset=0.36)
     head_pose = 0.70 * horizontal_score + 0.30 * vertical_score
 
     face_gray = gray[y : y + face_height, x : x + face_width]
@@ -278,14 +278,11 @@ def _calculate_focus_score_with_opencv(
         minSize=(18, 18),
     )
     eyes_open = _clamp(len(eyes) / 2.0)
-    if len(eyes) == 0:
-        # Haar eye detection is unreliable when the user is looking down at a
-        # notebook/book, so treat missing eyes as neutral instead of closed.
-        eyes_open = 0.70
 
     # Haar cascades do not provide iris position, so approximate gaze from
-    # centered face position and eye visibility until MediaPipe FaceMesh works.
-    gaze = 0.65 * head_pose + 0.35 * eyes_open
+    # face position. Missing eyes remain strict, but do not erase a strong
+    # downward-reading posture entirely.
+    gaze = (0.80 * head_pose) if len(eyes) == 0 else (0.65 * head_pose + 0.35 * eyes_open)
 
     return _build_payload(
         face_presence,
@@ -314,7 +311,6 @@ def _build_payload(
     rolling_scores: Optional[MutableSequence[float]],
     config: FocusScoreConfig,
     debug: Optional[Dict[str, Any]] = None,
-    update_rolling: bool = True,
 ) -> Dict[str, Any]:
     signals = {
         "face_presence": round(_clamp(face_presence), 4),
@@ -337,24 +333,43 @@ def _build_payload(
     ) / total_weight
     focus_score = round(_clamp(focus_score), 4)
 
-    desk_focus = (
-        signals["face_presence"] >= config.desk_focus_face_min
-        and signals["head_pose"] >= config.desk_focus_head_pose_min
-        and signals["gaze"] >= config.desk_focus_gaze_min
-    )
-
-    if rolling_scores is not None and update_rolling:
+    if rolling_scores is not None:
         rolling_scores.append(focus_score)
         del rolling_scores[:-config.rolling_window]
-        rolling_focus_score = round(_clamp(fmean(rolling_scores)), 4)
-    elif rolling_scores:
         rolling_focus_score = round(_clamp(fmean(rolling_scores)), 4)
     else:
         rolling_focus_score = focus_score
 
-    if desk_focus or rolling_focus_score >= config.focused_threshold:
+    status_total_weight = config.current_focus_status_weight + config.rolling_focus_status_weight
+    if status_total_weight <= 0:
+        status_focus_score = focus_score
+    else:
+        status_focus_score = round(
+            _clamp(
+                (
+                    config.current_focus_status_weight * focus_score
+                    + config.rolling_focus_status_weight * rolling_focus_score
+                )
+                / status_total_weight
+            ),
+            4,
+        )
+
+    current_frame_has_no_focus_signal = (
+        focus_score <= 0.05
+        or (
+            signals["face_presence"] <= 0.05
+            and signals["head_pose"] <= 0.05
+            and signals["gaze"] <= 0.05
+            and signals["eyes_open"] <= 0.05
+        )
+    )
+
+    if current_frame_has_no_focus_signal:
+        status = "DISTRACTED"
+    elif status_focus_score >= config.focused_threshold:
         status = "FOCUSED"
-    elif rolling_focus_score < config.distracted_threshold:
+    elif status_focus_score < config.distracted_threshold:
         status = "DISTRACTED"
     else:
         status = "UNCERTAIN"
@@ -415,7 +430,7 @@ def _score_head_pose(
     pitch, yaw, roll = _rotation_matrix_to_euler(rotation_matrix)
 
     yaw_score = _angle_score(yaw, config.yaw_ok_degrees, config.yaw_max_degrees)
-    pitch_score = _angle_score(pitch, config.pitch_ok_degrees, config.pitch_max_degrees)
+    pitch_score = _pitch_score(pitch, config)
     roll_score = _angle_score(roll, config.roll_ok_degrees, config.roll_max_degrees)
 
     return 0.55 * yaw_score + 0.35 * pitch_score + 0.10 * roll_score
@@ -512,6 +527,21 @@ def _single_eye_gaze_score(
 
 def _angle_score(angle_degrees: float, ok_degrees: float, max_degrees: float) -> float:
     return _offset_score(abs(angle_degrees), ok_degrees, max_degrees)
+
+
+def _pitch_score(pitch_degrees: float, config: FocusScoreConfig) -> float:
+    if pitch_degrees >= 0:
+        return _offset_score(
+            pitch_degrees,
+            config.pitch_down_ok_degrees,
+            config.pitch_down_max_degrees,
+        )
+
+    return _offset_score(
+        abs(pitch_degrees),
+        config.pitch_ok_degrees,
+        config.pitch_max_degrees,
+    )
 
 
 def _offset_score(offset: float, ok_offset: float, max_offset: float) -> float:

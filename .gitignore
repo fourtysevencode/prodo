@@ -135,3 +135,6 @@ python_modules/
 .venv/
 pylock.toml
 uv.lock
+
+# pycache
+__pycache__
