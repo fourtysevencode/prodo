@@ -72,7 +72,7 @@ export const useFocus = () => {
 // ── Provider ──────────────────────────────────────────────────────────────────
 
 export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [xp, setXp] = useState(8450);
+  const [xp, setXp] = useState(0);
   const [coreTemp, setCoreTemp] = useState(36);
   const [multiplier, setMultiplier] = useState(1.0);
   const [netLink, setNetLink] = useState(0);
@@ -378,7 +378,7 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setSessionTime(prev => prev + 1);
 
         setMultiplier(prev => {
-          const next = parseFloat((prev + 0.02).toFixed(2));
+          const next = parseFloat((prev + 0.002).toFixed(3)); // Clones much slower: +0.002/s (takes 500s to reach +1.0x)
           return next > 4.5 ? 4.5 : next;
         });
 
@@ -405,20 +405,18 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       interval = setInterval(() => {
         setThreatSeconds(prev => {
           if (prev <= 1) {
-            // Apply penalty and stop tracking
-            setIsTracking(false);
-            setTrackingStatus("UNCERTAIN");
+            // Apply penalty but do NOT stop tracking or camera. Keep loop active.
             setMultiplier(1.0);
-            setNetLink(0);
 
             const penalty = basePenaltyRef.current;
-            setXp(prevXp => Math.max(0, prevXp - penalty));
+            setXp(prevXp => prevXp - penalty); // XP can go negative now as per user specs
             setInfractions(prevInf => [
               { timestamp: getTimestamp(), code: "ERR_FCS_BRK", name: "Focus Break", details: `-${penalty} XP Applied` },
               ...prevInf
             ]);
             appendLog("ERROR", "ERR_FCS_FAIL", `Grace period expired. Distraction penalty applied (-${penalty} XP).`);
 
+            // Cooldown: reset threat counter to grace duration so another penalty applies if they continue looking away
             return graceDurationRef.current;
           }
           return prev - 1;

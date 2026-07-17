@@ -59,7 +59,7 @@ export const useFocus = () => {
 };
 
 export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [xp, setXp] = useState(8450);
+  const [xp, setXp] = useState(0);
   const [coreTemp, setCoreTemp] = useState(36);
   const [multiplier, setMultiplier] = useState(1.0);
   const [netLink, setNetLink] = useState(0);
@@ -220,7 +220,7 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         
         // Multiplier progression
         setMultiplier(prev => {
-          const next = parseFloat((prev + 0.05).toFixed(2));
+          const next = parseFloat((prev + 0.002).toFixed(3)); // slower climb
           return next > 4.5 ? 4.5 : next;
         });
 
@@ -284,20 +284,18 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       interval = setInterval(() => {
         setThreatSeconds(prev => {
           if (prev <= 1) {
-            // Focus completely broken!
-            setIsTracking(false);
-            setTrackingStatus("UNCERTAIN");
+            // Apply penalty but do NOT stop tracking or camera. Keep loop active.
             setMultiplier(1.0);
-            setNetLink(0);
             
-            // Apply Penalty
-            setXp(prevXp => Math.max(0, prevXp - basePenalty));
+            // Apply Penalty (allowing negative XP)
+            const penalty = basePenalty;
+            setXp(prevXp => prevXp - penalty);
             setInfractions(prevInf => [
-              { timestamp: getTimestamp(), code: "ERR_FCS_BRK", name: "Focus Break", details: `-${basePenalty} XP Applied` },
+              { timestamp: getTimestamp(), code: "ERR_FCS_BRK", name: "Focus Break", details: `-${penalty} XP Applied` },
               ...prevInf
             ]);
             setSystemLogs(prevLogs => [
-              { timestamp: getFullTimestamp(), type: "ERROR", code: "ERR_FCS_FAIL", message: `Focus grace period expired. Distraction penalty applied (-${basePenalty} XP).` },
+              { timestamp: getFullTimestamp(), type: "ERROR", code: "ERR_FCS_FAIL", message: `Focus grace period expired. Distraction penalty applied (-${penalty} XP).` },
               ...prevLogs
             ]);
             return graceDuration;
