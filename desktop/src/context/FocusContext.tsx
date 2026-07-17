@@ -50,6 +50,8 @@ interface FocusContextType {
   camErr: string | null;
   camLoading: boolean;
   setIsCalibrating: (val: boolean) => void;
+  isCoopActive: boolean;
+  setIsCoopActive: (val: boolean) => void;
   // Core Functions
   startTracking: () => void;
   stopTracking: () => void;
@@ -94,6 +96,7 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [availableDevices, setAvailableDevices] = useState<MediaDeviceInfo[]>([]);
   const [camErr, setCamErr] = useState<string | null>(null);
   const [camLoading, setCamLoading] = useState(false);
+  const [isCoopActive, setIsCoopActive] = useState(false);
 
   const [infractions, setInfractions] = useState<Infraction[]>([
     { timestamp: "14:02:45", code: "ERR_CTX_SW", name: "Context Switch", details: "-50 XP Applied" },
@@ -378,13 +381,15 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setSessionTime(prev => prev + 1);
 
         setMultiplier(prev => {
-          const next = parseFloat((prev + 0.002).toFixed(3)); // Clones much slower: +0.002/s (takes 500s to reach +1.0x)
+          const climb = isCoopActive ? 0.005 : 0.002; // Co-op mode multiplier climbs 2.5x faster
+          const next = parseFloat((prev + climb).toFixed(3));
           return next > 4.5 ? 4.5 : next;
         });
 
         setXp(prev => {
           if (trackingStatus !== "FOCUSED") return prev;
-          return prev + Math.round(1 * multiplierRef.current);
+          const baseEarned = Math.round(1 * multiplierRef.current);
+          return prev + (isCoopActive ? Math.round(baseEarned * 2.5) : baseEarned);
         });
       }, 1000);
     } else {
@@ -395,7 +400,7 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return () => {
       if (sessionInterval.current) clearInterval(sessionInterval.current);
     };
-  }, [isTracking, trackingStatus]);
+  }, [isTracking, trackingStatus, isCoopActive]);
 
   // Threat (grace period) decay
   useEffect(() => {
@@ -466,6 +471,7 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       xp, coreTemp, multiplier, netLink, threatSeconds, isTracking, trackingStatus,
       infractions, vaultItems, systemLogs, gazeTolerance, graceDuration, basePenalty, cameraDevice,
       sessionTime, latestFrame, isCalibrating, availableDevices, camErr, camLoading, setIsCalibrating,
+      isCoopActive, setIsCoopActive,
       startTracking, stopTracking, purchaseApp,
       setGazeTolerance, setGraceDuration, setBasePenalty, setCameraDevice, executeCommand
     }}>

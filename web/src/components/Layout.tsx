@@ -1,11 +1,18 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useFocus } from "../context/FocusContext";
 
 const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
-  const { netLink, sessionTime, isTracking, startTracking, stopTracking } = useFocus();
+  const { xp, netLink, sessionTime, isTracking, startTracking, stopTracking } = useFocus();
   const location = useLocation();
   const navigate = useNavigate();
+
+  // Lockdown Redirect if XP drops below zero
+  useEffect(() => {
+    if (xp < 0) {
+      navigate("/punishments");
+    }
+  }, [xp, navigate]);
 
   // Helper to format session time into MM:SS
   const formatSessionTime = (seconds: number) => {
