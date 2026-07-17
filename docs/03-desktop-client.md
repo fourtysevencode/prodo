@@ -1,45 +1,40 @@
-# Desktop Client Documentation (Tauri)
+# Desktop Client Documentation (Tauri & Python)
 
 ## 1. Overview
-The Prodo Desktop Client is the core "Enforcer" of the gamified focus engine for Windows and macOS. It is built using **Tauri**, which provides an incredibly lightweight footprint by pairing a Rust backend (for OS-level operations) with a standard web frontend (HTML/CSS/JS).
+The Prodo Desktop Client is the core "Enforcer" of the gamified focus engine for Windows and macOS. It is built using **Tauri**, but uniquely, the **entire backend is written in Python**.
 
-This architecture was specifically chosen to allow the frontend UI to be built once and effortlessly ported to the Prodo Web Dashboard.
+The Tauri/Rust layer exists *only* to satisfy the requirements of running a cross-platform desktop UI window. Every piece of core logic—from Computer Vision to OS-level hooks, the state machine, and local database management—is handled by the Python backend.
 
 ## 2. Tech Stack
-- **Framework**: Tauri 2.0+
+- **Framework**: Tauri 2.0+ (Acts purely as a window/UI wrapper).
 - **Frontend**: React / Next.js / Vue (Depending on team preference) - *This exact codebase will be used for the Web App*.
-- **Backend**: Rust (Core logic, OS hooks, and IPC orchestration)
-- **Computer Vision**: Python sidecar (MediaPipe and OpenCV). The Rust layer communicates with this Python process.
-- **Local Database**: SQLite (via `sqlx` or `rusqlite` in Rust).
+- **Backend (Python)**: The true engine of the desktop app. Handles all logic, OS hooks, and database operations.
+- **Computer Vision**: Python (MediaPipe and OpenCV).
+- **Local Database**: SQLite (managed via Python `sqlite3` or `SQLAlchemy`).
 
-## 3. The Core Loop (Rust & Python)
-The Rust backend runs a continuous state machine thread that manages the economy loop and orchestrates the Python sidecar.
+## 3. The Core Loop (Python Backend)
+The Python backend runs a continuous state machine thread that manages the economy loop entirely independently of the UI.
 
-### A. Computer Vision Tracking (Python Sidecar)
-- **The Tracker**: A lightweight Python CV process checks the webcam stream for facial landmarks and gaze direction. The Python sidecar streams this focus state back to the Rust parent process.
-- **Privacy**: Frames are processed entirely in memory and immediately discarded. No video is ever saved to disk or transmitted over the network.
-- **The Grace Period**: If the CV detects the user looking away (e.g., checking a notebook), the Rust backend starts a 15-second grace period timer. If the user's gaze returns to the screen before the timer expires, the focus streak continues without penalty.
+### A. Computer Vision Tracking
+- **The Tracker**: Python continuously processes the webcam stream for facial landmarks and gaze direction.
+- **Privacy**: Frames are processed entirely in memory by Python and immediately discarded. No video is ever saved to disk or transmitted.
+- **The Grace Period**: If the CV detects the user looking away (e.g., checking a notebook), the Python state machine starts a 15-second grace period timer. If focus returns before zero, the streak continues without penalty.
 
 ### B. OS Hooks & Context-Aware Allowlisting
-- **Active Window Monitoring**: Rust uses OS-specific APIs (e.g., `windows-rs` on Windows, `core-graphics` on macOS) to read the title and executable name of the currently active window.
-- **Context Awareness**: The system parses window titles. "YouTube - React Tutorial" (Allowed) is treated differently than "YouTube - MrBeast" (Penalized).
-- **Enforcement**: If a user is distracted and their points drop into the negative, the Rust backend executes the punishment, which can include forcefully minimizing restricted apps, blocking network domains locally via the hosts file, or locking the screen.
+- **Active Window Monitoring**: Python uses OS-specific libraries (like `psutil`, `pygetwindow`, or native ctypes) to read the title and executable name of the currently active window.
+- **Context Awareness**: Python parses window titles. "YouTube - React Tutorial" (Allowed) is treated differently than "YouTube - MrBeast" (Penalized).
+- **Enforcement**: If a user is distracted and their points drop into the negative, Python executes the punishment (e.g., forcefully minimizing restricted apps, modifying the local hosts file, or locking the screen).
 
 ### C. The Economy & Point Tracking
-- As long as CV confirms the user is looking at the screen AND the active window is productive, a point multiplier slowly increases.
-- Points are continuously written to the local SQLite database to prevent loss during crashes or unexpected closures.
-- Users can "spend" points via the UI. When spent, the Rust backend adds a specific app (e.g., Spotify, a game) to the allowlist for a set duration (e.g., 15 minutes).
+- As long as CV confirms the user is looking at the screen AND the active window is productive, the Python state machine increases a point multiplier.
+- Points are continuously written to the local SQLite database by Python to prevent data loss.
+- Users can "spend" points via the UI, which signals Python to add a specific app to the active allowlist for a set duration.
 
 ## 4. Inter-Process Communication (IPC)
-The Desktop Client relies on two distinct IPC boundaries to function seamlessly:
+Because the heavy lifting is in Python and the UI is in Tauri, the architecture relies on IPC to bridge the gap.
 
-### A. Rust <-> Python (The CV Bridge)
-- **Execution**: The Rust backend spawns the Python sidecar as a child process on startup.
-- **Data Flow**: The Python process writes simple JSON objects (e.g., `{"focused": true, "confidence": 0.98}`) to standard output (stdout).
-- **Ingestion**: Rust continuously reads this stdout stream, using the data to feed the focus state machine.
-
-### B. Rust <-> Web (Tauri Events)
-Tauri uses an asynchronous event system to communicate between the Rust backend and the Web UI.
-
-- **Rust -> Web**: Rust emits events (e.g., `points-updated`, `grace-period-started`, `punishment-triggered`) which the frontend listens to in order to update the UI (the shop, the multiplier display).
-- **Web -> Rust**: The frontend invokes Rust commands (e.g., `invoke('purchase_reward', { app_id: 'netflix', minutes: 15 })`). Rust verifies the point balance, deducts it locally, and updates the internal OS hook allowlist.
+### A. Python <-> Tauri (The Bridge)
+- **Execution**: The Tauri (Rust) layer's only true backend responsibility is to spawn the Python backend as a child process when the application starts, and ensure it terminates when the app closes.
+- **Data Flow**: The Python process communicates with the Tauri layer via standard IPC (e.g., standard I/O streams, local websockets, or a local HTTP server).
+- **Updates**: Python sends state updates (current points, multiplier, grace period countdowns) to Tauri, which Tauri immediately forwards to the Web UI via its asynchronous event system.
+- **Commands**: When a user clicks "Buy Reward" in the UI, the Web frontend sends an event to Tauri, which forwards the command to the Python backend to deduct points and update the allowlist.

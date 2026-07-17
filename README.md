@@ -21,7 +21,7 @@
 
 Prodo is a cross-platform ecosystem comprised of four main parts:
 
-1. **Desktop Client (Windows/macOS)**: Built with **Tauri**, combining a lightweight **Rust** backend for OS hooks and IPC, a **Python** sidecar for Computer Vision, and a Web Frontend (HTML/JS).
+1. **Desktop Client (Windows/macOS)**: Built with a **Python** backend that handles all core logic (Computer Vision, OS Hooks, Local Database) and uses **Tauri (Rust)** purely as a lightweight UI wrapper to render the Web Frontend (HTML/JS).
 2. **Mobile App (Android)**: A companion app and portable enforcer built with **Kotlin/React Native** utilizing Google ML Kit for on-device face detection and low-power fallbacks.
 3. **Web Dashboard**: A cloud-accessible port of the desktop UI for checking leaderboards and managing friends.
 4. **Cloud Backend**: A blazing-fast **FastAPI (Python)** server with **PostgreSQL** and **Redis** to handle the global economy, authentication, and real-time Co-op Raid state syncing.
@@ -32,7 +32,7 @@ Detailed documentation for each component of the system can be found in the `doc
 
 - [1. Architecture Overview & Core Concept](./docs/01-architecture-overview.md)
 - [2. Backend (FastAPI)](./docs/02-backend-fastapi.md)
-- [3. Desktop Client (Tauri/Rust/Python)](./docs/03-desktop-client.md)
+- [3. Desktop Client (Tauri & Python)](./docs/03-desktop-client.md)
 - [4. Frontend Website](./docs/04-frontend-website.md)
 - [5. Mobile App (Android)](./docs/05-mobile-app.md)
 - [6. Presentation Guide for Judges](./docs/06-presentation-script.md)

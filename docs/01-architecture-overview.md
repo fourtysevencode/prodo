@@ -18,11 +18,11 @@ Prodo is a Gamified Focus Engine that actively monitors user attention and rewar
 
 The Prodo ecosystem consists of four main components interacting in real-time:
 
-### A. Desktop Client (Tauri - Windows/macOS)
-- **Framework**: Tauri (Rust + Web Frontend)
+### A. Desktop Client (Tauri & Python - Windows/macOS)
+- **Framework**: Tauri (Rust wrapper for UI) + Python (Core Engine)
 - **Role**: The primary "Enforcer" for desktop users.
 - **Frontend**: A web-based UI (HTML/CSS/JS) that displays the current multiplier, points, and allowlist shop.
-- **Backend (Rust)**: Handles OS-level hooks to read active window titles and enforce application locks. Runs the CV pipeline (either natively via Rust OpenCV/MediaPipe bindings or via a bundled Python sidecar) to track facial presence and gaze.
+- **Backend (Python)**: The entire core logic backend is written in Python. It handles OS-level hooks, the state machine, the SQLite database, and the Computer Vision pipeline (MediaPipe/OpenCV). The Tauri Rust layer's sole purpose is to spawn the Python process, render the web view, and act as an IPC bridge.
 
 ### B. Mobile App (Android)
 - **Role**: Focus enforcement on the go, companion features, and social coordination.
