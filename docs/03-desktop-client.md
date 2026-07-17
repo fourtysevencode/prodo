@@ -8,15 +8,15 @@ This architecture was specifically chosen to allow the frontend UI to be built o
 ## 2. Tech Stack
 - **Framework**: Tauri 2.0+
 - **Frontend**: React / Next.js / Vue (Depending on team preference) - *This exact codebase will be used for the Web App*.
-- **Backend**: Rust
-- **Computer Vision**: OpenCV bindings for Rust or a bundled Python sidecar (running MediaPipe) for MVP speed.
+- **Backend**: Rust (Core logic, OS hooks, and IPC orchestration)
+- **Computer Vision**: Python sidecar (MediaPipe and OpenCV). The Rust layer communicates with this Python process.
 - **Local Database**: SQLite (via `sqlx` or `rusqlite` in Rust).
 
-## 3. The Core Loop (Rust Backend)
-The Rust backend runs a continuous state machine thread that manages the economy loop.
+## 3. The Core Loop (Rust & Python)
+The Rust backend runs a continuous state machine thread that manages the economy loop and orchestrates the Python sidecar.
 
-### A. Computer Vision Tracking
-- **The Tracker**: A lightweight CV process checks the webcam stream for facial landmarks and gaze direction. 
+### A. Computer Vision Tracking (Python Sidecar)
+- **The Tracker**: A lightweight Python CV process checks the webcam stream for facial landmarks and gaze direction. The Python sidecar streams this focus state back to the Rust parent process.
 - **Privacy**: Frames are processed entirely in memory and immediately discarded. No video is ever saved to disk or transmitted over the network.
 - **The Grace Period**: If the CV detects the user looking away (e.g., checking a notebook), the Rust backend starts a 15-second grace period timer. If the user's gaze returns to the screen before the timer expires, the focus streak continues without penalty.
 
@@ -30,7 +30,15 @@ The Rust backend runs a continuous state machine thread that manages the economy
 - Points are continuously written to the local SQLite database to prevent loss during crashes or unexpected closures.
 - Users can "spend" points via the UI. When spent, the Rust backend adds a specific app (e.g., Spotify, a game) to the allowlist for a set duration (e.g., 15 minutes).
 
-## 4. Frontend-Backend IPC (Inter-Process Communication)
+## 4. Inter-Process Communication (IPC)
+The Desktop Client relies on two distinct IPC boundaries to function seamlessly:
+
+### A. Rust <-> Python (The CV Bridge)
+- **Execution**: The Rust backend spawns the Python sidecar as a child process on startup.
+- **Data Flow**: The Python process writes simple JSON objects (e.g., `{"focused": true, "confidence": 0.98}`) to standard output (stdout).
+- **Ingestion**: Rust continuously reads this stdout stream, using the data to feed the focus state machine.
+
+### B. Rust <-> Web (Tauri Events)
 Tauri uses an asynchronous event system to communicate between the Rust backend and the Web UI.
 
 - **Rust -> Web**: Rust emits events (e.g., `points-updated`, `grace-period-started`, `punishment-triggered`) which the frontend listens to in order to update the UI (the shop, the multiplier display).
