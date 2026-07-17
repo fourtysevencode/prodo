@@ -11,6 +11,18 @@ from utils.focus_score import calculate_focus_score
 app = FastAPI()
 _rolling_scores_by_session: dict[str, list[float]] = {}
 
+leaderboard_data = [
+    {"username": "A", "points": 2450},
+    {"username": "B", "points": 1980},
+    {"username": "C", "points": 1200},
+]
+
+friends = [
+    {"username": "ronak", "points": 1980},
+    {"username": "ivan", "points": 1200},
+]
+
+
 
 @app.get("/")
 async def root():
@@ -127,3 +139,32 @@ async def sync(data: SyncRequest):
         "points_added": data.points_earned_since_last_sync,
         "multiplier": data.current_multiplier
     }
+
+# ---------- leaderboar endspoint ----------
+
+
+@app.get("/leaderboard/global")
+async def get_global_leaderboard():
+    sorted_leaderboard = sorted(
+        leaderboard_data,
+        key=lambda user: user["points"],
+        reverse=True
+    )
+
+    return {
+        "success": True,
+        "leaderboard": sorted_leaderboard
+    }
+
+#leaderboard for friends
+@app.get("/leaderboard/friends")
+async def get_friends_leaderboard():
+    return {
+        "success": True,
+        "leaderboard": sorted(
+            friends,
+            key=lambda user: user["points"],
+            reverse=True
+        )
+    }
+
