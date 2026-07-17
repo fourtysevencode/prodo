@@ -8,13 +8,17 @@ from utils.focus_score import calculate_focus_score
 
 app = FastAPI(title="Prodo Focus Engine API")
 
-# Allow local Vite dev server and the hosted Pages preview to call this API.
+# Allow local Vite dev server, hosted Pages preview, and Tauri desktop to call this API.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",
         "http://localhost:3000",
         "http://127.0.0.1:5173",
+        "http://localhost:1420",      # Tauri desktop dev server
+        "http://127.0.0.1:1420",
+        "tauri://localhost",          # Tauri production webview origin
+        "https://tauri.localhost",
         "https://prodo-live.pages.dev",
         "https://website-dev.prodo-live.pages.dev",
     ],
