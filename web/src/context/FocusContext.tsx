@@ -40,6 +40,8 @@ interface FocusContextType {
   basePenalty: number;
   cameraDevice: string;
   sessionTime: number; // in seconds
+  isCoopActive: boolean;
+  setIsCoopActive: (val: boolean) => void;
   startTracking: () => void;
   stopTracking: () => void;
   purchaseApp: (id: string) => void;
@@ -72,6 +74,7 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [graceDuration, setGraceDuration] = useState(15);
   const [basePenalty, setBasePenalty] = useState(50);
   const [cameraDevice, setCameraDevice] = useState("Default Web Camera");
+  const [isCoopActive, setIsCoopActive] = useState(false);
 
   const [sessionTime, setSessionTime] = useState(0);
   
@@ -220,19 +223,21 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         
         // Multiplier progression
         setMultiplier(prev => {
-          const next = parseFloat((prev + 0.002).toFixed(3)); // slower climb
+          const climb = isCoopActive ? 0.005 : 0.002; // Co-op mode climbs 2.5x faster
+          const next = parseFloat((prev + climb).toFixed(3));
           return next > 4.5 ? 4.5 : next;
         });
 
         // XP accumulation based on multiplier
         setXp(prev => {
           const earned = Math.round(1 * multiplierRef.current);
+          const boosted = isCoopActive ? Math.round(earned * 2.5) : earned;
           // Sync to backend every 30 seconds
           syncCounterRef.current += 1;
           if (syncCounterRef.current % 30 === 0) {
             apiSync(earned * 30, multiplierRef.current).catch(() => {/* non-fatal */});
           }
-          return prev + earned;
+          return prev + boosted;
         });
 
         // Core Temp flux
@@ -338,7 +343,8 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     <FocusContext.Provider value={{
       xp, coreTemp, multiplier, netLink, threatSeconds, isTracking, trackingStatus,
       infractions, vaultItems, systemLogs, gazeTolerance, graceDuration, basePenalty, cameraDevice,
-      sessionTime, startTracking, stopTracking, purchaseApp,
+      sessionTime, isCoopActive, setIsCoopActive,
+      startTracking, stopTracking, purchaseApp,
       setGazeTolerance, setGraceDuration, setBasePenalty, setCameraDevice, executeCommand
     }}>
       {children}
