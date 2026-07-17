@@ -55,8 +55,12 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
             onClick={() => {
               const token = sessionStorage.getItem("prodo_token");
               if (token) {
-                navigator.clipboard.writeText(token);
-                alert("✓ Desktop session token copied to clipboard! Paste it inside the Tauri app to sync.");
+                try {
+                  navigator.clipboard.writeText(token);
+                  alert("✓ Desktop session token copied to clipboard! Paste it inside the Tauri app to sync.");
+                } catch (e) {
+                  window.prompt("Copy your Desktop Auth Key below:", token);
+                }
               } else {
                 alert("❌ No active session found. Please log in first.");
               }
