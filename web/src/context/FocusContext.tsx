@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from "react";
+import { apiSync } from "../api/prodoApi";
 
 export interface Infraction {
   timestamp: string;
@@ -208,6 +209,10 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   // Timers and Simulation Effect
+  const syncCounterRef = useRef(0);
+  const multiplierRef = useRef(multiplier);
+  useEffect(() => { multiplierRef.current = multiplier; }, [multiplier]);
+
   useEffect(() => {
     if (isTracking) {
       sessionInterval.current = setInterval(() => {
@@ -220,7 +225,15 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         });
 
         // XP accumulation based on multiplier
-        setXp(prev => prev + Math.round(1 * multiplier));
+        setXp(prev => {
+          const earned = Math.round(1 * multiplierRef.current);
+          // Sync to backend every 30 seconds
+          syncCounterRef.current += 1;
+          if (syncCounterRef.current % 30 === 0) {
+            apiSync(earned * 30, multiplierRef.current).catch(() => {/* non-fatal */});
+          }
+          return prev + earned;
+        });
 
         // Core Temp flux
         setCoreTemp(prev => {

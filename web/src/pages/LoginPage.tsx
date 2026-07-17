@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useFocus } from "../context/FocusContext";
+import { apiLogin } from "../api/prodoApi";
 
 const LoginPage: React.FC = () => {
   const [username, setUsername] = useState("");
@@ -10,28 +11,37 @@ const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const { startTracking } = useFocus();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!username.trim() || !password.trim()) {
-      setErrorMsg("❌ AUTH_FAIL: Mandatory operator nodes cannot be empty.");
+      setErrorMsg("❌ AUTH_FAIL: Operator ID and passphrase cannot be empty.");
       return;
     }
-
     setIsSubmitting(true);
     setErrorMsg(null);
-
-    // Simulate validation against backend FastAPI
-    setTimeout(() => {
-      if (password === "admin" || password === "password" || password.length >= 4) {
-        setIsSubmitting(false);
-        startTracking(); // auto starts focus tracking for operator convenience
+    try {
+      const res = await apiLogin(username, password);
+      if (res.success && res.token) {
+        sessionStorage.setItem("prodo_token", res.token);
+        startTracking();
         navigate("/focus");
       } else {
-        setIsSubmitting(false);
-        setErrorMsg("❌ AUTH_DENIED: Access token signature invalid. Try password: 'admin'.");
+        setErrorMsg("❌ AUTH_DENIED: Server rejected the credentials.");
       }
-    }, 1200);
+    } catch (err: any) {
+      // Fall back to local demo mode when the API server is offline
+      if (password.length >= 4) {
+        sessionStorage.setItem("prodo_token", "demo-local-token");
+        startTracking();
+        navigate("/focus");
+      } else {
+        setErrorMsg("❌ AUTH_FAIL: Cannot reach server and passphrase too short for demo mode (min 4 chars).");
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   };
+
 
   return (
     <div className="w-screen h-screen bg-[#0A0A0A] text-on-surface flex items-center justify-center font-log-body p-6 select-none">
