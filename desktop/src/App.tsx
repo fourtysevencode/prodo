@@ -3,6 +3,7 @@ import { FocusProvider } from "./context/FocusContext";
 import Layout from "./components/Layout";
 import FocusPage from "./pages/FocusPage";
 import LogsPage from "./pages/LogsPage";
+import "./App.css";
 import VaultPage from "./pages/VaultPage";
 import ConfigPage from "./pages/ConfigPage";
 import SettingsPage from "./pages/SettingsPage";
