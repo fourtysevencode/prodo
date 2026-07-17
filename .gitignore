@@ -136,5 +136,11 @@ python_modules/
 pylock.toml
 uv.lock
 
-# pycache
-__pycache__
+# Python standard cache and venv ignores
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+venv/
+.env/
+env/
