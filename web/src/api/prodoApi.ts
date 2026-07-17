@@ -4,7 +4,20 @@
  * Supports Authorization headers via sessionStorage tokens.
  */
 
-const BASE_URL = import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8000";
+export function getApiBaseUrl(): string {
+  const saved = localStorage.getItem("prodo_api_base_url");
+  if (saved) return saved;
+  return import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8000";
+}
+
+export function setApiBaseUrl(url: string) {
+  // Ensure we strip trailing slash if present
+  let cleanUrl = url.trim();
+  if (cleanUrl.endsWith("/")) {
+    cleanUrl = cleanUrl.substring(0, cleanUrl.length - 1);
+  }
+  localStorage.setItem("prodo_api_base_url", cleanUrl);
+}
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const token = sessionStorage.getItem("prodo_token");
@@ -14,7 +27,8 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
     headers.set("Authorization", `Bearer ${token}`);
   }
 
-  const res = await fetch(`${BASE_URL}${path}`, {
+  const base = getApiBaseUrl();
+  const res = await fetch(`${base}${path}`, {
     ...init,
     headers,
   });
@@ -178,5 +192,5 @@ export function apiCheckFocus(
   form.append("frame", frameBlob, "frame.jpg");
   form.append("session_id", sessionId);
   form.append("include_debug", String(includeDebug));
-  return fetch(`${BASE_URL}/check-focus`, { method: "POST", body: form }).then(r => r.json());
+  return fetch(`${getApiBaseUrl()}/check-focus`, { method: "POST", body: form }).then(r => r.json());
 }

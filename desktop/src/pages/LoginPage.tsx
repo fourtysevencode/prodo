@@ -1,13 +1,14 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useFocus } from "../context/FocusContext";
-import { apiLogin } from "../api/prodoApi";
+import { apiLogin, getApiBaseUrl, setApiBaseUrl } from "../api/prodoApi";
 import { openUrl } from "@tauri-apps/plugin-opener";
 
 const LoginPage: React.FC = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [tokenInput, setTokenInput] = useState("");
+  const [apiEndpoint, setApiEndpoint] = useState(getApiBaseUrl());
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
@@ -189,6 +190,26 @@ const LoginPage: React.FC = () => {
             >
               Sync
             </button>
+          </div>
+        </div>
+
+        {/* Dynamic API Base Override */}
+        <div className="px-6 pb-4 border-t border-outline-variant/30 pt-4 flex flex-col gap-1.5">
+          <label className="font-technical-prefix text-[8px] text-outline-variant tracking-wider uppercase">
+            Neural Net Gateway (API Endpoint)
+          </label>
+          <div className="flex border border-outline-variant bg-background items-center px-3 h-8">
+            <span className="font-technical-prefix text-[8px] text-outline-variant mr-2">API&gt;</span>
+            <input
+              type="text"
+              value={apiEndpoint}
+              onChange={(e) => {
+                setApiEndpoint(e.target.value);
+                setApiBaseUrl(e.target.value);
+              }}
+              placeholder="http://127.0.0.1:8000"
+              className="bg-transparent border-none outline-none text-[10px] font-technical-prefix text-primary w-full focus:ring-0 p-0 placeholder-outline-variant"
+            />
           </div>
         </div>
 

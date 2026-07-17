@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useFocus } from "../context/FocusContext";
-import { apiLogin, apiGoogleLogin } from "../api/prodoApi";
+import { apiLogin, apiGoogleLogin, getApiBaseUrl, setApiBaseUrl } from "../api/prodoApi";
 
 const LoginPage: React.FC = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [apiEndpoint, setApiEndpoint] = useState(getApiBaseUrl());
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
@@ -65,6 +66,8 @@ const LoginPage: React.FC = () => {
   };
 
   useEffect(() => {
+    let intervalId: any = null;
+
     const initGoogleGSI = () => {
       if (typeof window !== "undefined" && (window as any).google) {
         try {
@@ -72,10 +75,20 @@ const LoginPage: React.FC = () => {
             client_id: "635706171491-oesrkv4sc5u9dkjc0903cp6ml4bdmi3r.apps.googleusercontent.com",
             callback: handleGoogleCredentialResponse,
           });
-          (window as any).google.accounts.id.renderButton(
-            document.getElementById("google-signin-button"),
-            { theme: "dark", size: "large", width: 380 }
-          );
+          
+          const btn = document.getElementById("google-signin-button");
+          if (btn) {
+            (window as any).google.accounts.id.renderButton(
+              btn,
+              { theme: "dark", size: "large", width: 380 }
+            );
+            
+            // Successfully initialized and rendered: clear loop
+            if (intervalId) {
+              clearInterval(intervalId);
+              intervalId = null;
+            }
+          }
         } catch (e) {
           console.error("Google accounts render error:", e);
         }
@@ -83,8 +96,12 @@ const LoginPage: React.FC = () => {
     };
 
     initGoogleGSI();
-    const interval = setInterval(initGoogleGSI, 1000);
-    return () => clearInterval(interval);
+    if (typeof window !== "undefined" && !(window as any).google) {
+      intervalId = setInterval(initGoogleGSI, 500);
+    }
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
   }, []);
 
   return (
@@ -185,6 +202,26 @@ const LoginPage: React.FC = () => {
         {/* Google sign-in container */}
         <div className="px-6 pb-6 flex justify-center">
           <div id="google-signin-button" className="w-full flex justify-center min-h-[40px]"></div>
+        </div>
+
+        {/* Dynamic API Base Override */}
+        <div className="px-6 pb-4 border-t border-outline-variant/30 pt-4 flex flex-col gap-1.5">
+          <label className="font-technical-prefix text-[8px] text-outline-variant tracking-wider uppercase">
+            Neural Net Gateway (API Endpoint)
+          </label>
+          <div className="flex border border-outline-variant bg-background items-center px-3 h-8">
+            <span className="font-technical-prefix text-[8px] text-outline-variant mr-2">API&gt;</span>
+            <input
+              type="text"
+              value={apiEndpoint}
+              onChange={(e) => {
+                setApiEndpoint(e.target.value);
+                setApiBaseUrl(e.target.value);
+              }}
+              placeholder="http://127.0.0.1:8000"
+              className="bg-transparent border-none outline-none text-[10px] font-technical-prefix text-primary w-full focus:ring-0 p-0 placeholder-outline-variant"
+            />
+          </div>
         </div>
 
         {/* Footer info */}
