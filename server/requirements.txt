@@ -1,6 +1,6 @@
 fastapi
-pydantic
-onnxruntime
-numpy
-opencv-python-headless
+uvicorn[standard]
+opencv-python
 mediapipe
+numpy
+python-multipart
