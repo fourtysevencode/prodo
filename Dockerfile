@@ -5,6 +5,7 @@ FROM python:3.11-slim
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 ENV PORT=7860
+ENV PYTHONPATH=/code
 
 # Install system dependencies required for OpenCV
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -27,8 +28,8 @@ COPY --chown=user:user . /code
 RUN chmod -R 777 /code
 USER user
 
-# Expose port 7860 for HuggingFace Spaces
-EXPOSE 8000
+# Expose port 7860 for HuggingFace Spaces (Changed from 8000)
+EXPOSE 7860
 
-# Start the FastAPI server using uvicorn
-CMD ["uvicorn", "server.app:app", "--host", "0.0.0.0", "--port", "8000"]
+# Start the FastAPI server using uvicorn on port 7860 (Changed from 8000)
+CMD ["uvicorn", "server.app:app", "--host", "0.0.0.0", "--port", "7860"]
