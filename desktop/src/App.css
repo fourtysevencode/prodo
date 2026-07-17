@@ -1,116 +1,99 @@
-.logo.vite:hover {
-  filter: drop-shadow(0 0 2em #747bff);
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@keyframes pulse-glow {
+  0% { box-shadow: 0 0 5px 0px rgba(220, 20, 60, 0.3); }
+  50% { box-shadow: 0 0 10px 2px rgba(220, 20, 60, 0.5); }
+  100% { box-shadow: 0 0 5px 0px rgba(220, 20, 60, 0.3); }
+}
+@keyframes amber-glow {
+  0% { box-shadow: 0 0 10px 0px rgba(255, 191, 0, 0.2); border-color: rgba(255, 191, 0, 0.3); }
+  50% { box-shadow: 0 0 20px 2px rgba(255, 191, 0, 0.4); border-color: rgba(255, 191, 0, 0.6); }
+  100% { box-shadow: 0 0 10px 0px rgba(255, 191, 0, 0.2); border-color: rgba(255, 191, 0, 0.3); }
+}
+@keyframes emerald-pulse {
+  0% { box-shadow: 0 0 5px 0px rgba(80, 200, 120, 0.2); }
+  50% { box-shadow: 0 0 10px 2px rgba(80, 200, 120, 0.4); }
+  100% { box-shadow: 0 0 5px 0px rgba(80, 200, 120, 0.2); }
+}
+.threat-pulse { animation: pulse-glow 2s infinite; }
+.core-glow { animation: amber-glow 3s infinite; }
+.unlocked-pulse { animation: emerald-pulse 1.5s infinite; }
+
+/* Tactical button interaction */
+.btn-tactical {
+  transition: all 0.1s ease;
+}
+.btn-tactical:active {
+  transform: translate(2px, 2px);
 }
 
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafb);
-}
-:root {
-  font-family: Inter, Avenir, Helvetica, Arial, sans-serif;
-  font-size: 16px;
-  line-height: 24px;
-  font-weight: 400;
-
-  color: #0f0f0f;
-  background-color: #f6f6f6;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  -webkit-text-size-adjust: 100%;
-}
-
-.container {
-  margin: 0;
-  padding-top: 10vh;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  text-align: center;
-}
-
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: 0.75s;
-}
-
-.logo.tauri:hover {
-  filter: drop-shadow(0 0 2em #24c8db);
-}
-
-.row {
-  display: flex;
-  justify-content: center;
-}
-
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-
-a:hover {
-  color: #535bf2;
-}
-
-h1 {
-  text-align: center;
-}
-
-input,
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  color: #0f0f0f;
-  background-color: #ffffff;
-  transition: border-color 0.25s;
-  box-shadow: 0 2px 2px rgba(0, 0, 0, 0.2);
-}
-
-button {
-  cursor: pointer;
-}
-
-button:hover {
-  border-color: #396cd8;
-}
-button:active {
-  border-color: #396cd8;
-  background-color: #e8e8e8;
-}
-
-input,
-button {
-  outline: none;
-}
-
-#greet-input {
-  margin-right: 5px;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    color: #f6f6f6;
-    background-color: #2f2f2f;
+@layer utilities {
+  .font-value-xl {
+    font-family: 'Anton', sans-serif;
+    font-size: 48px;
+    line-height: 1.0;
+    letter-spacing: 0.02em;
+    font-weight: 400;
   }
+  .font-value-lg {
+    font-family: 'Anton', sans-serif;
+    font-size: 32px;
+    line-height: 1.0;
+    letter-spacing: 0.02em;
+    font-weight: 400;
+  }
+  .font-label-header {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 11px;
+    line-height: 1.2;
+    letter-spacing: 0.25em;
+    font-weight: 700;
+  }
+  .font-log-body {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    line-height: 1.4;
+    letter-spacing: 0em;
+    font-weight: 400;
+  }
+  .font-technical-prefix {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    line-height: 1.0;
+    letter-spacing: 0.1em;
+    font-weight: 700;
+  }
+  
+  /* blink cursor animation */
+  .blink-cursor::after {
+    content: '_';
+    animation: blink 1s step-end infinite;
+  }
+  @keyframes blink {
+    50% { opacity: 0; }
+  }
+}
 
-  a:hover {
-    color: #24c8db;
-  }
+/* Custom scrollbar matching terminal theme */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: #0E0E0E;
+}
+::-webkit-scrollbar-thumb {
+  background: #3A3939;
+  border-radius: 0px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #8E9192;
+}
 
-  input,
-  button {
-    color: #ffffff;
-    background-color: #0f0f0f98;
-  }
-  button:active {
-    background-color: #0f0f0f69;
-  }
+body {
+  background-color: #0A0A0A;
+  color: #E5E2E1;
+  font-family: 'JetBrains Mono', monospace;
 }
