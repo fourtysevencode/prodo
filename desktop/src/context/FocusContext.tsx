@@ -194,30 +194,38 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     navigator.mediaDevices.getUserMedia(constraints)
       .then(stream => {
-        // Set up hidden video element for frame capture
         const video = document.createElement("video");
         video.srcObject = stream;
-        video.autoplay  = true;
         video.playsInline = true;
-        video.muted    = true;
+        video.muted = true;
 
-        cvStreamRef.current = stream;
-        cvVideoRef.current  = video;
-        cvCanvasRef.current = document.createElement("canvas");
+        const canvas = document.createElement("canvas");
+        cvStreamRef.current  = stream;
+        cvVideoRef.current   = video;
+        cvCanvasRef.current  = canvas;
 
         setIsTracking(true);
         setTrackingStatus("UNCERTAIN");
         setNetLink(0);
         setCoreTemp(38);
         setThreatSeconds(graceDurationRef.current);
+        appendLog("SYSTEM", "FCS_START", "Focus session initiated. Camera online. Waiting for CV model...");
 
-        appendLog("SYSTEM", "FCS_START", "Focus session initiated. Camera online. CV model linking...");
+        // Off-screen video elements MUST have play() called explicitly.
+        // Start the capture loop only once the video has buffered its first frame.
+        video.addEventListener("canplay", () => {
+          appendLog("SUCCESS", "CAM_READY", "Camera feed active. Starting frame capture loop → /check-focus.");
+          // Clear any existing interval first
+          if (cvIntervalRef.current) clearInterval(cvIntervalRef.current);
+          cvIntervalRef.current = setInterval(captureAndSendFrame, 1000);
+        }, { once: true });
 
-        // Start capturing frames every 1 second
-        cvIntervalRef.current = setInterval(captureAndSendFrame, 1000);
+        video.play().catch(err => {
+          appendLog("ERROR", "CAM_PLAY_FAIL", `Camera video playback failed: ${err.message}`);
+        });
       })
       .catch(err => {
-        appendLog("ERROR", "CAM_FAIL", `Camera access failed: ${err.message}. Check Config → Camera permissions.`);
+        appendLog("ERROR", "CAM_FAIL", `Camera access failed: ${err.message}. Check System Settings → Privacy → Camera.`);
       });
   };
 
