@@ -12,7 +12,7 @@
 
 ## Key Differentiators
 
-- **100% Local Computer Vision**: Your privacy is paramount. Prodo uses lightweight local models to track head position and gaze. No video feeds ever leave your local machine.
+- **Intelligent Vision Pipeline**: To preserve local device performance and avoid daily Cloudflare Workers request limits, Prodo captures periodic webcam snapshots (every 3-5s) and offloads gaze/head landmarks to a dedicated HuggingFace Spaces server.
 - **Grace Period Buffer**: Humans naturally look away from screens to check a notebook or stretch. If your eyes return within the 15-second grace period, your focus streak continues uninterrupted.
 - **Context-Aware Allowlisting**: The system knows the difference between *YouTube - React Tutorial* (Allowed) and *YouTube - MrBeast* (Penalized) by reading OS window titles.
 - **Co-op Boss Fights (Multiplayer)**: Link up with friends for a synchronized deep-work sprint. If one person breaks focus, the entire team takes a penalty, weaponizing social accountability.
@@ -21,7 +21,7 @@
 
 Prodo is a cross-platform ecosystem comprised of four main parts:
 
-1. **Desktop Client (Windows/macOS)**: Built with a **Python** backend that handles all core logic (Computer Vision, OS Hooks, Local Database) and uses **Tauri (Rust)** purely as a lightweight UI wrapper to render the Web Frontend (HTML/JS).
+1. **Desktop Client (Windows/macOS)**: Built with a **Python** backend that handles local logic (OS Hooks, local database, periodic image capture) and uses **Tauri (Rust)** purely as a lightweight UI wrapper. Gaze and focus tracking are offloaded to HuggingFace Spaces.
 2. **Mobile App (Android)**: A companion app and portable enforcer built with **Kotlin/React Native** utilizing Google ML Kit for on-device face detection and low-power fallbacks.
 3. **Web Dashboard**: A cloud-accessible port of the desktop UI for checking leaderboards and managing friends.
 4. **Cloud Backend**: A blazing-fast **FastAPI (Python)** server with **PostgreSQL** and **Redis** to handle the global economy, authentication, and real-time Co-op Raid state syncing.

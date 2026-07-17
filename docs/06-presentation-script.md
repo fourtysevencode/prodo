@@ -4,7 +4,7 @@
 
 **The Problem:** Traditional focus apps and website blockers fail because they are rigid and context-blind. Users install them, get annoyed when they are blocked from a necessary tool, and inevitably just uninstall the blocker. They rely purely on willpower and negative reinforcement.
 
-**The Solution:** Prodo is a Gamified Focus Engine. We aren't just blocking websites; we are creating a strict but intelligent economy for your attention. By utilizing local Computer Vision, we actively monitor your focus in real-time, rewarding deep work and penalizing distractions.
+**The Solution:** Prodo is a Gamified Focus Engine. We aren't just blocking websites; we are creating a strict but intelligent economy for your attention. By utilizing cloud-offloaded Computer Vision, we actively monitor your focus in real-time, rewarding deep work and penalizing distractions.
 
 ## Core Presentation Narrative
 
@@ -20,11 +20,11 @@
 
 ### 3. Key Differentiators & Technology (2:30 - 4:00)
 *This is where you impress the technical judges.*
-- **100% Local Privacy:** Emphasize that the Computer Vision runs entirely locally. No video ever goes to the cloud. We respect user privacy.
+- **Optimized Hybrid Infrastructure:** Explain that by sending periodic snapshots (every 3-5 seconds) to a HuggingFace Spaces model backend, we protect the user's local battery/CPU while saving on Cloudflare Worker request costs.
 - **Cross-Platform Ecosystem:**
-  - **Desktop (Tauri + Rust)**: For deep integration, OS-level window tracking, and local CV processing. 
-  - **Mobile (Android)**: A companion app that *also* includes CV via ML Kit, with smart fallbacks (accelerometer) to save battery.
-  - **Cloud (FastAPI)**: A blazing-fast, stateless backend that handles the global economy and multiplayer syncing.
+  - **Desktop (Tauri + Python)**: For window tracking, local OS hooks, and periodic image capture.
+  - **Mobile (Android)**: A companion and enforcer app configured to stream periodic snapshots.
+  - **Cloud**: Cloudflare Workers (FastAPI) handles syncing leaderboards, while HuggingFace Spaces processes the vision pipeline.
 - **Multiplayer (Co-op Boss Fights):** Highlight the social accountability. "You link up with 3 friends for a 2-hour sprint. If one person breaks focus, the whole team gets penalized. It weaponizes peer pressure for productivity."
 
 ### 4. The Live Demo Flow (4:00 - 5:30)

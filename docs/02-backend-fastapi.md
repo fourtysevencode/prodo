@@ -3,7 +3,7 @@
 ## 1. Overview
 The Prodo backend is the central source of truth for the social and sync layers. Built with **FastAPI** (Python), it is designed to be lightweight and extremely fast, acting as a stateless API to aggregate scores, manage friend connections, and orchestrate Co-op Boss Fights (multiplayer raids).
 
-**Crucial Privacy Note:** The backend **NEVER** processes, receives, or stores any video data, images, or direct webcam streams. The local clients handle all Computer Vision. The backend only receives metadata (points, multipliers, session statuses).
+**Cloudflare Optimization Note:** The Cloudflare Workers backend **NEVER** processes or receives any video data or images. High-frequency image snapshots (every 3 to 5 seconds) are offloaded directly to a HuggingFace Spaces server to avoid exceeding Cloudflare Worker daily request limits. The Cloudflare Workers backend only receives lightweight metadata (points, multipliers, session statuses).
 
 ## 2. Tech Stack
 - **Framework**: FastAPI (Python 3.10+)

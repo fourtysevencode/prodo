@@ -9,16 +9,16 @@ The Tauri/Rust layer exists *only* to satisfy the requirements of running a cros
 - **Framework**: Tauri 2.0+ (Acts purely as a window/UI wrapper).
 - **Frontend**: React / Next.js / Vue (Depending on team preference) - *This exact codebase will be used for the Web App*.
 - **Backend (Python)**: The true engine of the desktop app. Handles all logic, OS hooks, and database operations.
-- **Computer Vision**: Python (MediaPipe and OpenCV).
+- **Computer Vision**: Periodic image captures (every 3-5 seconds) offloaded via WebRTC/HTTP to a HuggingFace Spaces server.
 - **Local Database**: SQLite (managed via Python `sqlite3` or `SQLAlchemy`).
 
 ## 3. The Core Loop (Python Backend)
 The Python backend runs a continuous state machine thread that manages the economy loop entirely independently of the UI.
 
-### A. Computer Vision Tracking
-- **The Tracker**: Python continuously processes the webcam stream for facial landmarks and gaze direction.
-- **Privacy**: Frames are processed entirely in memory by Python and immediately discarded. No video is ever saved to disk or transmitted.
-- **The Grace Period**: If the CV detects the user looking away (e.g., checking a notebook), the Python state machine starts a 15-second grace period timer. If focus returns before zero, the streak continues without penalty.
+### A. Computer Vision Tracking (HuggingFace Spaces)
+- **The Tracker**: The local Python process captures webcam snapshots at a set interval (every 3 to 5 seconds) and transmits them to HuggingFace Spaces for gaze and head mesh inference.
+- **Efficiency**: Offloading inference to HuggingFace avoids high local CPU usage and saves on Cloudflare Workers' daily requests.
+- **The Grace Period**: If the HuggingFace Spaces model reports that the user has looked away, the Python state machine starts a 15-second grace period timer. If focus is restored before the timer hits zero, the streak continues.
 
 ### B. OS Hooks & Context-Aware Allowlisting
 - **Active Window Monitoring**: Python uses OS-specific libraries (like `psutil`, `pygetwindow`, or native ctypes) to read the title and executable name of the currently active window.

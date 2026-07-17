@@ -7,17 +7,17 @@ Because it operates as an enforcer, the mobile app also includes Computer Vision
 
 ## 2. Tech Stack
 - **Framework**: Kotlin (Native) or React Native (if sharing UI components with the Web/Desktop is heavily prioritized).
-- **Computer Vision**: Google ML Kit (Face Detection API). It provides highly optimized, on-device facial landmark tracking that is efficient on mobile hardware.
+- **Computer Vision**: HuggingFace Spaces ML API. The app captures snapshots every 3-5 seconds and transmits them via WebRTC/HTTP. (Local fallback: Google ML Kit Face Detection API for offline/local-only mode).
 - **Local Persistence**: Room (for Native Android) or SQLite.
 - **Background Tasks**: WorkManager for syncing offline points back to the FastAPI backend.
 
 ## 3. Core Mobile Loop: The CV Enforcer
 Just like the desktop client, the mobile app requires the user to remain engaged to earn points.
 
-### A. Mobile Vision Pipeline
-- When a mobile focus session is initiated, the app uses the front-facing camera.
-- Google ML Kit processes the frames locally to detect the face and gaze angle. No images are uploaded.
-- If the user looks away from the phone screen for more than 15 seconds (the grace period), the streak is broken and penalties apply.
+### A. Mobile Vision Pipeline (HuggingFace Spaces)
+- When a mobile focus session is initiated, the app captures camera snapshots at a set interval (every 3 to 5 seconds).
+- These snapshots are streamed to the HuggingFace Spaces server via WebRTC/HTTP to analyze gaze and head positions.
+- If the HuggingFace server detects that the user has looked away and they do not return within the 15-second grace period, the streak is broken and penalties apply.
 
 ### B. Fallback Mechanisms (Performance & Battery)
 Running continuous CV on a mobile device can drain the battery rapidly or overheat older hardware. Prodo implements a graceful degradation strategy:
