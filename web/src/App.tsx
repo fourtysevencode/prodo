@@ -3,6 +3,7 @@ import { FocusProvider } from "./context/FocusContext";
 import Layout from "./components/Layout";
 import FocusPage from "./pages/FocusPage";
 import LogsPage from "./pages/LogsPage";
+import LeaderboardPage from "./pages/LeaderboardPage";
 import VaultPage from "./pages/VaultPage";
 import ConfigPage from "./pages/ConfigPage";
 import SettingsPage from "./pages/SettingsPage";
@@ -24,6 +25,7 @@ function App() {
           {/* Core HUD views nested in layout frame */}
           <Route path="/focus" element={<Layout><FocusPage /></Layout>} />
           <Route path="/logs" element={<Layout><LogsPage /></Layout>} />
+          <Route path="/leaderboard" element={<Layout><LeaderboardPage /></Layout>} />
           <Route path="/vault" element={<Layout><VaultPage /></Layout>} />
           <Route path="/config" element={<Layout><ConfigPage /></Layout>} />
           <Route path="/settings" element={<Layout><SettingsPage /></Layout>} />

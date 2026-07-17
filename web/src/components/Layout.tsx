@@ -17,6 +17,7 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
   const navItems = [
     { path: "/focus", label: "FOCUS", icon: "radar" },
     { path: "/logs", label: "LOGS", icon: "receipt_long" },
+    { path: "/leaderboard", label: "RANKINGS", icon: "leaderboard" },
     { path: "/vault", label: "VAULT", icon: "lock" },
     { path: "/config", label: "CONFIG", icon: "settings_input_component" },
     { path: "/help", label: "HELP", icon: "help" },
