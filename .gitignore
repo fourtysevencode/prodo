@@ -128,3 +128,10 @@ mobile/*.iml
 # Cloudflare specific
 .wrangler/
 .devvars
+
+# Python Worker specific
+python_modules/
+.venv-workers/
+.venv/
+pylock.toml
+uv.lock

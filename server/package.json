@@ -1,19 +1,13 @@
 {
-  "name": "server",
-  "version": "0.0.0",
-  "private": true,
-  "scripts": {
-    "deploy": "wrangler deploy",
-    "dev": "wrangler dev",
-    "start": "wrangler dev",
-    "test": "vitest",
-    "cf-typegen": "wrangler types"
-  },
-  "devDependencies": {
-    "@cloudflare/vitest-pool-workers": "^0.12.4",
-    "@types/node": "^26.1.1",
-    "typescript": "^5.5.2",
-    "vitest": "~3.2.0",
-    "wrangler": "^4.112.0"
-  }
+	"name": "fastapi-worker",
+	"version": "0.0.0",
+	"private": true,
+	"scripts": {
+		"deploy": "PATH=\"/opt/homebrew/opt/node@22/bin:$PATH\" uv run pywrangler deploy",
+		"dev": "PATH=\"/opt/homebrew/opt/node@22/bin:$PATH\" uv run pywrangler dev",
+		"start": "PATH=\"/opt/homebrew/opt/node@22/bin:$PATH\" uv run pywrangler dev"
+	},
+	"devDependencies": {
+		"wrangler": "^4.46.0"
+	}
 }
