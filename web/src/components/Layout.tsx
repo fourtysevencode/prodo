@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useFocus } from "../context/FocusContext";
 
 const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
-  const { xp, netLink, sessionTime, isTracking, startTracking, stopTracking } = useFocus();
+  const { xp, netLink, sessionTime, isTracking, startTracking, stopTracking, setIsAuthenticated } = useFocus();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -109,6 +109,8 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
             <button
               onClick={() => {
                 if (window.confirm("Confirm termination of Prodo HUD Core Session?")) {
+                  sessionStorage.removeItem("prodo_token");
+                  setIsAuthenticated(false);
                   stopTracking();
                   navigate("/login");
                 }

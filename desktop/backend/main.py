@@ -53,12 +53,23 @@ def main():
     while True:
         # Load allowlist of currently purchased/unlocked app IDs
         allowed_apps = []
+        tracking_active = False
         try:
             if os.path.exists(allowlist_path):
                 with open(allowlist_path, "r") as f:
-                    allowed_apps = json.load(f)
+                    data = json.load(f)
+                    if isinstance(data, dict):
+                        allowed_apps = data.get("allowed_apps", [])
+                        tracking_active = data.get("tracking_active", False)
+                    else:
+                        allowed_apps = data
+                        tracking_active = True
         except Exception as e:
             print(f"Error loading allowlist: {e}", file=sys.stderr)
+
+        if not tracking_active:
+            time.sleep(1)
+            continue
 
         # Get frontmost active app details
         front = get_frontmost_window_mac()

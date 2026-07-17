@@ -42,6 +42,8 @@ interface FocusContextType {
   sessionTime: number; // in seconds
   isCoopActive: boolean;
   setIsCoopActive: (val: boolean) => void;
+  isAuthenticated: boolean;
+  setIsAuthenticated: (val: boolean) => void;
   startTracking: () => void;
   stopTracking: () => void;
   purchaseApp: (id: string) => void;
@@ -75,6 +77,7 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [basePenalty, setBasePenalty] = useState(50);
   const [cameraDevice, setCameraDevice] = useState("Default Web Camera");
   const [isCoopActive, setIsCoopActive] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(!!sessionStorage.getItem("prodo_token"));
 
   const [sessionTime, setSessionTime] = useState(0);
   
@@ -343,7 +346,7 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     <FocusContext.Provider value={{
       xp, coreTemp, multiplier, netLink, threatSeconds, isTracking, trackingStatus,
       infractions, vaultItems, systemLogs, gazeTolerance, graceDuration, basePenalty, cameraDevice,
-      sessionTime, isCoopActive, setIsCoopActive,
+      sessionTime, isCoopActive, setIsCoopActive, isAuthenticated, setIsAuthenticated,
       startTracking, stopTracking, purchaseApp,
       setGazeTolerance, setGraceDuration, setBasePenalty, setCameraDevice, executeCommand
     }}>

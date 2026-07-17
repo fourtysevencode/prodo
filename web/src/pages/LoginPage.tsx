@@ -1,7 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useFocus } from "../context/FocusContext";
-import { apiLogin } from "../api/prodoApi";
+import { apiLogin, apiGoogleLogin } from "../api/prodoApi";
 
 const LoginPage: React.FC = () => {
   const [username, setUsername] = useState("");
@@ -9,7 +9,7 @@ const LoginPage: React.FC = () => {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
-  const { startTracking } = useFocus();
+  const { startTracking, setIsAuthenticated } = useFocus();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,6 +23,7 @@ const LoginPage: React.FC = () => {
       const res = await apiLogin(username, password);
       if (res.success && res.token) {
         sessionStorage.setItem("prodo_token", res.token);
+        setIsAuthenticated(true);
         startTracking();
         navigate("/focus");
       } else {
@@ -32,6 +33,7 @@ const LoginPage: React.FC = () => {
       // Fall back to local demo mode when the API server is offline
       if (password.length >= 4) {
         sessionStorage.setItem("prodo_token", "demo-local-token");
+        setIsAuthenticated(true);
         startTracking();
         navigate("/focus");
       } else {
@@ -42,6 +44,48 @@ const LoginPage: React.FC = () => {
     }
   };
 
+  const handleGoogleCredentialResponse = async (response: any) => {
+    setIsSubmitting(true);
+    setErrorMsg(null);
+    try {
+      const res = await apiGoogleLogin(response.credential);
+      if (res.success && res.token) {
+        sessionStorage.setItem("prodo_token", res.token);
+        setIsAuthenticated(true);
+        startTracking();
+        navigate("/focus");
+      } else {
+        setErrorMsg("❌ AUTH_DENIED: Google authentication verification failed.");
+      }
+    } catch (e: any) {
+      setErrorMsg(`❌ AUTH_FAIL: Could not reach server: ${e.message}`);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  useEffect(() => {
+    const initGoogleGSI = () => {
+      if (typeof window !== "undefined" && (window as any).google) {
+        try {
+          (window as any).google.accounts.id.initialize({
+            client_id: "635706171491-oesrkv4sc5u9dkjc0903cp6ml4bdmi3r.apps.googleusercontent.com",
+            callback: handleGoogleCredentialResponse,
+          });
+          (window as any).google.accounts.id.renderButton(
+            document.getElementById("google-signin-button"),
+            { theme: "dark", size: "large", width: 380 }
+          );
+        } catch (e) {
+          console.error("Google accounts render error:", e);
+        }
+      }
+    };
+
+    initGoogleGSI();
+    const interval = setInterval(initGoogleGSI, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <div className="w-screen h-screen bg-[#0A0A0A] text-on-surface flex items-center justify-center font-log-body p-6 select-none">
@@ -64,7 +108,7 @@ const LoginPage: React.FC = () => {
         </div>
 
         {/* Login form */}
-        <form onSubmit={handleLogin} className="p-6 flex flex-col gap-5">
+        <form onSubmit={handleLogin} className="p-6 flex flex-col gap-5 pb-4">
           {errorMsg && (
             <div className="bg-[#1C0000] border border-crimson p-3 text-xs text-crimson font-technical-prefix uppercase">
               {errorMsg}
@@ -73,7 +117,7 @@ const LoginPage: React.FC = () => {
 
           {/* Username Input */}
           <div className="flex flex-col gap-1.5">
-            <label className="font-technical-prefix text-[10px] text-outline-variant uppercase tracking-wider">
+            <label className="font-technical-prefix text-[10px] text-outline-variant tracking-wider">
               OPERATOR_ID (EMAIL/USER)
             </label>
             <div className="flex border border-outline-variant bg-background items-center px-3 h-10">
@@ -91,7 +135,7 @@ const LoginPage: React.FC = () => {
 
           {/* Password Input */}
           <div className="flex flex-col gap-1.5">
-            <label className="font-technical-prefix text-[10px] text-outline-variant uppercase tracking-wider">
+            <label className="font-technical-prefix text-[10px] text-outline-variant tracking-wider">
               AUTH_PASSPHRASE
             </label>
             <div className="flex border border-outline-variant bg-background items-center px-3 h-10">
@@ -130,6 +174,18 @@ const LoginPage: React.FC = () => {
             )}
           </button>
         </form>
+
+        {/* Divider */}
+        <div className="flex items-center px-6 mb-2">
+          <div className="flex-grow border-t border-outline-variant"></div>
+          <span className="px-3 font-technical-prefix text-[8px] text-outline-variant uppercase">or</span>
+          <div className="flex-grow border-t border-outline-variant"></div>
+        </div>
+
+        {/* Google sign-in container */}
+        <div className="px-6 pb-6 flex justify-center">
+          <div id="google-signin-button" className="w-full flex justify-center min-h-[40px]"></div>
+        </div>
 
         {/* Footer info */}
         <div className="border-t border-surface-variant p-4 bg-[#0E0E0E] text-center font-technical-prefix text-[8px] text-outline-variant flex flex-col gap-1">

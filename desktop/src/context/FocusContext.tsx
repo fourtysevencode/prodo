@@ -52,6 +52,8 @@ interface FocusContextType {
   setIsCalibrating: (val: boolean) => void;
   isCoopActive: boolean;
   setIsCoopActive: (val: boolean) => void;
+  isAuthenticated: boolean;
+  setIsAuthenticated: (val: boolean) => void;
   // Core Functions
   startTracking: () => void;
   stopTracking: () => void;
@@ -97,6 +99,7 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [camErr, setCamErr] = useState<string | null>(null);
   const [camLoading, setCamLoading] = useState(false);
   const [isCoopActive, setIsCoopActive] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(!!sessionStorage.getItem("prodo_token"));
 
   const [infractions, setInfractions] = useState<Infraction[]>([
     { timestamp: "14:02:45", code: "ERR_CTX_SW", name: "Context Switch", details: "-50 XP Applied" },
@@ -200,7 +203,7 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // ── Unified Camera Stream Lifecycle ─────────────────────────────────────────
   useEffect(() => {
-    const isCameraActive = isTracking || isCalibrating;
+    const isCameraActive = isAuthenticated && (isTracking || isCalibrating);
 
     if (!isCameraActive) {
       // Deactivate camera
@@ -296,7 +299,7 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       cvVideoRef.current = null;
       cvCanvasRef.current = null;
     };
-  }, [isTracking, isCalibrating, cameraDevice]);
+  }, [isTracking, isCalibrating, cameraDevice, isAuthenticated]);
 
   // startTracking
   const startTracking = () => {
@@ -452,26 +455,27 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return () => clearInterval(timer);
   }, []);
 
-  // Sync allowlist to desktop backend whenever vaultItems changes
+  // Sync allowlist to desktop backend whenever vaultItems or tracking state changes
   useEffect(() => {
     const unlockedIds = vaultItems.filter(i => i.unlocked).map(i => i.id);
+    const trackingActive = isAuthenticated && isTracking;
     import("@tauri-apps/api/core")
       .then(({ invoke }) => {
-        invoke("save_allowlist", { apps: unlockedIds }).catch(err => {
+        invoke("save_allowlist", { trackingActive, allowedApps: unlockedIds }).catch(err => {
           console.error("Failed to save allowlist to backend:", err);
         });
       })
       .catch(() => {
         // Not running in Tauri / desktop environment
       });
-  }, [vaultItems]);
+  }, [vaultItems, isTracking, isAuthenticated]);
 
   return (
     <FocusContext.Provider value={{
       xp, coreTemp, multiplier, netLink, threatSeconds, isTracking, trackingStatus,
       infractions, vaultItems, systemLogs, gazeTolerance, graceDuration, basePenalty, cameraDevice,
       sessionTime, latestFrame, isCalibrating, availableDevices, camErr, camLoading, setIsCalibrating,
-      isCoopActive, setIsCoopActive,
+      isCoopActive, setIsCoopActive, isAuthenticated, setIsAuthenticated,
       startTracking, stopTracking, purchaseApp,
       setGazeTolerance, setGraceDuration, setBasePenalty, setCameraDevice, executeCommand
     }}>

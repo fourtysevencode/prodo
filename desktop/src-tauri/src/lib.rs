@@ -1,5 +1,12 @@
+use serde::Serialize;
 use std::process::{Command, Stdio};
 use std::thread;
+
+#[derive(Serialize)]
+struct AllowlistPayload {
+    tracking_active: bool,
+    allowed_apps: Vec<String>,
+}
 
 #[tauri::command]
 fn greet(name: &str) -> String {
@@ -7,10 +14,14 @@ fn greet(name: &str) -> String {
 }
 
 #[tauri::command]
-fn save_allowlist(apps: Vec<String>) -> Result<(), String> {
+fn save_allowlist(tracking_active: bool, allowed_apps: Vec<String>) -> Result<(), String> {
     use std::fs::File;
     use std::io::Write;
-    let json = serde_json::to_string(&apps).map_err(|e| e.to_string())?;
+    let payload = AllowlistPayload {
+        tracking_active,
+        allowed_apps,
+    };
+    let json = serde_json::to_string(&payload).map_err(|e| e.to_string())?;
     let mut file = File::create("backend/allowlist.json").map_err(|e| e.to_string())?;
     file.write_all(json.as_bytes()).map_err(|e| e.to_string())?;
     Ok(())
