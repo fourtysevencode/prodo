@@ -1,11 +1,13 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useFocus } from "../context/FocusContext";
-import { apiLogin, apiGoogleLogin } from "../api/prodoApi";
+import { apiLogin } from "../api/prodoApi";
+import { openUrl } from "@tauri-apps/plugin-opener";
 
 const LoginPage: React.FC = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [tokenInput, setTokenInput] = useState("");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
@@ -44,49 +46,24 @@ const LoginPage: React.FC = () => {
     }
   };
 
-  const handleGoogleCredentialResponse = async (response: any) => {
-    setIsSubmitting(true);
-    setErrorMsg(null);
-    try {
-      const res = await apiGoogleLogin(response.credential);
-      if (res.success && res.token) {
-        sessionStorage.setItem("prodo_token", res.token);
-        setIsAuthenticated(true);
-        startTracking();
-        navigate("/focus");
-      } else {
-        setErrorMsg("❌ AUTH_DENIED: Google authentication verification failed.");
-      }
-    } catch (e: any) {
-      setErrorMsg(`❌ AUTH_FAIL: Could not reach server: ${e.message}`);
-    } finally {
-      setIsSubmitting(false);
+  const handleImportToken = () => {
+    const val = tokenInput.trim();
+    if (!val) {
+      setErrorMsg("❌ IMPORT_FAIL: Key field cannot be empty.");
+      return;
     }
+    sessionStorage.setItem("prodo_token", val);
+    setIsAuthenticated(true);
+    startTracking();
+    navigate("/focus");
   };
 
-  useEffect(() => {
-    const initGoogleGSI = () => {
-      if (typeof window !== "undefined" && (window as any).google) {
-        try {
-          (window as any).google.accounts.id.initialize({
-            client_id: "635706171491-oesrkv4sc5u9dkjc0903cp6ml4bdmi3r.apps.googleusercontent.com",
-            callback: handleGoogleCredentialResponse,
-          });
-          (window as any).google.accounts.id.renderButton(
-            document.getElementById("google-signin-button"),
-            { theme: "dark", size: "large", width: 380 }
-          );
-        } catch (e) {
-          console.error("Google accounts render error:", e);
-        }
-      }
-    };
-
-    // Retry initialization in case GSI script takes time to load
-    initGoogleGSI();
-    const interval = setInterval(initGoogleGSI, 1000);
-    return () => clearInterval(interval);
-  }, []);
+  const handleOpenWeb = () => {
+    openUrl("https://prodo-live.pages.dev").catch((err: any) => {
+      console.error("Failed to open web link:", err);
+      window.open("https://prodo-live.pages.dev", "_blank");
+    });
+  };
 
   return (
     <div className="w-screen h-screen bg-[#0A0A0A] text-on-surface flex items-center justify-center font-log-body p-6 select-none">
@@ -179,13 +156,40 @@ const LoginPage: React.FC = () => {
         {/* Divider */}
         <div className="flex items-center px-6 mb-2">
           <div className="flex-grow border-t border-outline-variant"></div>
-          <span className="px-3 font-technical-prefix text-[8px] text-outline-variant uppercase">or</span>
+          <span className="px-3 font-technical-prefix text-[8px] text-outline-variant uppercase">Google Link</span>
           <div className="flex-grow border-t border-outline-variant"></div>
         </div>
 
-        {/* Google sign-in container */}
-        <div className="px-6 pb-6 flex justify-center">
-          <div id="google-signin-button" className="w-full flex justify-center min-h-[40px]"></div>
+        {/* Google Import container */}
+        <div className="px-6 pb-6 flex flex-col gap-3">
+          <div className="border border-amber/40 bg-amber/5 p-3 text-[9px] font-technical-prefix text-amber uppercase leading-normal">
+            🔒 Google OAuth restricts custom schemes (tauri://). Click below to login on our web app, copy your operator key, and paste it here:
+          </div>
+          
+          <button
+            type="button"
+            onClick={handleOpenWeb}
+            className="w-full py-2 bg-amber text-background font-technical-prefix text-[10px] font-bold uppercase hover:bg-amber-400"
+          >
+            Open Web Authentication
+          </button>
+
+          <div className="flex gap-2">
+            <input
+              type="text"
+              placeholder="PASTE WEB KEY..."
+              value={tokenInput}
+              onChange={(e) => setTokenInput(e.target.value)}
+              className="flex-grow bg-background border border-outline-variant text-on-surface px-3 py-1.5 font-technical-prefix text-xs outline-none focus:border-amber"
+            />
+            <button
+              type="button"
+              onClick={handleImportToken}
+              className="px-4 py-1.5 bg-emerald text-background font-technical-prefix text-[10px] font-bold uppercase hover:bg-green-400"
+            >
+              Sync
+            </button>
+          </div>
         </div>
 
         {/* Footer info */}

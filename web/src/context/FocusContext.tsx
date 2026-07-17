@@ -90,7 +90,7 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [vaultItems, setVaultItems] = useState<AppVaultItem[]>([
     { id: "youtube", name: "YOUTUBE", cost: 500, unlocked: false, icon: "play_circle" },
     { id: "reddit", name: "REDDIT", cost: 350, unlocked: false, icon: "forum" },
-    { id: "spotify", name: "SPOTIFY", cost: 200, unlocked: true, timerRemaining: 480, icon: "library_music" },
+    { id: "spotify", name: "SPOTIFY", cost: 200, unlocked: false, icon: "library_music" },
     { id: "steam", name: "STEAM", cost: 800, unlocked: false, icon: "sports_esports" },
     { id: "discord", name: "DISCORD", cost: 400, unlocked: false, icon: "chat" }
   ]);

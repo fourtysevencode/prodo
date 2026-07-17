@@ -110,7 +110,7 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [vaultItems, setVaultItems] = useState<AppVaultItem[]>([
     { id: "youtube", name: "YOUTUBE", cost: 500, unlocked: false, icon: "play_circle" },
     { id: "reddit", name: "REDDIT", cost: 350, unlocked: false, icon: "forum" },
-    { id: "spotify", name: "SPOTIFY", cost: 200, unlocked: true, timerRemaining: 480, icon: "library_music" },
+    { id: "spotify", name: "SPOTIFY", cost: 200, unlocked: false, icon: "library_music" },
     { id: "steam", name: "STEAM", cost: 800, unlocked: false, icon: "sports_esports" },
     { id: "discord", name: "DISCORD", cost: 400, unlocked: false, icon: "chat" }
   ]);
@@ -436,6 +436,42 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     return () => { if (interval) clearInterval(interval); };
   }, [isTracking, trackingStatus]);
+
+  // Check background Python penalty.json loop
+  useEffect(() => {
+    if (!isAuthenticated || !isTracking) return;
+
+    const interval = setInterval(() => {
+      import("@tauri-apps/api/core")
+        .then(({ invoke }) => {
+          invoke("check_penalty")
+            .then((penaltyPoints: any) => {
+              const points = Number(penaltyPoints || 0);
+              if (points < 0) {
+                setXp(prev => prev + points);
+                setInfractions(prevInf => [
+                  { 
+                    timestamp: getTimestamp(), 
+                    code: "ERR_UNAUTH", 
+                    name: "Distraction Alert", 
+                    details: `${points} XP Applied (Background App/Tab)` 
+                  },
+                  ...prevInf
+                ]);
+                appendLog("ERROR", "ERR_BLOCKED", `Background tracker detected unapproved activity. Applied ${points} XP penalty.`);
+              }
+            })
+            .catch(err => {
+              console.error("check_penalty command failed:", err);
+            });
+        })
+        .catch(() => {
+          // Not running inside Tauri / desktop client
+        });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [isTracking, isAuthenticated]);
 
   // Vault countdown
   useEffect(() => {
