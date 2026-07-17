@@ -43,6 +43,14 @@ interface FocusContextType {
   basePenalty: number;
   cameraDevice: string;
   sessionTime: number;
+  // CV Extensions
+  latestFrame: string | null;
+  isCalibrating: boolean;
+  availableDevices: MediaDeviceInfo[];
+  camErr: string | null;
+  camLoading: boolean;
+  setIsCalibrating: (val: boolean) => void;
+  // Core Functions
   startTracking: () => void;
   stopTracking: () => void;
   purchaseApp: (id: string) => void;
@@ -80,6 +88,13 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const [sessionTime, setSessionTime] = useState(0);
 
+  // CV State
+  const [latestFrame, setLatestFrame] = useState<string | null>(null);
+  const [isCalibrating, setIsCalibrating] = useState(false);
+  const [availableDevices, setAvailableDevices] = useState<MediaDeviceInfo[]>([]);
+  const [camErr, setCamErr] = useState<string | null>(null);
+  const [camLoading, setCamLoading] = useState(false);
+
   const [infractions, setInfractions] = useState<Infraction[]>([
     { timestamp: "14:02:45", code: "ERR_CTX_SW", name: "Context Switch", details: "-50 XP Applied" },
     { timestamp: "13:45:12", code: "ERR_FCS_BRK", name: "Focus Break > 30s", details: "Multiplier Reset to 1.0x" },
@@ -101,7 +116,6 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   ]);
 
   // ── CV Camera Refs ──────────────────────────────────────────────────────────
-  // These live as refs so they don't trigger re-renders
   const cvStreamRef   = useRef<MediaStream | null>(null);
   const cvVideoRef    = useRef<HTMLVideoElement | null>(null);
   const cvCanvasRef   = useRef<HTMLCanvasElement | null>(null);
@@ -112,14 +126,13 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const multiplierRef   = useRef(multiplier);
   useEffect(() => { multiplierRef.current = multiplier; }, [multiplier]);
 
-  // Ref for graceDuration so callbacks don't close over stale value
+  // Ref for graceDuration / basePenalty
   const graceDurationRef = useRef(graceDuration);
   useEffect(() => { graceDurationRef.current = graceDuration; }, [graceDuration]);
   const basePenaltyRef   = useRef(basePenalty);
   useEffect(() => { basePenaltyRef.current = basePenalty; }, [basePenalty]);
 
-  // ── Helpers ─────────────────────────────────────────────────────────────────
-
+  // Helpers
   const getTimestamp = () => new Date().toTimeString().split(" ")[0];
   const getFullTimestamp = () => {
     const d = new Date();
@@ -130,8 +143,7 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setSystemLogs(prev => [{ timestamp: getFullTimestamp(), type, code, message }, ...prev]);
   };
 
-  // ── CV: Send a frame to /check-focus ────────────────────────────────────────
-
+  // ── CV: Capture Canvas Frame and send to Backend ──────────────────────────
   const captureAndSendFrame = () => {
     const video  = cvVideoRef.current;
     const canvas = cvCanvasRef.current;
@@ -142,6 +154,9 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
     ctx.drawImage(video, 0, 0);
+
+    // Get frame snapshot as Data URL to update the frontend exactly when the backend responds
+    const dataUrl = canvas.toDataURL("image/jpeg", 0.6);
 
     canvas.toBlob(async (blob) => {
       if (!blob) return;
@@ -156,35 +171,54 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         if (!res.ok) return;
         const data = await res.json();
 
+        // ONLY update the sys feed preview when the backend successfully responds
+        setLatestFrame(dataUrl);
+
         const status: "FOCUSED" | "DISTRACTED" | "UNCERTAIN" = data.status ?? "UNCERTAIN";
         const focusScore: number  = data.rolling_focus_score ?? 0;
         const facePresence: number = data.signals?.face_presence ?? 0;
 
         setTrackingStatus(status);
-        // netLink = rolling focus score as percentage (0–100)
         setNetLink(Math.round(focusScore * 100));
-        // coreTemp = 37–45 range driven by face presence confidence
         setCoreTemp(Math.round(37 + facePresence * 8));
 
         if (status === "DISTRACTED") {
           appendLog("ERROR", "ERR_GAZE_LOST", `Gaze lost. Focus: ${(focusScore * 100).toFixed(0)}%. Grace timer active.`);
         } else if (status === "FOCUSED") {
-          // On recovery from distracted state, reset the threat timer
           setThreatSeconds(graceDurationRef.current);
         }
 
       } catch {
-        // Server unreachable — degrade gracefully
         setNetLink(0);
         setTrackingStatus("UNCERTAIN");
       }
     }, "image/jpeg", 0.75);
   };
 
-  // ── startTracking ─────────────────────────────────────────────────────────
+  // ── Unified Camera Stream Lifecycle ─────────────────────────────────────────
+  useEffect(() => {
+    const isCameraActive = isTracking || isCalibrating;
 
-  const startTracking = () => {
-    if (isTracking) return;
+    if (!isCameraActive) {
+      // Deactivate camera
+      if (cvIntervalRef.current) {
+        clearInterval(cvIntervalRef.current);
+        cvIntervalRef.current = null;
+      }
+      if (cvStreamRef.current) {
+        cvStreamRef.current.getTracks().forEach(t => t.stop());
+        cvStreamRef.current = null;
+      }
+      cvVideoRef.current = null;
+      cvCanvasRef.current = null;
+      setLatestFrame(null);
+      setCamLoading(false);
+      return;
+    }
+
+    // Start/restart camera stream
+    setCamErr(null);
+    setCamLoading(true);
 
     const constraints: MediaStreamConstraints = {
       video: cameraDevice
@@ -193,73 +227,97 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
 
     navigator.mediaDevices.getUserMedia(constraints)
-      .then(stream => {
+      .then(async (stream) => {
         const video = document.createElement("video");
         video.srcObject = stream;
         video.playsInline = true;
         video.muted = true;
 
         const canvas = document.createElement("canvas");
-        cvStreamRef.current  = stream;
-        cvVideoRef.current   = video;
-        cvCanvasRef.current  = canvas;
+        cvStreamRef.current = stream;
+        cvVideoRef.current  = video;
+        cvCanvasRef.current = canvas;
 
-        setIsTracking(true);
-        setTrackingStatus("UNCERTAIN");
-        setNetLink(0);
-        setCoreTemp(38);
-        setThreatSeconds(graceDurationRef.current);
-        appendLog("SYSTEM", "FCS_START", "Focus session initiated. Camera online. Waiting for CV model...");
-
-        // Off-screen video elements MUST have play() called explicitly.
-        // Start the capture loop only once the video has buffered its first frame.
-        video.addEventListener("canplay", () => {
+        video.addEventListener("canplay", async () => {
           appendLog("SUCCESS", "CAM_READY", "Camera feed active. Starting frame capture loop → /check-focus.");
-          // Clear any existing interval first
+          setCamLoading(false);
+
+          // Get available camera devices for the dropdown
+          try {
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            const videoDevices = devices.filter(d => d.kind === "videoinput");
+            setAvailableDevices(videoDevices);
+
+            if (!cameraDevice && videoDevices.length > 0) {
+              const activeTrackLabel = stream.getVideoTracks()[0]?.label;
+              const matched = videoDevices.find(d => d.label === activeTrackLabel);
+              if (matched) setCameraDevice(matched.deviceId);
+            }
+          } catch (e) {
+            console.error("Enumerate devices error:", e);
+          }
+
           if (cvIntervalRef.current) clearInterval(cvIntervalRef.current);
           cvIntervalRef.current = setInterval(captureAndSendFrame, 1000);
         }, { once: true });
 
         video.play().catch(err => {
+          setCamLoading(false);
           appendLog("ERROR", "CAM_PLAY_FAIL", `Camera video playback failed: ${err.message}`);
         });
       })
       .catch(err => {
-        appendLog("ERROR", "CAM_FAIL", `Camera access failed: ${err.message}. Check System Settings → Privacy → Camera.`);
+        setCamLoading(false);
+        console.error("getUserMedia error:", err);
+        if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
+          setCamErr("❌ CAM_PERM_DENIED: Camera access blocked. Enable in macOS Settings → Privacy & Security → Camera.");
+        } else if (err.name === "NotFoundError") {
+          setCamErr("❌ CAM_NOT_FOUND: No camera device detected.");
+        } else if (err.name === "NotReadableError") {
+          setCamErr("❌ CAM_IN_USE: Camera already in use by another app.");
+        } else {
+          setCamErr(`❌ CAM_ERR: ${err.message || "Unknown camera error."}`);
+        }
+        appendLog("ERROR", "CAM_FAIL", `Camera access failed: ${err.message}.`);
       });
+
+    return () => {
+      if (cvIntervalRef.current) {
+        clearInterval(cvIntervalRef.current);
+        cvIntervalRef.current = null;
+      }
+      if (cvStreamRef.current) {
+        cvStreamRef.current.getTracks().forEach(t => t.stop());
+        cvStreamRef.current = null;
+      }
+      cvVideoRef.current = null;
+      cvCanvasRef.current = null;
+    };
+  }, [isTracking, isCalibrating, cameraDevice]);
+
+  // startTracking
+  const startTracking = () => {
+    if (isTracking) return;
+    setIsTracking(true);
+    setTrackingStatus("UNCERTAIN");
+    setNetLink(0);
+    setCoreTemp(38);
+    setThreatSeconds(graceDurationRef.current);
+    appendLog("SYSTEM", "FCS_START", "Focus session initiated. Camera starting...");
   };
 
-  // ── stopTracking ───────────────────────────────────────────────────────────
-
+  // stopTracking
   const stopTracking = () => {
     if (!isTracking) return;
-
-    // Kill CV capture loop
-    if (cvIntervalRef.current) {
-      clearInterval(cvIntervalRef.current);
-      cvIntervalRef.current = null;
-    }
-
-    // Release camera
-    if (cvStreamRef.current) {
-      cvStreamRef.current.getTracks().forEach(t => t.stop());
-      cvStreamRef.current = null;
-    }
-
-    cvVideoRef.current  = null;
-    cvCanvasRef.current = null;
-
     setIsTracking(false);
     setTrackingStatus("UNCERTAIN");
     setNetLink(0);
     setCoreTemp(36);
     setMultiplier(1.0);
-
-    appendLog("INFO", "FCS_STOP", "Focus session stopped. Camera released.");
+    appendLog("INFO", "FCS_STOP", "Focus session stopped.");
   };
 
-  // ── Purchase Apps ───────────────────────────────────────────────────────────
-
+  // Purchase App
   const purchaseApp = (id: string) => {
     const item = vaultItems.find(i => i.id === id);
     if (!item) return;
@@ -276,8 +334,7 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     appendLog("SUCCESS", "VLT_BYPASS", `Unlocked restriction bypass for ${item.name} (300 seconds).`);
   };
 
-  // ── Command Line ───────────────────────────────────────────────────────────
-
+  // Command Line
   const executeCommand = (cmd: string): string => {
     const parts   = cmd.trim().split(" ");
     const command = parts[0].toLowerCase();
@@ -314,20 +371,17 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
-  // ── Session timer + XP accumulation (frontend-side, always run while tracking) ──
-
+  // Session timer + XP accumulation
   useEffect(() => {
     if (isTracking) {
       sessionInterval.current = setInterval(() => {
         setSessionTime(prev => prev + 1);
 
-        // Multiplier climbs the longer you're focused
         setMultiplier(prev => {
           const next = parseFloat((prev + 0.02).toFixed(2));
           return next > 4.5 ? 4.5 : next;
         });
 
-        // XP accrues every second (1 × multiplier, only when FOCUSED)
         setXp(prev => {
           if (trackingStatus !== "FOCUSED") return prev;
           return prev + Math.round(1 * multiplierRef.current);
@@ -343,8 +397,7 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
   }, [isTracking, trackingStatus]);
 
-  // ── Threat (grace period) decay ────────────────────────────────────────────
-
+  // Threat (grace period) decay
   useEffect(() => {
     let interval: any = null;
 
@@ -352,17 +405,11 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       interval = setInterval(() => {
         setThreatSeconds(prev => {
           if (prev <= 1) {
-            // Grace period expired → apply penalty and force-stop
+            // Apply penalty and stop tracking
             setIsTracking(false);
             setTrackingStatus("UNCERTAIN");
             setMultiplier(1.0);
             setNetLink(0);
-
-            // Release camera
-            if (cvIntervalRef.current) clearInterval(cvIntervalRef.current);
-            if (cvStreamRef.current) cvStreamRef.current.getTracks().forEach(t => t.stop());
-            cvStreamRef.current = null;
-            cvVideoRef.current  = null;
 
             const penalty = basePenaltyRef.current;
             setXp(prevXp => Math.max(0, prevXp - penalty));
@@ -370,7 +417,7 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               { timestamp: getTimestamp(), code: "ERR_FCS_BRK", name: "Focus Break", details: `-${penalty} XP Applied` },
               ...prevInf
             ]);
-            appendLog("ERROR", "ERR_FCS_FAIL", `Grace period expired. Distraction penalty applied (-${penalty} XP). Camera released.`);
+            appendLog("ERROR", "ERR_FCS_FAIL", `Grace period expired. Distraction penalty applied (-${penalty} XP).`);
 
             return graceDurationRef.current;
           }
@@ -384,8 +431,7 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return () => { if (interval) clearInterval(interval); };
   }, [isTracking, trackingStatus]);
 
-  // ── Vault countdown ─────────────────────────────────────────────────────────
-
+  // Vault countdown
   useEffect(() => {
     const timer = setInterval(() => {
       setVaultItems(prev => prev.map(item => {
@@ -403,20 +449,12 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return () => clearInterval(timer);
   }, []);
 
-  // ── Cleanup on unmount ───────────────────────────────────────────────────────
-
-  useEffect(() => {
-    return () => {
-      if (cvIntervalRef.current) clearInterval(cvIntervalRef.current);
-      if (cvStreamRef.current) cvStreamRef.current.getTracks().forEach(t => t.stop());
-    };
-  }, []);
-
   return (
     <FocusContext.Provider value={{
       xp, coreTemp, multiplier, netLink, threatSeconds, isTracking, trackingStatus,
       infractions, vaultItems, systemLogs, gazeTolerance, graceDuration, basePenalty, cameraDevice,
-      sessionTime, startTracking, stopTracking, purchaseApp,
+      sessionTime, latestFrame, isCalibrating, availableDevices, camErr, camLoading, setIsCalibrating,
+      startTracking, stopTracking, purchaseApp,
       setGazeTolerance, setGraceDuration, setBasePenalty, setCameraDevice, executeCommand
     }}>
       {children}

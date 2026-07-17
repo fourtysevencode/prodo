@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect } from "react";
 import { useFocus } from "../context/FocusContext";
 
 const ConfigPage: React.FC = () => {
@@ -7,91 +7,24 @@ const ConfigPage: React.FC = () => {
     graceDuration,
     basePenalty,
     cameraDevice,
+    latestFrame,
+    availableDevices,
+    camErr,
+    camLoading,
+    setIsCalibrating,
     setGazeTolerance,
     setGraceDuration,
     setBasePenalty,
     setCameraDevice
   } = useFocus();
 
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  // Use a ref for the stream so cleanup always gets the latest value (avoids stale closure)
-  const streamRef = useRef<MediaStream | null>(null);
-  const [availableDevices, setAvailableDevices] = useState<MediaDeviceInfo[]>([]);
-  const [camErr, setCamErr] = useState<string | null>(null);
-  const [camLoading, setCamLoading] = useState(true);
-
-  // Step 1: Get permission + start stream. After permission is granted,
-  // enumerateDevices returns real labels and deviceIds.
-  const startCameraStream = async (deviceId?: string) => {
-    // Stop any existing stream first
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(t => t.stop());
-      streamRef.current = null;
-    }
-
-    setCamErr(null);
-    setCamLoading(true);
-
-    const constraints: MediaStreamConstraints = {
-      video: deviceId
-        ? { deviceId: { exact: deviceId } }
-        : { facingMode: "user" }
-    };
-
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      streamRef.current = stream;
-
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-      }
-
-      // Now that we have permission, enumerate to get real device names
-      const devices = await navigator.mediaDevices.enumerateDevices();
-      const videoDevices = devices.filter(d => d.kind === "videoinput");
-      setAvailableDevices(videoDevices);
-
-      // Auto-select the active track's device if none selected yet
-      if (!deviceId && videoDevices.length > 0) {
-        const activeTrackLabel = stream.getVideoTracks()[0]?.label;
-        const matched = videoDevices.find(d => d.label === activeTrackLabel);
-        if (matched) setCameraDevice(matched.deviceId);
-      }
-
-      setCamLoading(false);
-    } catch (err: any) {
-      console.error("Camera access error:", err);
-      setCamLoading(false);
-
-      if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
-        setCamErr("❌ CAM_PERM_DENIED: Camera access was blocked. Enable it in macOS System Settings → Privacy & Security → Camera.");
-      } else if (err.name === "NotFoundError") {
-        setCamErr("❌ CAM_NOT_FOUND: No camera device detected. Ensure a webcam is connected.");
-      } else if (err.name === "NotReadableError") {
-        setCamErr("❌ CAM_IN_USE: Camera is already in use by another application (e.g. Zoom, Teams).");
-      } else {
-        setCamErr(`❌ CAM_ERR: ${err.message || "Unknown camera error."}`);
-      }
-    }
-  };
-
-  // On mount — start with the OS default camera
+  // Turn on calibrating flag when visiting page to start camera & check-focus loops, turn off on unmount
   useEffect(() => {
-    startCameraStream(cameraDevice || undefined);
-
+    setIsCalibrating(true);
     return () => {
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(t => t.stop());
-      }
+      setIsCalibrating(false);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // When the user changes the device picker
-  const handleDeviceChange = (deviceId: string) => {
-    setCameraDevice(deviceId);
-    startCameraStream(deviceId || undefined);
-  };
+  }, [setIsCalibrating]);
 
   return (
     <div className="flex-grow flex flex-col lg:flex-row gap-6 p-6 h-full overflow-hidden select-none">
@@ -108,10 +41,10 @@ const ConfigPage: React.FC = () => {
             [SYS_FEED_PREVIEW]
           </div>
 
-          {camLoading && !camErr && (
+          {camLoading && !latestFrame && (
             <div className="flex flex-col items-center gap-3 text-outline-variant z-10">
               <span className="w-5 h-5 border-2 border-outline-variant border-t-amber animate-spin rounded-full"></span>
-              <span className="font-technical-prefix text-[10px] uppercase">Requesting camera access...</span>
+              <span className="font-technical-prefix text-[10px] uppercase">Connecting hardware node...</span>
             </div>
           )}
 
@@ -119,21 +52,21 @@ const ConfigPage: React.FC = () => {
             <div className="text-center px-6 max-w-md z-10">
               <span className="material-symbols-outlined text-[48px] text-crimson mb-3 block">no_photography</span>
               <div className="text-crimson font-log-body font-bold text-sm mb-3">{camErr}</div>
-              <button
-                onClick={() => startCameraStream(cameraDevice || undefined)}
-                className="mt-2 px-4 py-2 border border-outline-variant text-primary font-technical-prefix text-[10px] uppercase hover:bg-surface-container-high transition-all"
-              >
-                Retry Camera Access
-              </button>
             </div>
           ) : (
-            <video
-              ref={videoRef}
-              autoPlay
-              playsInline
-              muted
-              className={`absolute inset-0 w-full h-full object-cover grayscale opacity-80 transition-opacity duration-300 ${camLoading ? "opacity-0" : "opacity-80"}`}
-            />
+            latestFrame ? (
+              <img
+                src={latestFrame}
+                alt="System Frame Preview"
+                className="absolute inset-0 w-full h-full object-cover grayscale opacity-80"
+              />
+            ) : (
+              !camLoading && (
+                <div className="text-center text-outline-variant font-technical-prefix text-xs z-10">
+                  CAMERA STREAM INITIALIZING...
+                </div>
+              )
+            )
           )}
 
           {/* Grid overlay */}
@@ -164,7 +97,7 @@ const ConfigPage: React.FC = () => {
           </div>
           <select
             value={cameraDevice}
-            onChange={(e) => handleDeviceChange(e.target.value)}
+            onChange={(e) => setCameraDevice(e.target.value)}
             className="w-full bg-background border border-outline-variant text-on-surface px-3 py-2 font-technical-prefix text-xs outline-none focus:border-primary"
           >
             {availableDevices.length === 0 ? (
