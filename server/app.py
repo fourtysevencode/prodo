@@ -1,17 +1,29 @@
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pathlib import Path
 from pydantic import BaseModel
 
 from utils.focus_score import calculate_focus_score
 
-#  Serve HTML on / later
-# environment = jinja2.Environment()
-# template = environment.from_string("Hello, {{ name }}!")
+app = FastAPI(title="Prodo Focus Engine API")
+
+# Allow local Vite dev server and the hosted Pages preview to call this API.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "http://127.0.0.1:5173",
+        "https://prodo-live.pages.dev",
+        "https://website-dev.prodo-live.pages.dev",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
-app = FastAPI()
-_rolling_scores_by_session: dict[str, list[float]] = {}
 BASE_DIR = Path(__file__).resolve().parent
 
 leaderboard_data = [
