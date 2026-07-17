@@ -30,14 +30,14 @@ const LoginPage: React.FC = () => {
         setErrorMsg("❌ AUTH_DENIED: Server rejected the credentials.");
       }
     } catch (err: any) {
-      // Fall back to local demo mode when the API server is offline
-      if (password.length >= 4) {
+      // Fall back to local demo mode when the API server is offline and user explicitly wants demo
+      if (username.trim().toLowerCase() === "demo") {
         sessionStorage.setItem("prodo_token", "demo-local-token");
         setIsAuthenticated(true);
         startTracking();
         navigate("/focus");
       } else {
-        setErrorMsg("❌ AUTH_FAIL: Cannot reach server and passphrase too short for demo mode (min 4 chars).");
+        setErrorMsg("❌ CONNECTION_FAIL: Cannot reach secure gateway. For offline testing, enter operator ID 'demo'.");
       }
     } finally {
       setIsSubmitting(false);
