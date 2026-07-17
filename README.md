@@ -1,4 +1,16 @@
+---
+title: Prodo
+emoji: 🎯
+colorFrom: yellow
+colorTo: red
+sdk: docker
+python_version: "3.11"
+app_file: app.py
+pinned: false
+---
+
 # Prodo: The Gamified Focus Engine
+
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
