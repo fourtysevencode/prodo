@@ -8,10 +8,6 @@ export function getApiBaseUrl(): string {
   const saved = localStorage.getItem("prodo_api_base_url");
   if (saved) return saved;
   
-  if (import.meta.env.VITE_API_URL) {
-    return import.meta.env.VITE_API_URL;
-  }
-  
   if (typeof window !== "undefined" && window.location) {
     const hn = window.location.hostname;
     if (hn && hn !== "localhost" && hn !== "127.0.0.1" && !hn.startsWith("192.168.")) {
@@ -23,7 +19,6 @@ export function getApiBaseUrl(): string {
 }
 
 export function setApiBaseUrl(url: string) {
-  // Ensure we strip trailing slash if present
   let cleanUrl = url.trim();
   if (cleanUrl.endsWith("/")) {
     cleanUrl = cleanUrl.substring(0, cleanUrl.length - 1);

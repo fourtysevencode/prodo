@@ -29,7 +29,8 @@ app.add_middleware(
         "https://tauri.localhost",
         "https://prodo-live.pages.dev",
         "https://website-dev.prodo-live.pages.dev",
-        "https:/prodo.live"
+        "https://prodo.live",
+        "http://prodo.live",
     ],
     allow_credentials=True,
     allow_methods=["*"],

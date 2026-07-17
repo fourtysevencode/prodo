@@ -38,58 +38,131 @@ def get_frontmost_window_mac():
     except Exception:
         return ""
 
-def hide_process_mac(app_name):
-    script = f'tell application "System Events" to set visible of process "{app_name}" to false'
+def get_browser_tab_mac(app_name):
+    app_name_lower = app_name.lower()
+    script = None
+    if "chrome" in app_name_lower or "chromium" in app_name_lower:
+        script = 'tell application "Google Chrome" to get URL of active tab of front window'
+    elif "safari" in app_name_lower:
+        script = 'tell application "Safari" to get URL of document 1'
+    elif "arc" in app_name_lower:
+        script = 'tell application "Arc" to get URL of active tab of front window'
+    elif "edge" in app_name_lower:
+        script = 'tell application "Microsoft Edge" to get URL of active tab of front window'
+    
+    if not script:
+        return ""
+
     try:
-        subprocess.run(['osascript', '-e', script], timeout=0.8)
+        proc = subprocess.Popen(['osascript', '-e', script], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        out, _ = proc.communicate(timeout=0.8)
+        return out.decode('utf-8', errors='ignore').strip()
     except Exception:
-        pass
+        return ""
+
+def get_foreground_window_win():
+    try:
+        import ctypes
+        user32 = ctypes.windll.user32
+        kernel32 = ctypes.windll.kernel32
+
+        hwnd = user32.GetForegroundWindow()
+        if not hwnd:
+            return "", ""
+
+        # Get window title
+        length = user32.GetWindowTextLengthW(hwnd)
+        buf = ctypes.create_unicode_buffer(length + 1)
+        user32.GetWindowTextW(hwnd, buf, length + 1)
+        window_title = buf.value
+
+        # Get process executable name
+        pid = ctypes.c_ulong()
+        user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+        
+        PROCESS_QUERY_INFORMATION = 0x0400
+        PROCESS_VM_READ = 0x0010
+        h_process = kernel32.OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, False, pid.value)
+        process_name = ""
+        if h_process:
+            buf_name = ctypes.create_unicode_buffer(260)
+            size = ctypes.c_ulong(260)
+            if kernel32.QueryFullProcessImageNameW(h_process, 0, buf_name, ctypes.byref(size)):
+                process_name = os.path.basename(buf_name.value)
+            kernel32.CloseHandle(h_process)
+            
+        return process_name, window_title
+    except Exception:
+        return "", ""
 
 def main():
-    print("Prodo Desktop Python Backend Initialized", file=sys.stderr)
-    # allowlist.json is written by the frontend in the same folder during development
-    allowlist_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "backend", "allowlist.json")
+    print("Prodo Cross-Platform Desktop Window Blocker Initialized", file=sys.stderr)
+    allowlist_path = os.path.join(os.path.dirname(__file__), "allowlist.json")
+    penalty_path = os.path.join(os.path.dirname(__file__), "penalty.json")
 
     while True:
-        # Load allowlist of currently purchased/unlocked app IDs
+        # Load allowlist configuration
         allowed_apps = []
+        tracking_active = False
         try:
             if os.path.exists(allowlist_path):
                 with open(allowlist_path, "r") as f:
-                    allowed_apps = json.load(f)
+                    data = json.load(f)
+                    if isinstance(data, dict):
+                        allowed_apps = data.get("allowed_apps", [])
+                        tracking_active = data.get("tracking_active", False)
+                    else:
+                        allowed_apps = data
+                        tracking_active = True
         except Exception as e:
             print(f"Error loading allowlist: {e}", file=sys.stderr)
 
-        # Get frontmost active app details
-        front = get_frontmost_window_mac()
-        if front and "|||" in front:
-            app_name, title = front.split("|||", 1)
-            app_name_lower = app_name.lower()
-            title_lower = title.lower()
+        if not tracking_active:
+            time.sleep(1)
+            continue
 
-            # Check if active app matches any blacklisted item
-            for app_id, patterns in BLACKLIST.items():
-                is_distraction = False
-                for pattern in patterns:
-                    if pattern in app_name_lower or pattern in title_lower:
-                        is_distraction = True
-                        break
+        # Get frontmost active app details depending on platform
+        app_name = ""
+        title = ""
+        tab_url = ""
 
-                if is_distraction:
-                    # If this distracting app is NOT in the allowlist, block (minimize) it
-                    if app_id not in allowed_apps:
-                        print(f"BLOCKING unapproved app: {app_name} ({title})", file=sys.stderr)
-                        hide_process_mac(app_name)
+        if sys.platform == "darwin":
+            front = get_frontmost_window_mac()
+            if front and "|||" in front:
+                app_name, title = front.split("|||", 1)
+                tab_url = get_browser_tab_mac(app_name)
+        elif sys.platform == "win32":
+            app_name, title = get_foreground_window_win()
+
+        app_name_lower = app_name.lower()
+        title_lower = title.lower()
+        tab_url_lower = tab_url.lower()
+
+        # Check if active app matches any blacklisted item
+        for app_id, patterns in BLACKLIST.items():
+            is_distraction = False
+            for pattern in patterns:
+                if pattern in app_name_lower or pattern in title_lower or pattern in tab_url_lower:
+                    is_distraction = True
+                    break
+
+            if is_distraction:
+                # If this distracting app is NOT in the allowlist, apply heavy negative XP penalty
+                if app_id not in allowed_apps:
+                    print(f"DISTRACTION DETECTED: {app_name} | {title} | {tab_url}", file=sys.stderr)
+                    
+                    # Write continuous -150 XP penalty to penalty.json
+                    try:
+                        # If a penalty is already pending, accumulate it
+                        current_penalty = 0
+                        if os.path.exists(penalty_path):
+                            with open(penalty_path, "r") as f:
+                                current_penalty = int(f.read().strip() or 0)
                         
-                        # Emit a JSON log that the frontend can read if it hooks stdin/stdout,
-                        # or just write it to standard out.
-                        log_msg = {
-                            "type": "SYSTEM",
-                            "code": "ERR_BLOCKED",
-                            "message": f"Blocked unapproved access to {app_name} (Title: {title})."
-                        }
-                        print(json.dumps(log_msg))
-                        sys.stdout.flush()
+                        with open(penalty_path, "w") as f:
+                            f.write(str(current_penalty - 150))
+                    except Exception as e:
+                        print(f"Error writing penalty: {e}", file=sys.stderr)
 
         time.sleep(1)
 

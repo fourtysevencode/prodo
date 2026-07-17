@@ -25,12 +25,38 @@ const SettingsPage: React.FC = () => {
               </div>
               <div className="flex-grow w-full">
                 <div className="font-technical-prefix text-[8px] text-outline-variant">LOGGED_IN_AS</div>
-                <div className="font-log-body text-primary font-bold">OPERATOR_01 (ivan@prodo.live)</div>
-                <div className="font-technical-prefix text-[10px] text-emerald mt-1">✓ AUTHORITY LEVEL: HIGH_STAKES_ADMIN</div>
+                <div className="font-log-body text-primary font-bold">ACTIVE OPERATOR</div>
+                <div className="font-technical-prefix text-[10px] text-emerald mt-1">✓ AUTHENTICATION: GOOGLE_LINKED</div>
               </div>
-              <button className="px-4 py-2 border border-outline-variant text-primary font-technical-prefix text-[10px] uppercase hover:bg-surface-container-high transition-all font-bold">
-                Renew Token
-              </button>
+            </div>
+
+            {/* Desktop Token Sync Card */}
+            <div className="border border-outline-variant p-4 bg-background flex flex-col gap-2 mt-2">
+              <div className="font-technical-prefix text-[8px] text-outline-variant uppercase">Desktop Auth Key (Copy to paste in Tauri)</div>
+              <div className="flex gap-2">
+                <input 
+                  type="text" 
+                  readOnly 
+                  value={sessionStorage.getItem("prodo_token") || ""} 
+                  placeholder="No active session token found."
+                  className="flex-grow bg-surface-container-high border border-outline-variant px-3 py-1.5 font-technical-prefix text-xs text-amber outline-none select-all" 
+                />
+                <button 
+                  type="button"
+                  onClick={() => {
+                    const t = sessionStorage.getItem("prodo_token");
+                    if (t) {
+                      navigator.clipboard.writeText(t);
+                      alert("✓ Token copied to clipboard!");
+                    } else {
+                      alert("❌ No token found. Please log in.");
+                    }
+                  }}
+                  className="px-4 py-1.5 bg-amber text-background font-technical-prefix text-[10px] font-bold uppercase hover:bg-amber-400"
+                >
+                  Copy
+                </button>
+              </div>
             </div>
           </div>
         </div>

@@ -1,11 +1,18 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useFocus } from "../context/FocusContext";
 
 const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
-  const { netLink, sessionTime, isTracking, startTracking, stopTracking } = useFocus();
+  const { xp, netLink, sessionTime, isTracking, startTracking, stopTracking, setIsAuthenticated } = useFocus();
   const location = useLocation();
   const navigate = useNavigate();
+
+  // Lockdown Redirect if XP drops below zero
+  useEffect(() => {
+    if (xp < 0) {
+      navigate("/punishments");
+    }
+  }, [xp, navigate]);
 
   // Helper to format session time into MM:SS
   const formatSessionTime = (seconds: number) => {
@@ -44,6 +51,25 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
           </nav>
         </div>
         <div className="flex items-center gap-2">
+          <button 
+            onClick={() => {
+              const token = sessionStorage.getItem("prodo_token");
+              if (token) {
+                try {
+                  navigator.clipboard.writeText(token);
+                  alert("✓ Desktop session token copied to clipboard! Paste it inside the Tauri app to sync.");
+                } catch (e) {
+                  window.prompt("Copy your Desktop Auth Key below:", token);
+                }
+              } else {
+                alert("❌ No active session found. Please log in first.");
+              }
+            }}
+            className="text-amber hover:text-amber-400 transition-colors p-1 flex items-center font-technical-prefix text-[9px] border border-amber/40 px-2"
+            title="Copy Desktop Auth Key"
+          >
+            COPY_DESKTOP_KEY
+          </button>
           <Link to="/settings" className="text-on-surface-variant hover:text-primary transition-colors p-1 flex items-center">
             <span className="material-symbols-outlined text-[18px]">settings</span>
           </Link>
@@ -102,6 +128,8 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
             <button
               onClick={() => {
                 if (window.confirm("Confirm termination of Prodo HUD Core Session?")) {
+                  sessionStorage.removeItem("prodo_token");
+                  setIsAuthenticated(false);
                   stopTracking();
                   navigate("/login");
                 }

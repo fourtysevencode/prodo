@@ -11,6 +11,7 @@ import LoginPage from "./pages/LoginPage";
 import HelpPage from "./pages/HelpPage";
 import NotFoundPage from "./pages/NotFoundPage";
 import FriendsPage from "./pages/FriendsPage";
+import PunishmentsPage from "./pages/PunishmentsPage";
 
 function App() {
   return (
@@ -22,6 +23,7 @@ function App() {
           
           {/* Standalone Authentication Screen */}
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/punishments" element={<PunishmentsPage />} />
 
           {/* Core HUD views nested in layout frame */}
           <Route path="/focus" element={<Layout><FocusPage /></Layout>} />

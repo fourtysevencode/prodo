@@ -42,6 +42,8 @@ interface FocusContextType {
   sessionTime: number; // in seconds
   isCoopActive: boolean;
   setIsCoopActive: (val: boolean) => void;
+  isAuthenticated: boolean;
+  setIsAuthenticated: (val: boolean) => void;
   startTracking: () => void;
   stopTracking: () => void;
   purchaseApp: (id: string) => void;
@@ -75,6 +77,7 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [basePenalty, setBasePenalty] = useState(50);
   const [cameraDevice, setCameraDevice] = useState("Default Web Camera");
   const [isCoopActive, setIsCoopActive] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(!!sessionStorage.getItem("prodo_token"));
 
   const [sessionTime, setSessionTime] = useState(0);
   
@@ -87,7 +90,7 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [vaultItems, setVaultItems] = useState<AppVaultItem[]>([
     { id: "youtube", name: "YOUTUBE", cost: 500, unlocked: false, icon: "play_circle" },
     { id: "reddit", name: "REDDIT", cost: 350, unlocked: false, icon: "forum" },
-    { id: "spotify", name: "SPOTIFY", cost: 200, unlocked: true, timerRemaining: 480, icon: "library_music" },
+    { id: "spotify", name: "SPOTIFY", cost: 200, unlocked: false, icon: "library_music" },
     { id: "steam", name: "STEAM", cost: 800, unlocked: false, icon: "sports_esports" },
     { id: "discord", name: "DISCORD", cost: 400, unlocked: false, icon: "chat" }
   ]);
@@ -343,7 +346,7 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     <FocusContext.Provider value={{
       xp, coreTemp, multiplier, netLink, threatSeconds, isTracking, trackingStatus,
       infractions, vaultItems, systemLogs, gazeTolerance, graceDuration, basePenalty, cameraDevice,
-      sessionTime, isCoopActive, setIsCoopActive,
+      sessionTime, isCoopActive, setIsCoopActive, isAuthenticated, setIsAuthenticated,
       startTracking, stopTracking, purchaseApp,
       setGazeTolerance, setGraceDuration, setBasePenalty, setCameraDevice, executeCommand
     }}>
