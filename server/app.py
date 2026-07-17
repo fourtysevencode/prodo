@@ -59,11 +59,26 @@ async def login(user: LoginRequest):
     }
 
 
+# ---------- users endspoint ----------
+
+@app.get("/users/me")
+async def get_current_user():
+    return {
+        "username": "ritish",
+        "email": "ritish@example.com",
+        "total_lifetime_points": 2500,
+        "current_balance": 600
+    }
 
 
+class SyncRequest(BaseModel):
+    points_earned_since_last_sync: int
+    current_multiplier: float
 
-
-#class Default(WorkerEntrypoint):
-#    async def fetch(self, request):
-#        import asgi
-#        return await asgi.fetch(app, request.js_object, self.env)
+@app.post("/users/sync")
+async def sync(data: SyncRequest):
+    return {
+        "success": True,
+        "points_added": data.points_earned_since_last_sync,
+        "multiplier": data.current_multiplier
+    }
