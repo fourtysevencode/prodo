@@ -156,7 +156,6 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const startTracking = () => {
-    if (!isAuthenticated) return;
     if (isTracking) return;
     setIsTracking(true);
     setTrackingStatus("UNCERTAIN");
