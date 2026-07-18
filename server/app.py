@@ -434,11 +434,12 @@ async def add_friend(req: FriendRequest, authorization: Optional[str] = Header(N
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
     
-    cursor.execute("SELECT * FROM users WHERE username = ?", (req.username.strip(),))
+    friend_identifier = req.username.strip().lower()
+    cursor.execute("SELECT * FROM users WHERE username = ? OR email = ?", (friend_identifier, friend_identifier))
     friend = cursor.fetchone()
     if not friend:
         conn.close()
-        raise HTTPException(status_code=404, detail="Username not found")
+        raise HTTPException(status_code=404, detail="Username or email not found")
         
     if friend["id"] == user["id"]:
         conn.close()
