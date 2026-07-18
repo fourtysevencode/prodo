@@ -7,6 +7,14 @@
 export function getApiBaseUrl(): string {
   const saved = localStorage.getItem("prodo_api_base_url");
   if (saved) return saved;
+  
+  if (typeof window !== "undefined" && window.location) {
+    const hn = window.location.hostname;
+    if (hn && (hn === "prodo.live" || hn === "prodo-live.pages.dev")) {
+      return "http://168.144.191.86:8000";
+    }
+  }
+  
   return "http://127.0.0.1:8000";
 }
 
