@@ -344,6 +344,7 @@ def _build_payload(
             "focus_score": 0.0,
             "rolling_focus_score": 0.0,
             "signals": signals,
+            "phone": True,
         }
         if debug is not None:
             debug["phone_detected"] = True
@@ -417,6 +418,7 @@ def _build_payload(
         "focus_score": focus_score,
         "rolling_focus_score": rolling_focus_score,
         "signals": signals,
+        "phone": False,
     }
     if debug is not None:
         payload["debug"] = debug
@@ -646,11 +648,13 @@ def _run_phone_detection(image: Any) -> bool:
     img_data = np.expand_dims(img_data, axis=0)
     
     outputs = _ONNX_SESSION.run(None, {"images": img_data})[0]
-    # Check max confidence score of Class 1 (phone) across all 8400 boxes
-    class_1_confs = outputs[0, 5, :]
-    max_conf_1 = float(class_1_confs.max())
-    
-    if max_conf_1 > 0.40:
+    # YOLOv8 output: [1, 84, 8400] for COCO 80-class model.
+    # Indices 0-3: bbox (x, y, w, h). Index 4+cls_id = class score.
+    # Class 67 = cell phone → output index 4 + 67 = 71.
+    phone_confs = outputs[0, 71, :]
+    max_phone_conf = float(phone_confs.max())
+
+    if max_phone_conf > 0.40:
         return True
-        
+
     return False

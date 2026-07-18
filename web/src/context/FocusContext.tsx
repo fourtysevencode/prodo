@@ -62,6 +62,9 @@ interface FocusContextType {
   camErr: string | null;
   camLoading: boolean;
   setIsCalibrating: (val: boolean) => void;
+  // Phone detection
+  phoneWarning: boolean;
+  dismissPhoneWarning: () => void;
 }
 
 const FocusContext = createContext<FocusContextType | undefined>(undefined);
@@ -99,6 +102,10 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [availableDevices, setAvailableDevices] = useState<MediaDeviceInfo[]>([]);
   const [camErr, setCamErr] = useState<string | null>(null);
   const [camLoading, setCamLoading] = useState(false);
+
+  // Phone detection state
+  const [phoneWarning, setPhoneWarning] = useState(false);
+  const phoneDetectedCountRef = useRef(0);
 
   const [infractions, setInfractions] = useState<Infraction[]>([
     { timestamp: "14:02:45", code: "ERR_CTX_SW", name: "Context Switch", details: "-50 XP Applied" },
@@ -224,6 +231,12 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
+  // Dismiss phone warning overlay
+  const dismissPhoneWarning = () => {
+    setPhoneWarning(false);
+    phoneDetectedCountRef.current = 0;
+  };
+
   // ── CV: Capture Canvas Frame and send to Backend ──────────────────────────
   const captureAndSendFrame = () => {
     const video  = cvVideoRef.current;
@@ -256,6 +269,26 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         const status: "FOCUSED" | "DISTRACTED" | "UNCERTAIN" = data.status ?? "UNCERTAIN";
         const focusScore: number  = data.rolling_focus_score ?? 0;
         const facePresence: number = data.signals?.face_presence ?? 0;
+        const phoneDetected: boolean = data.phone === true;
+
+        // Track consecutive phone detection frames
+        if (phoneDetected) {
+          phoneDetectedCountRef.current += 1;
+          if (phoneDetectedCountRef.current >= 3 && !phoneWarning) {
+            setPhoneWarning(true);
+            // Apply 3x heavy penalty immediately
+            const penalty = basePenaltyRef.current * 3;
+            setXp(prevXp => prevXp - penalty);
+            setMultiplier(1.0);
+            setInfractions(prevInf => [
+              { timestamp: getTimestamp(), code: "ERR_PHONE_DET", name: "Phone Detected", details: `-${penalty} XP Applied` },
+              ...prevInf
+            ]);
+            appendLog("ERROR", "ERR_PHONE", `Phone detected for 3+ consecutive frames. Heavy penalty applied (-${penalty} XP).`);
+          }
+        } else {
+          phoneDetectedCountRef.current = 0;
+        }
 
         setTrackingStatus(status);
         setNetLink(Math.round(focusScore * 100));
@@ -447,7 +480,9 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       startTracking, stopTracking, purchaseApp, purchaseBreakTime, breakTimeRemaining,
       setGazeTolerance, setGraceDuration, setBasePenalty, setCameraDevice, executeCommand,
       // CV
-      latestFrame, isCalibrating, availableDevices, camErr, camLoading, setIsCalibrating
+      latestFrame, isCalibrating, availableDevices, camErr, camLoading, setIsCalibrating,
+      // Phone detection
+      phoneWarning, dismissPhoneWarning,
     }}>
       {children}
     </FocusContext.Provider>

@@ -13,7 +13,9 @@ const FocusPage: React.FC = () => {
     vaultItems,
     graceDuration,
     purchaseApp,
-    executeCommand
+    executeCommand,
+    phoneWarning,
+    dismissPhoneWarning
   } = useFocus();
 
   const [cmdInput, setCmdInput] = useState("");
@@ -41,7 +43,7 @@ const FocusPage: React.FC = () => {
   const activeBlocksCount = Math.ceil(threatPercent / 10);
 
   return (
-    <div className="flex-grow flex flex-col lg:flex-row gap-6 p-4 lg:p-6 h-auto lg:h-full overflow-y-auto lg:overflow-hidden select-none">
+    <div className="flex-grow flex flex-col lg:flex-row gap-6 p-4 lg:p-6 h-auto lg:h-full overflow-y-auto lg:overflow-hidden select-none relative">
       {/* Center Combat Hero Panel */}
       <section className="flex-1 flex flex-col h-auto lg:h-full gap-6 overflow-visible lg:overflow-hidden">
         {/* Top Stats Header */}
@@ -227,6 +229,28 @@ const FocusPage: React.FC = () => {
           )}
         </div>
       </section>
+
+      {/* Phone Warning Modal Overlay */}
+      {phoneWarning && (
+        <div className="absolute inset-0 bg-[#0A0A0A]/90 backdrop-blur-md z-50 flex items-center justify-center p-6">
+          <div className="bg-surface-container-lowest border-2 border-crimson p-6 max-w-sm w-full flex flex-col items-center gap-4 text-center">
+            <span className="material-symbols-outlined text-[64px] text-crimson animate-pulse">smartphone</span>
+            <h2 className="font-value-lg text-[24px] text-crimson uppercase">PHONE DETECTED</h2>
+            <div className="font-technical-prefix text-[8px] text-outline-variant uppercase tracking-wider">
+              CRITICAL_FOCUS_BREACH
+            </div>
+            <p className="font-log-body text-xs text-on-surface-variant leading-relaxed">
+              Mobile device usage detected in active gaze stream. High distraction penalty applied to XP core bank.
+            </p>
+            <button
+              onClick={dismissPhoneWarning}
+              className="w-full py-3 bg-crimson hover:bg-red-500 text-white font-technical-prefix text-xs font-bold uppercase transition-colors"
+            >
+              DISMISS ALARM
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

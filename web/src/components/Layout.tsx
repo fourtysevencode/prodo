@@ -109,7 +109,7 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
             <button
               onClick={() => {
                 if (window.confirm("Confirm termination of Prodo HUD Core Session?")) {
-                  sessionStorage.removeItem("prodo_token");
+                  localStorage.removeItem("prodo_token");
                   setIsAuthenticated(false);
                   stopTracking();
                   navigate("/login");

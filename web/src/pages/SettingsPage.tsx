@@ -37,14 +37,14 @@ const SettingsPage: React.FC = () => {
                 <input 
                   type="text" 
                   readOnly 
-                  value={sessionStorage.getItem("prodo_token") || ""} 
+                  value={localStorage.getItem("prodo_token") || ""} 
                   placeholder="No active session token found."
                   className="flex-grow bg-surface-container-high border border-outline-variant px-3 py-1.5 font-technical-prefix text-xs text-amber outline-none select-all" 
                 />
                 <button 
                   type="button"
                   onClick={() => {
-                    const t = sessionStorage.getItem("prodo_token");
+                    const t = localStorage.getItem("prodo_token");
                     if (t) {
                       navigator.clipboard.writeText(t);
                       alert("✓ Token copied to clipboard!");

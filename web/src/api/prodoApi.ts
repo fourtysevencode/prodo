@@ -1,24 +1,26 @@
 /**
  * Prodo API Service Layer
  * Connects the frontend to the FastAPI server (http://127.0.0.1:8000).
- * Supports Authorization headers via sessionStorage tokens.
+ * Supports Authorization headers via localStorage tokens.
  */
 
 export function getApiBaseUrl(): string {
-  const saved = localStorage.getItem("prodo_api_base_url");
-  if (saved) return saved;
-  
-  if (import.meta.env.VITE_API_URL) {
-    return import.meta.env.VITE_API_URL;
-  }
-  
+  // Production domain always takes priority — never use a cached localhost URL
+  // when running on the live site.
   if (typeof window !== "undefined" && window.location) {
     const hn = window.location.hostname;
-    if (hn && (hn === "prodo.live" || hn === "www.prodo.live" || hn === "prodo-live.pages.dev")) {
+    if (hn && (hn === "prodo.live" || hn === "www.prodo.live" || hn === "prodo-live.pages.dev" || hn === "website-dev.prodo-live.pages.dev")) {
       return "https://cv.prodo.live";
     }
   }
-  
+
+  const saved = localStorage.getItem("prodo_api_base_url");
+  if (saved) return saved;
+
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
+  }
+
   return "http://127.0.0.1:8000";
 }
 
@@ -32,7 +34,7 @@ export function setApiBaseUrl(url: string) {
 }
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const token = sessionStorage.getItem("prodo_token");
+  const token = localStorage.getItem("prodo_token");
   const headers = new Headers(init?.headers);
   headers.set("Content-Type", "application/json");
   if (token) {

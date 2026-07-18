@@ -54,6 +54,9 @@ interface FocusContextType {
   setIsCoopActive: (val: boolean) => void;
   isAuthenticated: boolean;
   setIsAuthenticated: (val: boolean) => void;
+  // Phone detection
+  phoneWarning: boolean;
+  dismissPhoneWarning: () => void;
   // Core Functions
   startTracking: () => void;
   stopTracking: () => void;
@@ -102,6 +105,10 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [camLoading, setCamLoading] = useState(false);
   const [isCoopActive, setIsCoopActive] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(!!sessionStorage.getItem("prodo_token"));
+
+  // Phone detection state
+  const [phoneWarning, setPhoneWarning] = useState(false);
+  const phoneDetectedCountRef = useRef(0);
 
   const [infractions, setInfractions] = useState<Infraction[]>([
     { timestamp: "14:02:45", code: "ERR_CTX_SW", name: "Context Switch", details: "-50 XP Applied" },
@@ -174,17 +181,55 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       form.append("session_id", "desktop-session");
       form.append("include_debug", "false");
 
+      let data: any = null;
       try {
-        const res = await fetch(`${API_BASE}/check-focus`, { method: "POST", body: form });
-        if (!res.ok) return;
-        const data = await res.json();
+        // Try the remote/cloud server first
+        const remoteBase = "https://cv.prodo.live";
+        const res = await fetch(`${remoteBase}/check-focus`, { method: "POST", body: form });
+        if (res.ok) {
+          data = await res.json();
+        } else {
+          throw new Error("Remote server not ok");
+        }
+      } catch (e) {
+        // Fallback to local server
+        try {
+          const res = await fetch(`${API_BASE}/check-focus`, { method: "POST", body: form });
+          if (res.ok) {
+            data = await res.json();
+          }
+        } catch (localErr) {
+          console.error("Local fallback also failed:", localErr);
+        }
+      }
 
+      if (data) {
         // ONLY update the sys feed preview when the backend successfully responds
         setLatestFrame(dataUrl);
 
         const status: "FOCUSED" | "DISTRACTED" | "UNCERTAIN" = data.status ?? "UNCERTAIN";
         const focusScore: number  = data.rolling_focus_score ?? 0;
         const facePresence: number = data.signals?.face_presence ?? 0;
+        const phoneDetected: boolean = data.phone === true;
+
+        // Track consecutive phone detection frames
+        if (phoneDetected) {
+          phoneDetectedCountRef.current += 1;
+          if (phoneDetectedCountRef.current >= 3 && !phoneWarning) {
+            setPhoneWarning(true);
+            // Apply 3x heavy penalty immediately
+            const penalty = basePenaltyRef.current * 3;
+            setXp(prevXp => prevXp - penalty);
+            setMultiplier(1.0);
+            setInfractions(prevInf => [
+              { timestamp: getTimestamp(), code: "ERR_PHONE_DET", name: "Phone Detected", details: `-${penalty} XP Applied` },
+              ...prevInf
+            ]);
+            appendLog("ERROR", "ERR_PHONE", `Phone detected for 3+ consecutive frames. Heavy penalty applied (-${penalty} XP).`);
+          }
+        } else {
+          phoneDetectedCountRef.current = 0;
+        }
 
         setTrackingStatus(status);
         setNetLink(Math.round(focusScore * 100));
@@ -195,8 +240,7 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         } else if (status === "FOCUSED") {
           setThreatSeconds(graceDurationRef.current);
         }
-
-      } catch {
+      } else {
         setNetLink(0);
         setTrackingStatus("UNCERTAIN");
       }
@@ -302,6 +346,12 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       cvCanvasRef.current = null;
     };
   }, [isTracking, isCalibrating, cameraDevice, isAuthenticated]);
+
+  // Dismiss phone warning overlay
+  const dismissPhoneWarning = () => {
+    setPhoneWarning(false);
+    phoneDetectedCountRef.current = 0;
+  };
 
   // startTracking
   const startTracking = () => {
@@ -494,8 +544,8 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     import("@tauri-apps/api/core")
       .then(({ invoke }) => {
         invoke("save_allowlist", { 
-          trackingActive, 
-          allowedApps: allowed 
+          tracking_active: trackingActive, 
+          allowed_apps: allowed 
         }).catch(err => {
           console.error("Failed to save allowlist to backend:", err);
         });
@@ -512,7 +562,9 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       sessionTime, latestFrame, isCalibrating, availableDevices, camErr, camLoading, setIsCalibrating,
       isCoopActive, setIsCoopActive, isAuthenticated, setIsAuthenticated,
       startTracking, stopTracking, purchaseApp, purchaseBreakTime, breakTimeRemaining,
-      setGazeTolerance, setGraceDuration, setBasePenalty, setCameraDevice, executeCommand
+      setGazeTolerance, setGraceDuration, setBasePenalty, setCameraDevice, executeCommand,
+      // Phone detection
+      phoneWarning, dismissPhoneWarning
     }}>
       {children}
     </FocusContext.Provider>

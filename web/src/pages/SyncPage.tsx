@@ -4,7 +4,7 @@ const SyncPage: React.FC = () => {
   const [reveal, setReveal] = useState(false);
   const [copyFeedback, setCopyFeedback] = useState(false);
 
-  const token = sessionStorage.getItem("prodo_token") || "";
+  const token = localStorage.getItem("prodo_token") || "";
 
   const handleCopy = () => {
     if (!token) return;
