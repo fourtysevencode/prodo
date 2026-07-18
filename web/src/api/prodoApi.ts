@@ -97,10 +97,10 @@ export function apiGetMe() {
   return apiFetch<UserProfile>("/users/me");
 }
 
-export function apiSync(points_earned_since_last_sync: number, current_multiplier: number) {
+export function apiSync(points_earned_since_last_sync: number, current_multiplier: number, is_cam_on?: boolean) {
   return apiFetch<{ success: boolean; points_added: number; multiplier: number }>("/users/sync", {
     method: "POST",
-    body: JSON.stringify({ points_earned_since_last_sync, current_multiplier }),
+    body: JSON.stringify({ points_earned_since_last_sync, current_multiplier, is_cam_on }),
   });
 }
 
@@ -120,8 +120,12 @@ export function apiGetFriendsList() {
 export function apiCreateCoopSession(friendUsername: string) {
   return apiFetch<{ success: boolean; session_id: string }>("/coop/create", {
     method: "POST",
-    body: JSON.stringify({ friend_username: friendUsername }),
+    body: JSON.stringify({ friend_username: friendUsername || null }),
   });
+}
+
+export function apiGetActiveCoopRooms() {
+  return apiFetch<{ success: boolean; rooms: { session_id: string; host_username: string; started_at: number }[] }>("/coop/active");
 }
 
 export function apiJoinCoopSession(sessionId: string) {
