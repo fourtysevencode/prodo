@@ -1,8 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from "react";
 import { apiSync, apiGetMe, apiCheckFocus } from "../api/prodoApi";
 
-const API_BASE = "http://127.0.0.1:8000";
-
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface Infraction {
