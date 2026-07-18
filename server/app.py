@@ -94,9 +94,9 @@ def init_db():
     # Seed dummy users
     cursor.execute("SELECT COUNT(*) FROM users")
     if cursor.fetchone()[0] == 0:
-        cursor.execute("INSERT INTO users (username, email, password_hash, xp, total_lifetime_points, current_balance) VALUES ('A', 'a@prodo.live', '', 2450, 2450, 2450)")
-        cursor.execute("INSERT INTO users (username, email, password_hash, xp, total_lifetime_points, current_balance) VALUES ('B', 'b@prodo.live', '', 1980, 1980, 1980)")
-        cursor.execute("INSERT INTO users (username, email, password_hash, xp, total_lifetime_points, current_balance) VALUES ('C', 'c@prodo.live', '', 1200, 1200, 1200)")
+        cursor.execute("INSERT INTO users (username, email, password_hash, xp, total_lifetime_points, current_balance) VALUES ('a@prodo.live', 'a@prodo.live', '', 2450, 2450, 2450)")
+        cursor.execute("INSERT INTO users (username, email, password_hash, xp, total_lifetime_points, current_balance) VALUES ('b@prodo.live', 'b@prodo.live', '', 1980, 1980, 1980)")
+        cursor.execute("INSERT INTO users (username, email, password_hash, xp, total_lifetime_points, current_balance) VALUES ('c@prodo.live', 'c@prodo.live', '', 1200, 1200, 1200)")
     conn.commit()
     conn.close()
 
@@ -222,12 +222,13 @@ class GoogleLoginRequest(BaseModel):
 class SyncRequest(BaseModel):
     points_earned_since_last_sync: int
     current_multiplier: float
+    is_cam_on: Optional[bool] = False
 
 class FriendRequest(BaseModel):
     username: str
 
 class CoopCreateRequest(BaseModel):
-    friend_username: str
+    friend_username: Optional[str] = None
 
 class CoopJoinRequest(BaseModel):
     session_id: str
@@ -250,7 +251,7 @@ async def register(user: RegisterRequest):
     try:
         cursor.execute(
             "INSERT INTO users (username, email, password_hash, xp, total_lifetime_points, current_balance, auth_token) VALUES (?, ?, ?, 0, 0, 0, ?)",
-            (user.username.strip(), user.email.strip().lower(), pwd_hash, token)
+            (user.email.strip().lower(), user.email.strip().lower(), pwd_hash, token)
         )
         conn.commit()
     except sqlite3.IntegrityError:
@@ -262,8 +263,8 @@ async def register(user: RegisterRequest):
         "success": True,
         "token": token,
         "user": {
-            "username": user.username,
-            "email": user.email
+            "username": user.email.strip().lower(),
+            "email": user.email.strip().lower()
         }
     }
 
@@ -284,9 +285,11 @@ async def login(user: LoginRequest):
         conn.close()
         raise HTTPException(status_code=400, detail="Invalid credentials")
 
-    token = secrets.token_hex(32)
-    cursor.execute("UPDATE users SET auth_token = ? WHERE id = ?", (token, db_user["id"]))
-    conn.commit()
+    token = db_user["auth_token"]
+    if not token:
+        token = secrets.token_hex(32)
+        cursor.execute("UPDATE users SET auth_token = ? WHERE id = ?", (token, db_user["id"]))
+        conn.commit()
     conn.close()
 
     return {
@@ -318,11 +321,8 @@ async def google_login(payload: GoogleLoginRequest):
     cursor.execute("SELECT * FROM users WHERE email = ? OR google_id = ?", (email, google_id))
     db_user = cursor.fetchone()
     
-    preferred_username = name.replace(" ", "").strip()
-    if not preferred_username:
-        preferred_username = email.split("@")[0]
-
-    token = secrets.token_hex(32)
+    preferred_username = email
+    token = db_user["auth_token"] if db_user and db_user["auth_token"] else secrets.token_hex(32)
 
     if not db_user:
         # Create new user
@@ -351,14 +351,13 @@ async def google_login(payload: GoogleLoginRequest):
             update_fields.append("google_id = ?")
             params.append(google_id)
             
-        if db_user["username"] in ("A", "B", "C", "demo") or not db_user["google_id"]:
-            try:
-                cursor.execute("UPDATE users SET username = ? WHERE id = ?", (preferred_username, db_user["id"]))
-                conn.commit()
-            except sqlite3.IntegrityError:
-                preferred_username = f"{preferred_username}{int(time.time()) % 1000}"
-                cursor.execute("UPDATE users SET username = ? WHERE id = ?", (preferred_username, db_user["id"]))
-                conn.commit()
+        try:
+            cursor.execute("UPDATE users SET username = ? WHERE id = ?", (preferred_username, db_user["id"]))
+            conn.commit()
+        except sqlite3.IntegrityError:
+            preferred_username = f"{preferred_username}{int(time.time()) % 1000}"
+            cursor.execute("UPDATE users SET username = ? WHERE id = ?", (preferred_username, db_user["id"]))
+            conn.commit()
         
         params.append(db_user["id"])
         cursor.execute(
@@ -405,8 +404,8 @@ async def sync(data: SyncRequest, authorization: Optional[str] = Header(None)):
     """, (user["id"], user["id"]))
     in_coop = cursor.fetchone()[0] > 0
 
-    # Boost factors: Co-Op grants 2.5x points boost
-    multiplier_boost = 2.5 if in_coop else 1.0
+    # Boost factors: Co-Op + Cam active grants 5.0x points boost
+    multiplier_boost = 5.0 if (in_coop and data.is_cam_on) else 1.0
     added_points = int(data.points_earned_since_last_sync * multiplier_boost)
 
     new_xp = user["xp"] + added_points
@@ -513,21 +512,25 @@ async def create_coop(req: CoopCreateRequest, authorization: Optional[str] = Hea
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
     
-    cursor.execute("SELECT * FROM users WHERE username = ?", (req.friend_username.strip(),))
-    friend = cursor.fetchone()
-    if not friend:
-        conn.close()
-        raise HTTPException(status_code=404, detail="Friend username not found")
+    friend_id = None
+    if req.friend_username:
+        cursor.execute("SELECT * FROM users WHERE username = ?", (req.friend_username.strip(),))
+        friend = cursor.fetchone()
+        if not friend:
+            conn.close()
+            raise HTTPException(status_code=404, detail="Friend username not found")
+        friend_id = friend["id"]
         
     session_id = f"coop-{int(time.time())}-{user['id']}"
     
-    # Clear any old active session
+    # Clear any old active session for host
     cursor.execute("UPDATE coop_sessions SET is_active = 0 WHERE host_user_id = ? OR friend_user_id = ?", (user["id"], user["id"]))
-    cursor.execute("UPDATE coop_sessions SET is_active = 0 WHERE host_user_id = ? OR friend_user_id = ?", (friend["id"], friend["id"]))
+    if friend_id:
+        cursor.execute("UPDATE coop_sessions SET is_active = 0 WHERE host_user_id = ? OR friend_user_id = ?", (friend_id, friend_id))
     
     cursor.execute(
         "INSERT INTO coop_sessions (session_id, host_user_id, friend_user_id, is_active, started_at) VALUES (?, ?, ?, 1, ?)",
-        (session_id, user["id"], friend["id"], time.time())
+        (session_id, user["id"], friend_id, time.time())
     )
     conn.commit()
     conn.close()
@@ -545,12 +548,39 @@ async def join_coop(req: CoopJoinRequest, authorization: Optional[str] = Header(
         conn.close()
         raise HTTPException(status_code=404, detail="Active Co-Op session not found")
         
-    if session["friend_user_id"] != user["id"]:
+    # Verify friendship
+    cursor.execute("SELECT 1 FROM friends WHERE user_id = ? AND friend_id = ?", (user["id"], session["host_user_id"]))
+    is_friend = cursor.fetchone()
+    if not is_friend and session["host_user_id"] != user["id"]:
         conn.close()
-        raise HTTPException(status_code=403, detail="You are not authorized for this Co-Op session")
+        raise HTTPException(status_code=403, detail="You are not authorized for this Co-Op session (must be friends with the host)")
+        
+    if not session["friend_user_id"]:
+        cursor.execute("UPDATE coop_sessions SET friend_user_id = ? WHERE session_id = ?", (user["id"], req.session_id))
+        conn.commit()
         
     conn.close()
     return {"success": True, "message": "Joined Co-Op focus room"}
+
+@app.get("/coop/active")
+async def get_active_coop_rooms(authorization: Optional[str] = Header(None)):
+    user = get_current_user_by_token(authorization)
+    conn = sqlite3.connect(DB_FILE)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    
+    # Find active rooms hosted by friends (either open or targeting this user)
+    cursor.execute("""
+        SELECT s.session_id, u.username as host_username, s.started_at 
+        FROM coop_sessions s
+        JOIN users u ON s.host_user_id = u.id
+        WHERE s.is_active = 1 
+          AND (s.friend_user_id IS NULL OR s.friend_user_id = ?)
+          AND s.host_user_id IN (SELECT friend_id FROM friends WHERE user_id = ?)
+    """, (user["id"], user["id"]))
+    rooms = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    return {"success": True, "rooms": rooms}
 
 @app.post("/coop/end")
 async def end_coop(req: CoopJoinRequest, authorization: Optional[str] = Header(None)):
