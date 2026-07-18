@@ -97,10 +97,6 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
 
-  const latestFrameRef = useRef<string | null>(null);
-  const camErrRef = useRef<string | null>(null);
-  useEffect(() => { latestFrameRef.current = latestFrame; }, [latestFrame]);
-  useEffect(() => { camErrRef.current = camErr; }, [camErr]);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -127,6 +123,12 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [availableDevices, setAvailableDevices] = useState<MediaDeviceInfo[]>([]);
   const [camErr, setCamErr] = useState<string | null>(null);
   const [camLoading, setCamLoading] = useState(false);
+
+  // Refs that mirror CV state for use inside stale closures (setInterval callbacks)
+  const latestFrameRef = useRef<string | null>(null);
+  const camErrRef = useRef<string | null>(null);
+  useEffect(() => { latestFrameRef.current = latestFrame; }, [latestFrame]);
+  useEffect(() => { camErrRef.current = camErr; }, [camErr]);
 
   // Phone detection state
   const [phoneWarning, setPhoneWarning] = useState(false);
