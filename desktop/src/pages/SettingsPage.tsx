@@ -1,6 +1,8 @@
 import React, { useState } from "react";
+import { useFocus } from "../context/FocusContext";
 
 const SettingsPage: React.FC = () => {
+  const { email } = useFocus();
   const [allowTelemetry, setAllowTelemetry] = useState(true);
   const [offlineMode, setOfflineMode] = useState(false);
   const [raidNotify, setRaidNotify] = useState(true);
@@ -25,7 +27,7 @@ const SettingsPage: React.FC = () => {
               </div>
               <div className="flex-grow w-full">
                 <div className="font-technical-prefix text-[8px] text-outline-variant">LOGGED_IN_AS</div>
-                <div className="font-log-body text-primary font-bold">OPERATOR_01 (ivan@prodo.live)</div>
+                <div className="font-log-body text-primary font-bold">{email || "OPERATOR_01 (ivan@prodo.live)"}</div>
                 <div className="font-technical-prefix text-[10px] text-emerald mt-1">✓ AUTHORITY LEVEL: HIGH_STAKES_ADMIN</div>
               </div>
               <button className="px-4 py-2 border border-outline-variant text-primary font-technical-prefix text-[10px] uppercase hover:bg-surface-container-high transition-all font-bold">

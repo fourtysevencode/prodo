@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { apiGetGlobalLeaderboard, apiGetFriendsLeaderboard } from "../api/prodoApi";
 import type { LeaderboardEntry } from "../api/prodoApi";
+import { useFocus } from "../context/FocusContext";
 
 const MEDALS = ["🥇", "🥈", "🥉"];
 
@@ -50,6 +51,7 @@ const RankRow: React.FC<{ entry: LeaderboardEntry; rank: number; highlight?: boo
 };
 
 const LeaderboardPage: React.FC = () => {
+  const { username } = useFocus();
   const [tab, setTab] = useState<"global" | "friends">("global");
   const [globalData, setGlobalData] = useState<LeaderboardEntry[]>([]);
   const [friendsData, setFriendsData] = useState<LeaderboardEntry[]>([]);
@@ -57,7 +59,7 @@ const LeaderboardPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [lastRefreshed, setLastRefreshed] = useState<string>("");
 
-  const currentUser = "ivan"; // Would come from auth context in full implementation
+  const currentUser = username || "";
 
   const fetchData = async () => {
     setLoading(true);
