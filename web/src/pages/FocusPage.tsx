@@ -41,9 +41,9 @@ const FocusPage: React.FC = () => {
   const activeBlocksCount = Math.ceil(threatPercent / 10);
 
   return (
-    <div className="flex-grow flex flex-col lg:flex-row gap-6 p-6 h-full overflow-hidden select-none">
+    <div className="flex-grow flex flex-col lg:flex-row gap-6 p-4 lg:p-6 h-auto lg:h-full overflow-y-auto lg:overflow-hidden select-none">
       {/* Center Combat Hero Panel */}
-      <section className="flex-1 flex flex-col h-full gap-6 overflow-hidden">
+      <section className="flex-1 flex flex-col h-auto lg:h-full gap-6 overflow-visible lg:overflow-hidden">
         {/* Top Stats Header */}
         <div className="flex gap-6 h-20 flex-shrink-0">
           <div className="flex-1 bg-surface-container-lowest border border-outline-variant p-3 flex flex-col justify-center">
@@ -132,7 +132,7 @@ const FocusPage: React.FC = () => {
       </section>
 
       {/* Right Stakes Panel */}
-      <section className="w-full lg:w-[320px] flex flex-col gap-6 h-full flex-shrink-0 overflow-hidden">
+      <section className="w-full lg:w-[320px] flex flex-col gap-6 h-auto lg:h-full flex-shrink-0 overflow-visible lg:overflow-hidden">
         {/* Penalty Log */}
         <div className="flex-1 flex flex-col min-h-[180px] overflow-hidden">
           <div className="font-technical-prefix text-technical-prefix text-outline-variant uppercase mb-3">PENALTY_LOG</div>

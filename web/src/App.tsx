@@ -1,4 +1,4 @@
-import { HashRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { HashRouter as Router, Routes, Route } from "react-router-dom";
 import { FocusProvider } from "./context/FocusContext";
 import Layout from "./components/Layout";
 import FocusPage from "./pages/FocusPage";
@@ -12,14 +12,16 @@ import HelpPage from "./pages/HelpPage";
 import NotFoundPage from "./pages/NotFoundPage";
 import FriendsPage from "./pages/FriendsPage";
 import PunishmentsPage from "./pages/PunishmentsPage";
+import LandingPage from "./pages/LandingPage";
+import SyncPage from "./pages/SyncPage";
 
 function App() {
   return (
     <FocusProvider>
       <Router>
         <Routes>
-          {/* Default Gateway redirects to /login */}
-          <Route path="/" element={<Navigate to="/login" replace />} />
+          {/* Default landing page */}
+          <Route path="/" element={<LandingPage />} />
           
           {/* Standalone Authentication Screen */}
           <Route path="/login" element={<LoginPage />} />
@@ -30,6 +32,7 @@ function App() {
           <Route path="/logs" element={<Layout><LogsPage /></Layout>} />
           <Route path="/leaderboard" element={<Layout><LeaderboardPage /></Layout>} />
           <Route path="/vault" element={<Layout><VaultPage /></Layout>} />
+          <Route path="/sync" element={<Layout><SyncPage /></Layout>} />
           <Route path="/friends" element={<Layout><FriendsPage /></Layout>} />
           <Route path="/config" element={<Layout><ConfigPage /></Layout>} />
           <Route path="/settings" element={<Layout><SettingsPage /></Layout>} />

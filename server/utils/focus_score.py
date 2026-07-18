@@ -108,6 +108,25 @@ def calculate_focus_score(
     if image.ndim != 3 or image.shape[2] < 3:
         raise ValueError("frame must be a color image shaped like (height, width, channels)")
 
+    # Phone detection check
+    phone_detected = False
+    try:
+        phone_detected = _run_phone_detection(image)
+    except Exception as e:
+        print(f"Phone detection failed: {e}")
+
+    if phone_detected:
+        return _build_payload(
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            rolling_scores,
+            cfg,
+            debug={"backend": "onnx-yolo", "phone_detected": True} if include_debug else None,
+            phone_detected=True
+        )
+
     if face_mesh_module is None:
         return _calculate_focus_score_with_opencv(
             image,
@@ -311,7 +330,26 @@ def _build_payload(
     rolling_scores: Optional[MutableSequence[float]],
     config: FocusScoreConfig,
     debug: Optional[Dict[str, Any]] = None,
+    phone_detected: bool = False,
 ) -> Dict[str, Any]:
+    if phone_detected:
+        signals = {
+            "face_presence": 0.0,
+            "head_pose": 0.0,
+            "gaze": 0.0,
+            "eyes_open": 0.0,
+        }
+        payload = {
+            "status": "DISTRACTED",
+            "focus_score": 0.0,
+            "rolling_focus_score": 0.0,
+            "signals": signals,
+        }
+        if debug is not None:
+            debug["phone_detected"] = True
+            payload["debug"] = debug
+        return payload
+
     signals = {
         "face_presence": round(_clamp(face_presence), 4),
         "head_pose": round(_clamp(head_pose), 4),
@@ -568,3 +606,51 @@ def _distance(point_a: Any, point_b: Any) -> float:
 
 def _clamp(value: float, low: float = 0.0, high: float = 1.0) -> float:
     return max(low, min(high, float(value)))
+
+
+_ONNX_SESSION = None
+
+def _run_phone_detection(image: Any) -> bool:
+    global _ONNX_SESSION
+    if _ONNX_SESSION is None:
+        import onnxruntime
+        import os
+        model_paths = [
+            "model/model.onnx",
+            "../model/model.onnx",
+            "/code/model/model.onnx",
+            "/root/prodo/model/model.onnx"
+        ]
+        model_path = None
+        for p in model_paths:
+            if os.path.exists(p):
+                model_path = p
+                break
+        
+        if not model_path:
+            return False
+            
+        _ONNX_SESSION = onnxruntime.InferenceSession(
+            model_path, 
+            providers=["CPUExecutionProvider"]
+        )
+
+    import cv2
+    import numpy as np
+
+    # YOLOv8 input is 640x640 RGB
+    img_resized = cv2.resize(image, (640, 640))
+    img_rgb = cv2.cvtColor(img_resized, cv2.COLOR_BGR2RGB)
+    img_data = img_rgb.astype(np.float32) / 255.0
+    img_data = img_data.transpose(2, 0, 1)
+    img_data = np.expand_dims(img_data, axis=0)
+    
+    outputs = _ONNX_SESSION.run(None, {"images": img_data})[0]
+    # Check max confidence score of Class 1 (phone) across all 8400 boxes
+    class_1_confs = outputs[0, 5, :]
+    max_conf_1 = float(class_1_confs.max())
+    
+    if max_conf_1 > 0.40:
+        return True
+        
+    return False

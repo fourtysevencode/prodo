@@ -26,7 +26,7 @@ const LoginPage: React.FC = () => {
   const handleImportToken = () => {
     const val = tokenInput.trim();
     if (!val) {
-      setErrorMsg("❌ IMPORT_FAIL: Key field cannot be empty.");
+      setErrorMsg("❌ Key field cannot be empty.");
       return;
     }
     sessionStorage.setItem("prodo_token", val);
@@ -36,7 +36,6 @@ const LoginPage: React.FC = () => {
   };
 
   const handleOpenWeb = () => {
-    // Open the primary custom domain prodo.live
     openUrl("https://prodo.live").catch((err: any) => {
       console.error("Failed to open web link:", err);
       window.open("https://prodo.live", "_blank");
@@ -44,60 +43,45 @@ const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="w-screen h-screen bg-[#0A0A0A] text-on-surface flex items-center justify-center font-log-body p-6 select-none">
-      <div className="w-full max-w-sm border-2 border-outline flex flex-col bg-surface-container-lowest shadow-2xl shadow-black/80">
+    <div className="w-screen h-screen bg-[#0A0A0A] text-on-surface flex items-center justify-center p-6 select-none">
+      <div className="w-full max-w-sm flex flex-col items-center gap-8">
         
-        {/* Terminal Header */}
-        <div className="border-b border-outline-variant bg-[#141313] px-4 py-2 flex justify-between items-center text-xs font-technical-prefix text-outline-variant">
-          <span>PRODO_DESKTOP_GATEWAY_V2.0</span>
-          <span className="text-emerald animate-pulse">SECURE_LINK</span>
-        </div>
-
-        {/* Brand Banner */}
-        <div className="p-8 text-center border-b border-outline-variant/30 flex flex-col gap-2">
-          <h1 
-            onClick={handleLogoClick}
-            className="font-value-xl text-[46px] leading-none text-primary uppercase tracking-widest drop-shadow-[0_0_5px_rgba(229,226,225,0.4)] cursor-pointer select-none"
-          >
-            PRODO
-          </h1>
-          <p className="font-technical-prefix text-[8px] text-outline-variant uppercase tracking-widest">
-            Gamified Focus Network
-          </p>
-        </div>
+        {/* Simple Brand */}
+        <h1 
+          onClick={handleLogoClick}
+          className="font-value-xl text-[54px] leading-none text-primary uppercase tracking-widest drop-shadow-[0_0_8px_rgba(229,226,225,0.3)] cursor-pointer select-none"
+        >
+          PRODO
+        </h1>
 
         {/* Action Panel */}
-        <div className="p-8 flex flex-col gap-5 justify-center min-h-[140px]">
+        <div className="w-full flex flex-col gap-4 justify-center items-center">
           {errorMsg && (
             <div className="w-full bg-[#1C0000] border border-crimson p-3 text-xs text-crimson font-technical-prefix uppercase text-center leading-normal">
               {errorMsg}
             </div>
           )}
-
-          <div className="border border-amber/40 bg-amber/5 p-3 text-[9px] font-technical-prefix text-amber uppercase leading-normal text-center">
-            Google OAuth restrictions apply. Click below to sign in on the web client, copy your authentication key, and sync it locally:
-          </div>
           
           <button
             type="button"
             onClick={handleOpenWeb}
-            className="w-full py-2.5 bg-amber text-background font-technical-prefix text-[10px] font-bold uppercase hover:bg-amber-400 btn-tactical transition-colors"
+            className="w-full py-3 bg-amber text-background font-technical-prefix text-xs font-bold uppercase hover:bg-amber-400 btn-tactical transition-colors"
           >
-            Open Web Authentication
+            Sign in with Google (Web)
           </button>
 
-          <div className="flex gap-2 mt-1">
+          <div className="flex gap-2 w-full mt-2">
             <input
               type="text"
-              placeholder="PASTE WEB KEY..."
+              placeholder="Paste Web Key..."
               value={tokenInput}
               onChange={(e) => setTokenInput(e.target.value)}
-              className="flex-grow bg-background border border-outline-variant text-on-surface px-3 py-1.5 font-technical-prefix text-xs outline-none focus:border-amber"
+              className="flex-grow bg-background border border-outline-variant text-on-surface px-3 py-2 font-technical-prefix text-xs outline-none focus:border-amber"
             />
             <button
               type="button"
               onClick={handleImportToken}
-              className="px-4 py-1.5 bg-emerald text-background font-technical-prefix text-[10px] font-bold uppercase hover:bg-green-400 transition-colors"
+              className="px-4 py-2 bg-emerald text-background font-technical-prefix text-xs font-bold uppercase hover:bg-green-400 transition-colors"
             >
               Sync
             </button>
@@ -106,12 +90,11 @@ const LoginPage: React.FC = () => {
 
         {/* Dynamic API Base Override */}
         {showApiConfig && (
-          <div className="px-6 pb-6 border-t border-outline-variant/30 pt-4 flex flex-col gap-1.5 bg-background/50">
+          <div className="w-full border border-outline-variant bg-background/50 p-4 flex flex-col gap-2">
             <label className="font-technical-prefix text-[8px] text-outline-variant tracking-wider uppercase">
-              Neural Net Gateway (API Endpoint)
+              API Endpoint
             </label>
             <div className="flex border border-outline-variant bg-background items-center px-3 h-8">
-              <span className="font-technical-prefix text-[8px] text-outline-variant mr-2">API&gt;</span>
               <input
                 type="text"
                 value={apiEndpoint}
@@ -125,12 +108,6 @@ const LoginPage: React.FC = () => {
             </div>
           </div>
         )}
-
-        {/* Footer info */}
-        <div className="border-t border-surface-variant p-4 bg-[#0E0E0E] text-center font-technical-prefix text-[8px] text-outline-variant flex flex-col gap-1">
-          <div>SECURE SYSTEM SIGN-IN PROTOCOL</div>
-          <div>C:\SYSTEM\PRODO&gt; <span className="blink-cursor"></span></div>
-        </div>
 
       </div>
     </div>

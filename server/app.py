@@ -10,6 +10,7 @@ import json
 import os
 import time
 import urllib.request
+import secrets
 from typing import Any, Dict, List, Optional
 
 from utils.focus_score import calculate_focus_score
@@ -59,9 +60,15 @@ def init_db():
         xp INTEGER DEFAULT 0,
         current_multiplier REAL DEFAULT 1.0,
         total_lifetime_points INTEGER DEFAULT 0,
-        current_balance INTEGER DEFAULT 0
+        current_balance INTEGER DEFAULT 0,
+        auth_token TEXT
     )
     """)
+    try:
+        cursor.execute("ALTER TABLE users ADD COLUMN auth_token TEXT")
+        conn.commit()
+    except sqlite3.OperationalError:
+        pass
     # Friends table
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS friends (
@@ -103,11 +110,10 @@ def get_current_user_by_token(auth_header: Optional[str]) -> Dict[str, Any]:
         raise HTTPException(status_code=401, detail="Missing or invalid authentication token")
     token = auth_header.replace("Bearer ", "").strip()
     
-    # In this serverless-style mock setup, token is the user's email
     conn = sqlite3.connect(DB_FILE)
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
-    cursor.execute("SELECT * FROM users WHERE email = ?", (token,))
+    cursor.execute("SELECT * FROM users WHERE auth_token = ?", (token,))
     user = cursor.fetchone()
     conn.close()
     if not user:
@@ -238,10 +244,11 @@ async def register(user: RegisterRequest):
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
     pwd_hash = hash_password(user.password)
+    token = secrets.token_hex(32)
     try:
         cursor.execute(
-            "INSERT INTO users (username, email, password_hash, xp, total_lifetime_points, current_balance) VALUES (?, ?, ?, 0, 0, 0)",
-            (user.username.strip(), user.email.strip().lower(), pwd_hash)
+            "INSERT INTO users (username, email, password_hash, xp, total_lifetime_points, current_balance, auth_token) VALUES (?, ?, ?, 0, 0, 0, ?)",
+            (user.username.strip(), user.email.strip().lower(), pwd_hash, token)
         )
         conn.commit()
     except sqlite3.IntegrityError:
@@ -251,7 +258,7 @@ async def register(user: RegisterRequest):
 
     return {
         "success": True,
-        "token": user.email.strip().lower(),
+        "token": token,
         "user": {
             "username": user.username,
             "email": user.email
@@ -265,18 +272,24 @@ async def login(user: LoginRequest):
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM users WHERE email = ?", (user.email.strip().lower(),))
     db_user = cursor.fetchone()
-    conn.close()
 
     if not db_user:
+        conn.close()
         raise HTTPException(status_code=400, detail="Invalid credentials")
     
     pwd_hash = hash_password(user.password)
     if db_user["password_hash"] != pwd_hash:
+        conn.close()
         raise HTTPException(status_code=400, detail="Invalid credentials")
+
+    token = secrets.token_hex(32)
+    cursor.execute("UPDATE users SET auth_token = ? WHERE id = ?", (token, db_user["id"]))
+    conn.commit()
+    conn.close()
 
     return {
         "success": True,
-        "token": db_user["email"],
+        "token": token,
         "user": {
             "username": db_user["username"],
             "email": db_user["email"]
@@ -303,30 +316,62 @@ async def google_login(payload: GoogleLoginRequest):
     cursor.execute("SELECT * FROM users WHERE email = ? OR google_id = ?", (email, google_id))
     db_user = cursor.fetchone()
     
+    preferred_username = name.replace(" ", "").strip()
+    if not preferred_username:
+        preferred_username = email.split("@")[0]
+
+    token = secrets.token_hex(32)
+
     if not db_user:
-        # Create new user, auto generating username if duplicate
-        username = name.replace(" ", "").lower()
+        # Create new user
+        username = preferred_username
         try:
             cursor.execute(
-                "INSERT INTO users (username, email, google_id, xp, total_lifetime_points, current_balance) VALUES (?, ?, ?, 0, 0, 0)",
-                (username, email, google_id)
+                "INSERT INTO users (username, email, google_id, xp, total_lifetime_points, current_balance, auth_token) VALUES (?, ?, ?, 0, 0, 0, ?)",
+                (username, email, google_id, token)
             )
             conn.commit()
         except sqlite3.IntegrityError:
-            # Username collides, append timestamps
             username = f"{username}{int(time.time()) % 1000}"
             cursor.execute(
-                "INSERT INTO users (username, email, google_id, xp, total_lifetime_points, current_balance) VALUES (?, ?, ?, 0, 0, 0)",
-                (username, email, google_id)
+                "INSERT INTO users (username, email, google_id, xp, total_lifetime_points, current_balance, auth_token) VALUES (?, ?, ?, 0, 0, 0, ?)",
+                (username, email, google_id, token)
             )
             conn.commit()
         cursor.execute("SELECT * FROM users WHERE email = ?", (email,))
+        db_user = cursor.fetchone()
+    else:
+        # Update existing
+        update_fields = ["auth_token = ?"]
+        params = [token]
+        
+        if not db_user["google_id"]:
+            update_fields.append("google_id = ?")
+            params.append(google_id)
+            
+        if db_user["username"] in ("A", "B", "C", "demo") or not db_user["google_id"]:
+            try:
+                cursor.execute("UPDATE users SET username = ? WHERE id = ?", (preferred_username, db_user["id"]))
+                conn.commit()
+            except sqlite3.IntegrityError:
+                preferred_username = f"{preferred_username}{int(time.time()) % 1000}"
+                cursor.execute("UPDATE users SET username = ? WHERE id = ?", (preferred_username, db_user["id"]))
+                conn.commit()
+        
+        params.append(db_user["id"])
+        cursor.execute(
+            f"UPDATE users SET {', '.join(update_fields)} WHERE id = ?",
+            tuple(params)
+        )
+        conn.commit()
+        
+        cursor.execute("SELECT * FROM users WHERE id = ?", (db_user["id"],))
         db_user = cursor.fetchone()
 
     conn.close()
     return {
         "success": True,
-        "token": db_user["email"],
+        "token": token,
         "user": {
             "username": db_user["username"],
             "email": db_user["email"]

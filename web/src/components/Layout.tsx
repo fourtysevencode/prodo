@@ -27,8 +27,8 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
     { path: "/leaderboard", label: "RANKINGS", icon: "leaderboard" },
     { path: "/vault", label: "VAULT", icon: "lock" },
     { path: "/friends", label: "FRIENDS", icon: "group" },
+    { path: "/sync", label: "SYNC KEY", icon: "vpn_key" },
     { path: "/config", label: "CONFIG", icon: "settings_input_component" },
-    { path: "/help", label: "HELP", icon: "help" },
     { path: "/settings", label: "SETTINGS", icon: "settings" },
   ];
 
@@ -51,25 +51,6 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
           </nav>
         </div>
         <div className="flex items-center gap-2">
-          <button 
-            onClick={() => {
-              const token = sessionStorage.getItem("prodo_token");
-              if (token) {
-                try {
-                  navigator.clipboard.writeText(token);
-                  alert("✓ Desktop session token copied to clipboard! Paste it inside the Tauri app to sync.");
-                } catch (e) {
-                  window.prompt("Copy your Desktop Auth Key below:", token);
-                }
-              } else {
-                alert("❌ No active session found. Please log in first.");
-              }
-            }}
-            className="text-amber hover:text-amber-400 transition-colors p-1 flex items-center font-technical-prefix text-[9px] border border-amber/40 px-2"
-            title="Copy Desktop Auth Key"
-          >
-            COPY_DESKTOP_KEY
-          </button>
           <Link to="/settings" className="text-on-surface-variant hover:text-primary transition-colors p-1 flex items-center">
             <span className="material-symbols-outlined text-[18px]">settings</span>
           </Link>
