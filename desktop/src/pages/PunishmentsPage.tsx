@@ -3,7 +3,7 @@ import { useFocus } from "../context/FocusContext";
 import { useNavigate } from "react-router-dom";
 
 const PunishmentsPage: React.FC = () => {
-  const { xp, executeCommand } = useFocus();
+  const { xp, executeCommand, setIsAuthenticated, stopTracking } = useFocus();
   const navigate = useNavigate();
   const [activeTask, setActiveTask] = useState<"math" | "typing" | null>(null);
   
@@ -190,6 +190,22 @@ const PunishmentsPage: React.FC = () => {
               </div>
             </form>
           )}
+
+          <div className="border-t border-surface-variant pt-4 mt-2 flex justify-end">
+            <button
+              type="button"
+              onClick={() => {
+                localStorage.removeItem("prodo_token");
+                sessionStorage.removeItem("prodo_token");
+                setIsAuthenticated(false);
+                stopTracking();
+                navigate("/login");
+              }}
+              className="px-4 py-2 border border-crimson/50 hover:bg-crimson/10 font-technical-prefix text-[10px] uppercase text-crimson font-bold transition-all animate-pulse"
+            >
+              Logout / Reset Session
+            </button>
+          </div>
         </div>
       </div>
     </div>

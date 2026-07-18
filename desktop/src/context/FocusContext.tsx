@@ -123,6 +123,7 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         .then(profile => {
           setUsername(profile.username);
           setEmail(profile.email);
+          setXp(profile.current_balance);
         })
         .catch(err => {
           console.error("Failed to load operator profile:", err);
@@ -223,6 +224,7 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             const penalty = basePenaltyRef.current * 3;
             setXp(prevXp => prevXp - penalty);
             setMultiplier(1.0);
+            apiSync(-penalty, 1.0).catch(() => {});
             setInfractions(prevInf => [
               { timestamp: getTimestamp(), code: "ERR_PHONE_DET", name: "Phone Detected", details: `-${penalty} XP Applied` },
               ...prevInf
@@ -423,6 +425,7 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         const val = parseInt(parts[1]);
         if (isNaN(val)) return "ERR: addxp requires numeric value.";
         setXp(prev => prev + val);
+        apiSync(val, multiplierRef.current).catch(() => {});
         return `Added ${val} focus XP to core node bank.`;
       }
       case "clear":
@@ -519,6 +522,9 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               const points = Number(penaltyPoints || 0);
               if (points < 0) {
                 setXp(prev => prev + points);
+                if (isAuthenticated) {
+                  apiSync(points, multiplierRef.current).catch(() => {});
+                }
                 setInfractions(prevInf => [
                   { 
                     timestamp: getTimestamp(), 
