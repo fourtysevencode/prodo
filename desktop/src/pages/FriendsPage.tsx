@@ -6,15 +6,18 @@ import {
   apiCreateCoopSession, 
   apiJoinCoopSession, 
   apiEndCoopSession,
+  apiGetActiveCoopRooms,
   LeaderboardEntry 
 } from "../api/prodoApi";
+import { useFocus } from "../context/FocusContext";
 
 const FriendsPage: React.FC = () => {
+  const { isCoopActive, setIsCoopActive } = useFocus();
   const [friendUsername, setFriendUsername] = useState("");
   const [friendsList, setFriendsList] = useState<{ username: string; points: number }[]>([]);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [activeRooms, setActiveRooms] = useState<{ session_id: string; host_username: string; started_at: number }[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
-  const [isCoopActive, setIsCoopActive] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
@@ -25,6 +28,9 @@ const FriendsPage: React.FC = () => {
 
       const lb = await apiGetFriendsLeaderboard();
       if (lb.success) setLeaderboard(lb.leaderboard);
+
+      const ar = await apiGetActiveCoopRooms();
+      if (ar.success) setActiveRooms(ar.rooms);
     } catch (e) {
       console.error("Error loading social data:", e);
     }
@@ -56,6 +62,22 @@ const FriendsPage: React.FC = () => {
     }
   };
 
+  const handleCreateGeneralCoop = async () => {
+    setMsg(null);
+    setErr(null);
+    try {
+      const res = await apiCreateCoopSession("");
+      if (res.success) {
+        setActiveSessionId(res.session_id);
+        setIsCoopActive(true);
+        setMsg(`🚀 Co-Op Focus room created! ID: ${res.session_id}`);
+        fetchSocialData();
+      }
+    } catch (e: any) {
+      setErr(`❌ Co-Op room creation failed: ${e.message}`);
+    }
+  };
+
   const handleStartCoop = async (username: string) => {
     setMsg(null);
     setErr(null);
@@ -65,6 +87,7 @@ const FriendsPage: React.FC = () => {
         setActiveSessionId(res.session_id);
         setIsCoopActive(true);
         setMsg(`🚀 Co-Op Focus session initialized! ID: ${res.session_id}`);
+        fetchSocialData();
       }
     } catch (e: any) {
       setErr(`❌ Co-Op start failed: ${e.message}`);
@@ -82,6 +105,7 @@ const FriendsPage: React.FC = () => {
         setActiveSessionId(sId);
         setIsCoopActive(true);
         setMsg(`✓ Successfully joined Co-Op Focus Room: ${sId}`);
+        fetchSocialData();
       }
     } catch (e: any) {
       setErr(`❌ Co-Op join failed: ${e.message}`);
@@ -102,13 +126,13 @@ const FriendsPage: React.FC = () => {
         <div className="border border-outline-variant bg-surface-container-lowest p-5 flex flex-col gap-4">
           <div>
             <div className="font-technical-prefix text-technical-prefix text-outline-variant uppercase mb-1">LINK_NEW_OPERATOR</div>
-            <h3 className="font-log-body font-bold text-sm text-primary uppercase">ADD FRIEND BY ID</h3>
+            <h3 className="font-log-body font-bold text-sm text-primary uppercase">ADD FRIEND BY EMAIL</h3>
           </div>
           
           <form onSubmit={handleAddFriend} className="flex gap-2">
             <input
               type="text"
-              placeholder="ENTER USERNAME..."
+              placeholder="ENTER EMAIL..."
               value={friendUsername}
               onChange={(e) => setFriendUsername(e.target.value)}
               className="flex-grow bg-background border border-outline-variant text-on-surface px-3 py-2 font-technical-prefix text-xs outline-none focus:border-primary"
@@ -123,6 +147,56 @@ const FriendsPage: React.FC = () => {
 
           {msg && <div className="text-emerald font-technical-prefix text-[10px] uppercase">{msg}</div>}
           {err && <div className="text-crimson font-technical-prefix text-[10px] uppercase">{err}</div>}
+        </div>
+
+        {/* Discoverable Rooms */}
+        <div className="border border-outline-variant bg-surface-container-lowest p-5 flex flex-col gap-4">
+          <div>
+            <div className="font-technical-prefix text-technical-prefix text-outline-variant uppercase mb-1">AVAILABLE_COOP_LOBBIES</div>
+            <h3 className="font-log-body font-bold text-sm text-primary uppercase">JOIN FRIENDS' ROOMS</h3>
+          </div>
+
+          <div className="flex flex-col gap-3">
+            {activeRooms.length === 0 ? (
+              <div className="text-outline-variant font-technical-prefix text-xs italic">
+                No active friend rooms detected.
+              </div>
+            ) : (
+              activeRooms.map((room) => (
+                <div 
+                  key={room.session_id}
+                  className="flex items-center justify-between p-3 border border-surface-variant bg-background"
+                >
+                  <div>
+                    <div className="font-log-body font-bold text-primary">HOST: {room.host_username}</div>
+                    <div className="font-technical-prefix text-[9px] text-outline-variant">
+                      ROOM ID: {room.session_id}
+                    </div>
+                  </div>
+                  
+                  <button
+                    onClick={async () => {
+                      setMsg(null);
+                      setErr(null);
+                      try {
+                        const res = await apiJoinCoopSession(room.session_id);
+                        if (res.success) {
+                          setActiveSessionId(room.session_id);
+                          setIsCoopActive(true);
+                          setMsg(`✓ Joined room hosted by ${room.host_username}`);
+                        }
+                      } catch (err: any) {
+                        setErr(`❌ Join failed: ${err.message}`);
+                      }
+                    }}
+                    className="px-3 py-1 bg-emerald text-background hover:bg-green-400 font-technical-prefix text-[9px] uppercase font-bold"
+                  >
+                    Join
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
         </div>
 
         {/* Friends List */}
@@ -168,11 +242,17 @@ const FriendsPage: React.FC = () => {
             <div className="flex justify-between items-center">
               <span className="font-technical-prefix text-[10px] text-outline-variant">CO-OP MULTIPLIER BOOST</span>
               <span className={`font-technical-prefix text-xs ${isCoopActive ? "text-emerald animate-pulse" : "text-outline-variant"}`}>
-                {isCoopActive ? "ACTIVE: 2.5X BOOST" : "STANDBY"}
+                {isCoopActive ? "ACTIVE: 5.0X BOOST" : "STANDBY"}
               </span>
             </div>
             
             <div className="flex gap-2">
+              <button
+                onClick={handleCreateGeneralCoop}
+                className="flex-1 py-2 bg-amber text-background font-technical-prefix text-[10px] uppercase font-bold hover:bg-amber-400"
+              >
+                Create Room
+              </button>
               <button
                 onClick={handleJoinCoop}
                 className="flex-1 py-2 border border-outline-variant hover:bg-surface-container-high font-technical-prefix text-[10px] uppercase text-primary"
