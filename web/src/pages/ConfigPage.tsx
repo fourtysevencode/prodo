@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect } from "react";
 import { useFocus } from "../context/FocusContext";
 
 const ConfigPage: React.FC = () => {
@@ -7,46 +7,28 @@ const ConfigPage: React.FC = () => {
     graceDuration,
     basePenalty,
     cameraDevice,
+    latestFrame,
+    availableDevices,
+    camErr,
+    camLoading,
+    setIsCalibrating,
     setGazeTolerance,
     setGraceDuration,
     setBasePenalty,
     setCameraDevice
   } = useFocus();
 
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const [stream, setStream] = useState<MediaStream | null>(null);
-  const [err, setErr] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-
+  // Set calibration state to start camera checking loop
   useEffect(() => {
-    setLoading(true);
-    navigator.mediaDevices.getUserMedia({ video: true })
-      .then(s => {
-        setStream(s);
-        setErr(null);
-        setLoading(false);
-      })
-      .catch(e => {
-        setErr("❌ HARDWARE_ERR: Camera device blocked or occupied.");
-        setLoading(false);
-        console.error(e);
-      });
-
+    setIsCalibrating(true);
     return () => {
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-      }
+      setIsCalibrating(false);
     };
-  }, []);
-
-  useEffect(() => {
-    if (videoRef.current && stream) {
-      videoRef.current.srcObject = stream;
-    }
-  }, [stream]);
+  }, [setIsCalibrating]);
 
   return (
     <div className="flex-grow flex flex-col lg:flex-row gap-6 p-6 h-full overflow-hidden select-none">
+      
       {/* Left panel - Calibration preview */}
       <section className="flex-1 flex flex-col h-full gap-6">
         <div>
@@ -54,32 +36,38 @@ const ConfigPage: React.FC = () => {
           <h1 className="font-value-lg text-[32px] text-primary">CV CALIBRATION</h1>
         </div>
 
-        {/* Video preview container */}
+        {/* Video feed container */}
         <div className="flex-grow bg-surface-container-lowest border border-outline-variant relative flex items-center justify-center overflow-hidden min-h-[300px]">
           <div className="absolute top-4 left-4 font-technical-prefix text-technical-prefix text-outline-variant uppercase z-10">
             [SYS_FEED_PREVIEW]
           </div>
 
-          {loading && (
+          {camLoading && !latestFrame && (
             <div className="flex flex-col items-center gap-3 text-outline-variant z-10">
               <span className="w-5 h-5 border-2 border-outline-variant border-t-amber animate-spin rounded-full"></span>
               <span className="font-technical-prefix text-[10px] uppercase">Connecting hardware node...</span>
             </div>
           )}
 
-          {err ? (
+          {camErr ? (
             <div className="text-center px-6 max-w-md z-10">
               <span className="material-symbols-outlined text-[48px] text-crimson mb-3 block">no_photography</span>
-              <div className="text-crimson font-log-body font-bold text-sm mb-3">{err}</div>
+              <div className="text-crimson font-log-body font-bold text-sm mb-3">{camErr}</div>
             </div>
           ) : (
-            <video
-              ref={videoRef}
-              autoPlay
-              playsInline
-              muted
-              className="absolute inset-0 w-full h-full object-cover grayscale opacity-80"
-            />
+            latestFrame ? (
+              <img
+                src={latestFrame}
+                alt="System Frame Preview"
+                className="absolute inset-0 w-full h-full object-cover grayscale opacity-80"
+              />
+            ) : (
+              !camLoading && (
+                <div className="text-center text-outline-variant font-technical-prefix text-xs z-10">
+                  CAMERA STREAM INITIALIZING...
+                </div>
+              )
+            )
           )}
 
           {/* Grid overlay */}
@@ -90,30 +78,39 @@ const ConfigPage: React.FC = () => {
             <div className="w-1/2 h-1/2 border-dashed border-outline-variant/10"></div>
           </div>
 
-          {/* HUD scanlines */}
-          <div className="absolute inset-0 pointer-events-none bg-scanlines opacity-[0.03] z-20"></div>
-
-          {/* Focus lock reticle */}
-          <div className="absolute w-24 h-24 border border-primary/20 rounded-full flex items-center justify-center pointer-events-none z-20">
-            <div className="w-2 h-2 bg-primary rounded-full animate-ping"></div>
+          {/* Alignment box */}
+          <div className="absolute w-40 h-40 border-2 border-dashed border-amber/30 z-30 pointer-events-none flex items-center justify-center">
+            <div className="w-4 h-4 border-l-2 border-t-2 border-amber"></div>
+            <div className="w-4 h-4 border-r-2 border-t-2 border-amber ml-auto"></div>
+            <div className="w-4 h-4 border-l-2 border-b-2 border-amber mt-auto mr-auto"></div>
+            <div className="w-4 h-4 border-r-2 border-b-2 border-amber mt-auto"></div>
           </div>
         </div>
       </section>
 
-      {/* Right Panel - Configuration Adjustments */}
+      {/* Right Panel - Configuration */}
       <section className="w-full lg:w-[360px] flex flex-col gap-6 h-full flex-shrink-0 overflow-y-auto pr-1">
+        
         {/* Device selector */}
         <div className="border border-outline-variant bg-surface-container-lowest p-5 flex flex-col gap-4">
           <div>
             <div className="font-technical-prefix text-technical-prefix text-outline-variant uppercase mb-1">SELECT_HARDWARE_NODE</div>
             <h3 className="font-log-body font-bold text-sm text-primary uppercase">CAMERA CAPTURE DEV</h3>
           </div>
-          <select 
-            value={cameraDevice} 
+          <select
+            value={cameraDevice}
             onChange={(e) => setCameraDevice(e.target.value)}
             className="w-full bg-background border border-outline-variant text-on-surface px-3 py-2 font-technical-prefix text-xs outline-none focus:border-primary select-custom"
           >
-            <option value="default">Default OS Webcam Node</option>
+            {availableDevices.length === 0 ? (
+              <option value="">No Camera Nodes Detected</option>
+            ) : (
+              availableDevices.map((d) => (
+                <option key={d.deviceId} value={d.deviceId}>
+                  {d.label || `Camera Node (${d.deviceId.substring(0, 5)})`}
+                </option>
+              ))
+            )}
           </select>
         </div>
 
@@ -178,11 +175,12 @@ const ConfigPage: React.FC = () => {
               className="w-full accent-primary bg-surface-container-high h-1 appearance-none cursor-pointer"
             />
             <span className="text-[9px] text-outline-variant leading-relaxed">
-              Points subtracted instantly on focus breach grace expiration.
+              Deduction applied to XP bank when focus breach grace timer expires.
             </span>
           </div>
         </div>
       </section>
+
     </div>
   );
 };

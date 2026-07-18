@@ -28,7 +28,7 @@ const LoginPage: React.FC = () => {
     try {
       const res = await apiGoogleLogin(response.credential);
       if (res.success && res.token) {
-        sessionStorage.setItem("prodo_token", res.token);
+        localStorage.setItem("prodo_token", res.token);
         setIsAuthenticated(true);
         startTracking();
         navigate("/focus");
