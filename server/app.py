@@ -32,6 +32,8 @@ app.add_middleware(
         "https://website-dev.prodo-live.pages.dev",
         "https://prodo.live",
         "http://prodo.live",
+        "https://www.prodo.live",
+        "http://www.prodo.live",
         "https://cv.prodo.live",
         "http://cv.prodo.live",
     ],

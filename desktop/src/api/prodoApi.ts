@@ -10,7 +10,7 @@ export function getApiBaseUrl(): string {
   
   if (typeof window !== "undefined" && window.location) {
     const hn = window.location.hostname;
-    if (hn && (hn === "prodo.live" || hn === "prodo-live.pages.dev")) {
+    if (hn && (hn === "prodo.live" || hn === "www.prodo.live" || hn === "prodo-live.pages.dev")) {
       return "https://cv.prodo.live";
     }
   }
