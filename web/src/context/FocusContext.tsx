@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from "react";
-import { apiSync, apiCheckFocus } from "../api/prodoApi";
+import { apiSync, apiGetMe } from "../api/prodoApi";
+import { getApiBaseUrl } from "../api/prodoApi";
 
 export interface Infraction {
   timestamp: string;
@@ -40,6 +41,8 @@ interface FocusContextType {
   basePenalty: number;
   cameraDevice: string;
   sessionTime: number; // in seconds
+  username: string;
+  email: string;
   isCoopActive: boolean;
   setIsCoopActive: (val: boolean) => void;
   isAuthenticated: boolean;
@@ -91,6 +94,30 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [isCoopActive, setIsCoopActive] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem("prodo_token"));
   const [sessionTime, setSessionTime] = useState(0);
+
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
+
+  const latestFrameRef = useRef<string | null>(null);
+  const camErrRef = useRef<string | null>(null);
+  useEffect(() => { latestFrameRef.current = latestFrame; }, [latestFrame]);
+  useEffect(() => { camErrRef.current = camErr; }, [camErr]);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      apiGetMe()
+        .then(profile => {
+          setUsername(profile.username);
+          setEmail(profile.email);
+        })
+        .catch(err => {
+          console.error("Failed to load operator profile:", err);
+        });
+    } else {
+      setUsername("");
+      setEmail("");
+    }
+  }, [isAuthenticated]);
   
   // Break Time variables
   const [breakTimeRemaining, setBreakTimeRemaining] = useState(0);
@@ -405,21 +432,23 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         // Decr break time
         setBreakTimeRemaining(prev => Math.max(0, prev - 1));
 
+        const isCamOn = !!latestFrameRef.current && !camErrRef.current;
         setMultiplier(prev => {
-          const climb = isCoopActive ? 0.005 : 0.002;
+          const climb = (isCoopActive && isCamOn) ? 0.01 : 0.002;
           const next = parseFloat((prev + climb).toFixed(3));
-          return next > 4.5 ? 4.5 : next;
+          const maxMult = (isCoopActive && isCamOn) ? 8.5 : 4.5;
+          return next > maxMult ? maxMult : next;
         });
 
         // XP accumulation based on multiplier
         setXp(prev => {
           if (trackingStatus !== "FOCUSED" && breakTimeRemaining === 0) return prev;
           const earned = Math.round(1 * multiplierRef.current);
-          const boosted = isCoopActive ? Math.round(earned * 2.5) : earned;
+          const boosted = (isCoopActive && isCamOn) ? Math.round(earned * 5.0) : earned;
           
           syncCounterRef.current += 1;
           if (syncCounterRef.current % 30 === 0) {
-            apiSync(earned * 30, multiplierRef.current).catch(() => {/* non-fatal */});
+            apiSync(earned * 30, multiplierRef.current, isCamOn).catch(() => {/* non-fatal */});
           }
           return prev + boosted;
         });
@@ -474,6 +503,7 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       latestFrame, isCalibrating, availableDevices, camErr, camLoading, setIsCalibrating,
       // Phone detection
       phoneWarning, dismissPhoneWarning,
+      username, email,
     }}>
       {children}
     </FocusContext.Provider>
