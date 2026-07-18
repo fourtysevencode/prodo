@@ -11,7 +11,7 @@ export function getApiBaseUrl(): string {
   if (typeof window !== "undefined" && window.location) {
     const hn = window.location.hostname;
     if (hn && (hn === "prodo.live" || hn === "prodo-live.pages.dev")) {
-      return "http://168.144.191.86:8000";
+      return "https://cv.prodo.live";
     }
   }
   
