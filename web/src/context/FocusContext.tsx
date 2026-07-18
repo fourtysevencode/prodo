@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from "react";
-import { apiSync, apiGetMe } from "../api/prodoApi";
-import { getApiBaseUrl } from "../api/prodoApi";
+import { apiSync, apiGetMe, apiCheckFocus } from "../api/prodoApi";
 
 export interface Infraction {
   timestamp: string;
