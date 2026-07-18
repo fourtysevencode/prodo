@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from "react";
-
-const API_BASE = "http://127.0.0.1:8000";
+import { apiCheckFocus } from "../api/prodoApi";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -176,34 +175,9 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     canvas.toBlob(async (blob) => {
       if (!blob) return;
 
-      const form = new FormData();
-      form.append("frame", blob, "frame.jpg");
-      form.append("session_id", "desktop-session");
-      form.append("include_debug", "false");
-
-      let data: any = null;
       try {
-        // Try the remote/cloud server first
-        const remoteBase = "https://cv.prodo.live";
-        const res = await fetch(`${remoteBase}/check-focus`, { method: "POST", body: form });
-        if (res.ok) {
-          data = await res.json();
-        } else {
-          throw new Error("Remote server not ok");
-        }
-      } catch (e) {
-        // Fallback to local server
-        try {
-          const res = await fetch(`${API_BASE}/check-focus`, { method: "POST", body: form });
-          if (res.ok) {
-            data = await res.json();
-          }
-        } catch (localErr) {
-          console.error("Local fallback also failed:", localErr);
-        }
-      }
+        const data = await apiCheckFocus(blob, "desktop-session", false);
 
-      if (data) {
         // ONLY update the sys feed preview when the backend successfully responds
         setLatestFrame(dataUrl);
 
@@ -240,7 +214,7 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         } else if (status === "FOCUSED") {
           setThreatSeconds(graceDurationRef.current);
         }
-      } else {
+      } catch {
         setNetLink(0);
         setTrackingStatus("UNCERTAIN");
       }

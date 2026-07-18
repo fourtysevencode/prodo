@@ -189,6 +189,7 @@ export interface FocusCheckResult {
   status: "FOCUSED" | "DISTRACTED" | "UNCERTAIN";
   focus_score: number;
   rolling_focus_score: number;
+  phone?: boolean;
   signals: {
     face_presence: number;
     head_pose: number;

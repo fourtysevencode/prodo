@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from "react";
-import { apiSync } from "../api/prodoApi";
-import { getApiBaseUrl } from "../api/prodoApi";
+import { apiSync, apiCheckFocus } from "../api/prodoApi";
 
 export interface Infraction {
   timestamp: string;
@@ -254,15 +253,8 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     canvas.toBlob(async (blob) => {
       if (!blob) return;
 
-      const form = new FormData();
-      form.append("frame", blob, "frame.jpg");
-      form.append("session_id", "web-session");
-      form.append("include_debug", "false");
-
       try {
-        const res = await fetch(`${getApiBaseUrl()}/check-focus`, { method: "POST", body: form });
-        if (!res.ok) return;
-        const data = await res.json();
+        const data = await apiCheckFocus(blob, "web-session", false);
 
         setLatestFrame(dataUrl);
 
