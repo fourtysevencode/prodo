@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useFocus } from "../context/FocusContext";
-import { apiLogin, apiGoogleLogin, getApiBaseUrl, setApiBaseUrl } from "../api/prodoApi";
+import { apiGoogleLogin, getApiBaseUrl, setApiBaseUrl } from "../api/prodoApi";
 
 const LoginPage: React.FC = () => {
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
   const [apiEndpoint, setApiEndpoint] = useState(getApiBaseUrl());
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -21,39 +19,6 @@ const LoginPage: React.FC = () => {
       setClickCount(0);
     } else {
       setClickCount(nextCount);
-    }
-  };
-
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!username.trim() || !password.trim()) {
-      setErrorMsg("❌ AUTH_FAIL: Operator ID and passphrase cannot be empty.");
-      return;
-    }
-    setIsSubmitting(true);
-    setErrorMsg(null);
-    try {
-      const res = await apiLogin(username, password);
-      if (res.success && res.token) {
-        sessionStorage.setItem("prodo_token", res.token);
-        setIsAuthenticated(true);
-        startTracking();
-        navigate("/focus");
-      } else {
-        setErrorMsg("❌ AUTH_DENIED: Server rejected the credentials.");
-      }
-    } catch (err: any) {
-      // Fall back to local demo mode when the API server is offline and user explicitly wants demo
-      if (username.trim().toLowerCase() === "demo") {
-        sessionStorage.setItem("prodo_token", "demo-local-token");
-        setIsAuthenticated(true);
-        startTracking();
-        navigate("/focus");
-      } else {
-        setErrorMsg("❌ CONNECTION_FAIL: Cannot reach secure gateway. For offline testing, enter operator ID 'demo'.");
-      }
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -92,10 +57,10 @@ const LoginPage: React.FC = () => {
           if (btn) {
             (window as any).google.accounts.id.renderButton(
               btn,
-              { theme: "dark", size: "large", width: 380 }
+              { theme: "dark", size: "large", width: 320 }
             );
             
-            // Successfully initialized and rendered: clear loop
+            // Successfully rendered: clear the loop
             if (intervalId) {
               clearInterval(intervalId);
               intervalId = null;
@@ -118,110 +83,48 @@ const LoginPage: React.FC = () => {
 
   return (
     <div className="w-screen h-screen bg-[#0A0A0A] text-on-surface flex items-center justify-center font-log-body p-6 select-none">
-      <div className="w-full max-w-md border-2 border-outline flex flex-col bg-surface-container-lowest">
+      <div className="w-full max-w-sm border-2 border-outline flex flex-col bg-surface-container-lowest shadow-2xl shadow-black/80">
         
         {/* Terminal Header */}
         <div className="border-b border-outline-variant bg-[#141313] px-4 py-2 flex justify-between items-center text-xs font-technical-prefix text-outline-variant">
           <span>PRODO_SECURITY_GATEWAY_V2.0</span>
-          <span className="text-crimson">RESTRICTED_ACCESS</span>
+          <span className="text-emerald animate-pulse">SECURE_LINK</span>
         </div>
 
         {/* Brand Banner */}
-        <div className="p-6 text-center border-b border-surface-variant flex flex-col gap-2">
+        <div className="p-8 text-center border-b border-outline-variant/30 flex flex-col gap-2">
           <h1 
             onClick={handleLogoClick}
-            className="font-value-xl text-[42px] leading-none text-primary uppercase tracking-widest drop-shadow-[0_0_5px_rgba(229,226,225,0.4)] cursor-pointer select-none"
+            className="font-value-xl text-[46px] leading-none text-primary uppercase tracking-widest drop-shadow-[0_0_5px_rgba(229,226,225,0.4)] cursor-pointer select-none"
           >
             PRODO
           </h1>
           <p className="font-technical-prefix text-[8px] text-outline-variant uppercase tracking-widest">
-            Gamified Neural Focus Engine Interface
+            Gamified Focus Network
           </p>
         </div>
 
-        {/* Login form */}
-        <form onSubmit={handleLogin} className="p-6 flex flex-col gap-5 pb-4">
+        {/* Action Panel */}
+        <div className="p-8 flex flex-col gap-6 items-center justify-center min-h-[140px]">
           {errorMsg && (
-            <div className="bg-[#1C0000] border border-crimson p-3 text-xs text-crimson font-technical-prefix uppercase">
+            <div className="w-full bg-[#1C0000] border border-crimson p-3 text-xs text-crimson font-technical-prefix uppercase text-center leading-normal">
               {errorMsg}
             </div>
           )}
 
-          {/* Username Input */}
-          <div className="flex flex-col gap-1.5">
-            <label className="font-technical-prefix text-[10px] text-outline-variant tracking-wider">
-              OPERATOR_ID (EMAIL/USER)
-            </label>
-            <div className="flex border border-outline-variant bg-background items-center px-3 h-10">
-              <span className="font-technical-prefix text-[10px] text-outline-variant mr-2">UID&gt;</span>
-              <input
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="operator@prodo.live"
-                disabled={isSubmitting}
-                className="bg-transparent border-none outline-none text-xs text-primary w-full focus:ring-0 p-0 placeholder-outline-variant"
-              />
+          {isSubmitting ? (
+            <div className="flex flex-col items-center gap-3 py-4">
+              <span className="w-6 h-6 border-2 border-outline-variant border-t-primary animate-spin rounded-full"></span>
+              <span className="font-technical-prefix text-[10px] text-outline-variant tracking-wider uppercase">Authenticating...</span>
             </div>
-          </div>
-
-          {/* Password Input */}
-          <div className="flex flex-col gap-1.5">
-            <label className="font-technical-prefix text-[10px] text-outline-variant tracking-wider">
-              AUTH_PASSPHRASE
-            </label>
-            <div className="flex border border-outline-variant bg-background items-center px-3 h-10">
-              <span className="font-technical-prefix text-[10px] text-outline-variant mr-2">KEY&gt;</span>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                disabled={isSubmitting}
-                className="bg-transparent border-none outline-none text-xs text-primary w-full focus:ring-0 p-0 placeholder-outline-variant"
-              />
-            </div>
-          </div>
-
-          {/* Submit Button */}
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className={`w-full h-11 font-technical-prefix font-bold uppercase transition-all flex items-center justify-center gap-2 btn-tactical ${
-              isSubmitting 
-                ? "bg-surface-container-high border border-outline-variant text-outline cursor-not-allowed" 
-                : "bg-primary text-background hover:bg-white cursor-pointer"
-            }`}
-          >
-            {isSubmitting ? (
-              <>
-                <span className="w-3 h-3 border-2 border-outline-variant border-t-outline animate-spin rounded-full"></span>
-                AUTHENTICATING...
-              </>
-            ) : (
-              <>
-                <span className="material-symbols-outlined text-[18px]">vpn_key</span>
-                AUTHORIZE LINK
-              </>
-            )}
-          </button>
-        </form>
-
-        {/* Divider */}
-        <div className="flex items-center px-6 mb-2">
-          <div className="flex-grow border-t border-outline-variant"></div>
-          <span className="px-3 font-technical-prefix text-[8px] text-outline-variant uppercase">or</span>
-          <div className="flex-grow border-t border-outline-variant"></div>
-        </div>
-
-        {/* Google sign-in container */}
-        <div className="px-6 pb-6 flex justify-center">
-          <div id="google-signin-button" className="w-full flex justify-center min-h-[40px]"></div>
+          ) : (
+            <div id="google-signin-button" className="w-full flex justify-center min-h-[40px]"></div>
+          )}
         </div>
 
         {/* Dynamic API Base Override */}
         {showApiConfig && (
-          <div className="px-6 pb-4 border-t border-outline-variant/30 pt-4 flex flex-col gap-1.5">
+          <div className="px-6 pb-6 border-t border-outline-variant/30 pt-4 flex flex-col gap-1.5 bg-background/50">
             <label className="font-technical-prefix text-[8px] text-outline-variant tracking-wider uppercase">
               Neural Net Gateway (API Endpoint)
             </label>
@@ -243,7 +146,7 @@ const LoginPage: React.FC = () => {
 
         {/* Footer info */}
         <div className="border-t border-surface-variant p-4 bg-[#0E0E0E] text-center font-technical-prefix text-[8px] text-outline-variant flex flex-col gap-1">
-          <div>SECURE SESSION PROTOCOL 48-BIT SIGNATURE</div>
+          <div>SECURE SYSTEM SIGN-IN PROTOCOL</div>
           <div>C:\SYSTEM\PRODO&gt; <span className="blink-cursor"></span></div>
         </div>
 

@@ -7,19 +7,7 @@
 export function getApiBaseUrl(): string {
   const saved = localStorage.getItem("prodo_api_base_url");
   if (saved) return saved;
-  
-  if (import.meta.env.VITE_API_URL) {
-    return import.meta.env.VITE_API_URL;
-  }
-  
-  if (typeof window !== "undefined" && window.location) {
-    const hn = window.location.hostname;
-    if (hn && hn !== "localhost" && hn !== "127.0.0.1" && !hn.startsWith("192.168.")) {
-      return window.location.origin;
-    }
-  }
-  
-  return "http://127.0.0.1:8000";
+  return import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8000";
 }
 
 export function setApiBaseUrl(url: string) {
