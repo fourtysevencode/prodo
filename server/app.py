@@ -37,6 +37,8 @@ app.add_middleware(
         "http://www.prodo.live",
         "https://cv.prodo.live",
         "http://cv.prodo.live",
+        "https://api.prodo.live",
+        "http://api.prodo.live",
     ],
     allow_credentials=True,
     allow_methods=["*"],

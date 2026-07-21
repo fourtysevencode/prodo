@@ -5,12 +5,10 @@
  */
 
 export function getApiBaseUrl(): string {
-  // Production domain always takes priority — never use a cached localhost URL
-  // when running on the live site.
   if (typeof window !== "undefined" && window.location) {
     const hn = window.location.hostname;
     if (hn && (hn === "prodo.live" || hn === "www.prodo.live" || hn === "prodo-live.pages.dev" || hn === "website-dev.prodo-live.pages.dev")) {
-      return "https://cv.prodo.live";
+      return "https://api.prodo.live";
     }
   }
 
@@ -19,6 +17,24 @@ export function getApiBaseUrl(): string {
 
   if (import.meta.env.VITE_API_URL) {
     return import.meta.env.VITE_API_URL;
+  }
+
+  return "http://127.0.0.1:8000";
+}
+
+export function getCvBaseUrl(): string {
+  if (typeof window !== "undefined" && window.location) {
+    const hn = window.location.hostname;
+    if (hn && (hn === "prodo.live" || hn === "www.prodo.live" || hn === "prodo-live.pages.dev" || hn === "website-dev.prodo-live.pages.dev")) {
+      return "https://cv.prodo.live";
+    }
+  }
+
+  const saved = localStorage.getItem("prodo_cv_base_url");
+  if (saved) return saved;
+
+  if (import.meta.env.VITE_CV_URL) {
+    return import.meta.env.VITE_CV_URL;
   }
 
   return "http://127.0.0.1:8000";
@@ -211,5 +227,10 @@ export function apiCheckFocus(
   form.append("frame", frameBlob, "frame.jpg");
   form.append("session_id", sessionId);
   form.append("include_debug", String(includeDebug));
-  return fetch(`${getApiBaseUrl()}/check-focus`, { method: "POST", body: form }).then(r => r.json());
+
+  const headers = new Headers();
+  const cvSecret = localStorage.getItem("prodo_cv_secret") || "prodo_cv_secret_key_default_2026";
+  headers.set("X-Prodo-CV-Key", cvSecret);
+
+  return fetch(`${getCvBaseUrl()}/check-focus`, { method: "POST", headers, body: form }).then(r => r.json());
 }
