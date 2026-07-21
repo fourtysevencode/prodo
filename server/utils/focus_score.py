@@ -19,24 +19,24 @@ class FocusScoreConfig:
     """Tunable thresholds for webcam focus scoring."""
 
     rolling_window: int = 5
-    focused_threshold: float = 0.75
-    distracted_threshold: float = 0.50
-    current_focus_status_weight: float = 0.85
-    rolling_focus_status_weight: float = 0.15
+    focused_threshold: float = 0.50
+    distracted_threshold: float = 0.28
+    current_focus_status_weight: float = 0.70
+    rolling_focus_status_weight: float = 0.30
 
-    face_presence_weight: float = 0.25
-    head_pose_weight: float = 0.25
-    gaze_weight: float = 0.35
-    eyes_open_weight: float = 0.15
+    face_presence_weight: float = 0.40
+    head_pose_weight: float = 0.35
+    gaze_weight: float = 0.15
+    eyes_open_weight: float = 0.10
 
-    yaw_ok_degrees: float = 15.0
-    yaw_max_degrees: float = 45.0
-    pitch_ok_degrees: float = 12.0
-    pitch_max_degrees: float = 35.0
-    pitch_down_ok_degrees: float = 25.0
-    pitch_down_max_degrees: float = 55.0
-    roll_ok_degrees: float = 12.0
-    roll_max_degrees: float = 35.0
+    yaw_ok_degrees: float = 25.0
+    yaw_max_degrees: float = 60.0
+    pitch_ok_degrees: float = 20.0
+    pitch_max_degrees: float = 50.0
+    pitch_down_ok_degrees: float = 35.0
+    pitch_down_max_degrees: float = 70.0
+    roll_ok_degrees: float = 20.0
+    roll_max_degrees: float = 50.0
 
     eye_closed_ear: float = 0.15
     eye_open_ear: float = 0.23
@@ -143,10 +143,10 @@ def calculate_focus_score(
 
     try:
         face_mesh = face_mesh_module.FaceMesh(
-            static_image_mode=False,
+            static_image_mode=True,
             max_num_faces=1,
             refine_landmarks=True,
-            min_detection_confidence=0.50,
+            min_detection_confidence=0.30,
         )
         result = face_mesh.process(rgb_frame)
         face_mesh.close()
