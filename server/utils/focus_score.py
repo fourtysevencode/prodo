@@ -264,6 +264,12 @@ def _calculate_focus_score_with_opencv(
                 if not cc.empty():
                     face_cascades.append(cc)
 
+    eye_cascade_path = os.path.join(cascade_dir, "haarcascade_eye.xml")
+    if not os.path.exists(eye_cascade_path) and getattr(cv2, "data", None) and getattr(cv2.data, "haarcascades", None):
+        eye_cascade_path = os.path.join(cv2.data.haarcascades, "haarcascade_eye.xml")
+
+    eye_cascade = cv2.CascadeClassifier(eye_cascade_path) if os.path.exists(eye_cascade_path) else cv2.CascadeClassifier()
+
     min_face_size = max(40, int(min(width, height) * 0.08))
     faces = []
     for face_cascade in face_cascades:
@@ -312,12 +318,14 @@ def _calculate_focus_score_with_opencv(
     head_pose = 0.70 * horizontal_score + 0.30 * vertical_score
 
     face_gray = gray[y : y + face_height, x : x + face_width]
-    eyes = eye_cascade.detectMultiScale(
-        face_gray,
-        scaleFactor=1.1,
-        minNeighbors=5,
-        minSize=(18, 18),
-    )
+    eyes = ()
+    if not eye_cascade.empty():
+        eyes = eye_cascade.detectMultiScale(
+            face_gray,
+            scaleFactor=1.1,
+            minNeighbors=3,
+            minSize=(14, 14),
+        )
     eyes_open = _clamp(len(eyes) / 2.0)
 
     # Haar cascades do not provide iris position, so approximate gaze from
