@@ -240,15 +240,27 @@ def _calculate_focus_score_with_opencv(
     gray = cv2.equalizeHist(gray)
     height, width = gray.shape[:2]
 
-    face_cascades = [
-        cv2.CascadeClassifier(cv2.data.haarcascades + filename)
-        for filename in (
-            "haarcascade_frontalface_default.xml",
-            "haarcascade_frontalface_alt2.xml",
-            "haarcascade_profileface.xml",
-        )
-    ]
-    eye_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_eye.xml")
+    cascade_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cascades")
+    face_filenames = (
+        "haarcascade_frontalface_default.xml",
+        "haarcascade_frontalface_alt2.xml",
+        "haarcascade_profileface.xml",
+    )
+
+    face_cascades = []
+    for filename in face_filenames:
+        local_path = os.path.join(cascade_dir, filename)
+        if os.path.exists(local_path):
+            cc = cv2.CascadeClassifier(local_path)
+            if not cc.empty():
+                face_cascades.append(cc)
+                continue
+        if getattr(cv2, "data", None) and getattr(cv2.data, "haarcascades", None):
+            sys_path = os.path.join(cv2.data.haarcascades, filename)
+            if os.path.exists(sys_path):
+                cc = cv2.CascadeClassifier(sys_path)
+                if not cc.empty():
+                    face_cascades.append(cc)
 
     min_face_size = max(40, int(min(width, height) * 0.08))
     faces = []
