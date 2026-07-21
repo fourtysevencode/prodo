@@ -7,14 +7,19 @@ using Modal.com GPU/CPU serverless runners.
 from __future__ import annotations
 
 import os
+import sys
 from typing import Optional
 import modal
 
 # ── Modal Image Setup ──────────────────────────────────────────────────────────
 # Pre-install all required computer vision and ML libraries in the Modal container image.
 
+current_dir = os.path.dirname(os.path.abspath(__file__))
+utils_path = os.path.join(current_dir, "utils")
+
 cv_image = (
     modal.Image.debian_slim(python_version="3.11")
+    .apt_install(["libgl1", "libglib2.0-0", "libsm6", "libxext6", "libxrender-dev"])
     .pip_install([
         "fastapi",
         "opencv-python-headless",
@@ -24,9 +29,14 @@ cv_image = (
         "onnxruntime",
         "python-multipart"
     ])
+    .add_local_dir(utils_path, remote_path="/root/utils")
 )
 
 app = modal.App("prodo-cv", image=cv_image)
+
+# Ensure /root is on Python sys.path
+if "/root" not in sys.path:
+    sys.path.insert(0, "/root")
 
 # ── FastAPI ASGI App definition ───────────────────────────────────────────────
 from fastapi import FastAPI, File, Form, Header, HTTPException, UploadFile
@@ -46,6 +56,22 @@ web_app.add_middleware(
 PRODO_CV_SECRET = os.getenv("PRODO_CV_SECRET", "prodo_cv_secret_key_default_2026")
 
 _rolling_scores_by_session = {}
+
+@web_app.exception_handler(Exception)
+async def global_exception_handler(request, exc):
+    import traceback
+    error_str = str(exc)
+    trace_str = traceback.format_exc()
+    print("CV Exception:", trace_str)
+    return JSONResponse(
+        status_code=500,
+        content={"success": False, "error": error_str, "detail": "Internal inference error"},
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "*",
+            "Access-Control-Allow-Headers": "*",
+        },
+    )
 
 @web_app.options("/{full_path:path}")
 async def options_handler(full_path: str):
@@ -95,9 +121,8 @@ async def check_focus(
     try:
         from utils.focus_score import calculate_focus_score
     except ImportError:
-        # Import fallback if path differs
-        import sys
-        sys.path.append("/root/server")
+        if "/root" not in sys.path:
+            sys.path.insert(0, "/root")
         from utils.focus_score import calculate_focus_score
 
     if session_id not in _rolling_scores_by_session:
@@ -126,9 +151,3 @@ async def health():
 @modal.asgi_app()
 def fastapi_app():
     return web_app
-
-
-@app.local_entrypoint()
-def main():
-    print("Modal CV App definition verified successfully!")
-
