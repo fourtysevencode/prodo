@@ -33,12 +33,12 @@ from fastapi import FastAPI, File, Form, Header, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-web_app = FastAPI(title="Prodo CV Inference API")
+web_app = FastAPI(title="Prodo CV Inference API", redirect_slashes=False)
 
 web_app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Restrict via X-Prodo-CV-Key header verification
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -46,6 +46,17 @@ web_app.add_middleware(
 PRODO_CV_SECRET = os.getenv("PRODO_CV_SECRET", "prodo_cv_secret_key_default_2026")
 
 _rolling_scores_by_session = {}
+
+@web_app.options("/{full_path:path}")
+async def options_handler(full_path: str):
+    return JSONResponse(
+        content={"status": "ok"},
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, OPTIONS, PUT, DELETE",
+            "Access-Control-Allow-Headers": "*",
+        },
+    )
 
 @web_app.post("/check-focus")
 async def check_focus(

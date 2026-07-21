@@ -36,7 +36,8 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
       
       {/* TopNavBar */}
       <header className="flex justify-between items-center px-container-padding w-full h-8 bg-background border-b border-outline-variant z-50 flex-shrink-0">
-        <div className="flex items-center gap-4 h-full">
+        <div className="flex items-center gap-3 h-full">
+          <img src="/favicon.svg" alt="Prodo Logo" className="w-5 h-5" />
           <span className="font-technical-prefix text-technical-prefix text-primary uppercase tracking-widest">
             PRODO_NEURAL_NET_V2.0
           </span>

@@ -16,6 +16,7 @@ const LandingPage: React.FC = () => {
       {/* Header NavBar */}
       <header className="relative w-full max-w-7xl mx-auto px-6 h-20 flex justify-between items-center z-50">
         <div className="flex items-center gap-3">
+          <img src="/favicon.svg" alt="Prodo Logo" className="w-8 h-8" />
           <span className="font-value-lg text-2xl text-primary tracking-widest uppercase drop-shadow-[0_0_8px_rgba(229,226,225,0.2)]">
             PRODO
           </span>

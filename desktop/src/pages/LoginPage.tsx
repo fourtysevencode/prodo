@@ -47,12 +47,15 @@ const LoginPage: React.FC = () => {
       <div className="w-full max-w-sm flex flex-col items-center gap-8">
         
         {/* Simple Brand */}
-        <h1 
-          onClick={handleLogoClick}
-          className="font-value-xl text-[54px] leading-none text-primary uppercase tracking-widest drop-shadow-[0_0_8px_rgba(229,226,225,0.3)] cursor-pointer select-none"
-        >
-          PRODO
-        </h1>
+        <div className="flex items-center gap-3">
+          <img src="/favicon.svg" alt="Prodo Logo" className="w-12 h-12" />
+          <h1 
+            onClick={handleLogoClick}
+            className="font-value-xl text-[54px] leading-none text-primary uppercase tracking-widest drop-shadow-[0_0_8px_rgba(229,226,225,0.3)] cursor-pointer select-none"
+          >
+            PRODO
+          </h1>
+        </div>
 
         {/* Action Panel */}
         <div className="w-full flex flex-col gap-4 justify-center items-center">
