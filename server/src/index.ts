@@ -18,6 +18,23 @@ function decodeGoogleToken(credential: string): any {
 // In-memory worker state for user sessions
 const mockUsersByToken: Record<string, { username: string; email: string; points: number; balance: number }> = {};
 const mockUsersByEmail: Record<string, { username: string; email: string; token: string; points: number; balance: number }> = {};
+const mockFriendsByToken: Record<string, string[]> = {};
+const mockCoopRooms: Record<string, {
+  session_id: string;
+  host_username: string;
+  friend_username: string | null;
+  started_at: number;
+  is_active: boolean;
+}> = {};
+
+function getBearerToken(request: Request): string {
+  return (request.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "").trim();
+}
+
+function getCurrentUser(request: Request) {
+  const token = getBearerToken(request);
+  return { token, user: mockUsersByToken[token] || null };
+}
 
 export default {
   async fetch(request: Request, env: any, ctx: any): Promise<Response> {
@@ -63,6 +80,7 @@ export default {
           user = { username, email, token, points: 100, balance: 100 };
           mockUsersByEmail[email] = user;
           mockUsersByToken[token] = user;
+          mockFriendsByToken[token] = [];
         }
 
         return new Response(
@@ -91,6 +109,7 @@ export default {
       const user = { username, email, token, points: 0, balance: 0 };
       mockUsersByEmail[email] = user;
       mockUsersByToken[token] = user;
+      mockFriendsByToken[token] = [];
 
       return new Response(
         JSON.stringify({ success: true, token, user: { username, email } }),
@@ -109,6 +128,7 @@ export default {
         user = { username, email, token, points: 100, balance: 100 };
         mockUsersByEmail[email] = user;
         mockUsersByToken[token] = user;
+        mockFriendsByToken[token] = [];
       }
 
       return new Response(
@@ -141,8 +161,60 @@ export default {
       );
     }
 
+    // ── Friends ──────────────────────────────────────────────────────────────
+    if (url.pathname === "/friends/list" && request.method === "GET") {
+      const { token, user } = getCurrentUser(request);
+      if (!user) {
+        return new Response(JSON.stringify({ success: false, message: "Authentication required" }), {
+          status: 401,
+          headers: jsonHeader,
+        });
+      }
+
+      const friendUsernames = mockFriendsByToken[token] || [];
+      const friends = friendUsernames
+        .map((username) => Object.values(mockUsersByEmail).find((candidate) => candidate.username === username))
+        .filter((friend): friend is NonNullable<typeof friend> => Boolean(friend))
+        .map((friend) => ({ username: friend.username, points: friend.points }));
+
+      return new Response(JSON.stringify({ success: true, friends }), { headers: jsonHeader });
+    }
+
+    if (url.pathname === "/friends/add" && request.method === "POST") {
+      const { token, user } = getCurrentUser(request);
+      if (!user) {
+        return new Response(JSON.stringify({ success: false, message: "Authentication required" }), {
+          status: 401,
+          headers: jsonHeader,
+        });
+      }
+
+      const body: any = await request.json();
+      const username = String(body.username || "").trim().toLowerCase();
+      const friend = Object.values(mockUsersByEmail).find((candidate) => candidate.username === username);
+      if (!friend) {
+        return new Response(JSON.stringify({ success: false, message: "Username not found" }), {
+          status: 404,
+          headers: jsonHeader,
+        });
+      }
+      if (friend.token === token) {
+        return new Response(JSON.stringify({ success: false, message: "You cannot add yourself" }), {
+          status: 400,
+          headers: jsonHeader,
+        });
+      }
+
+      const currentFriends = mockFriendsByToken[token] || (mockFriendsByToken[token] = []);
+      if (!currentFriends.includes(friend.username)) currentFriends.push(friend.username);
+      const friendFriends = mockFriendsByToken[friend.token] || (mockFriendsByToken[friend.token] = []);
+      if (!friendFriends.includes(user.username)) friendFriends.push(user.username);
+
+      return new Response(JSON.stringify({ success: true, message: "Friend added" }), { headers: jsonHeader });
+    }
+
     // ── Leaderboards ─────────────────────────────────────────────────────────
-    if (url.pathname === "/leaderboard/global" || url.pathname === "/leaderboard/friends") {
+    if (url.pathname === "/leaderboard/global") {
       return new Response(
         JSON.stringify({
           success: true,
@@ -154,6 +226,90 @@ export default {
         }),
         { headers: jsonHeader }
       );
+    }
+
+    if (url.pathname === "/leaderboard/friends" && request.method === "GET") {
+      const { token } = getCurrentUser(request);
+      const friendUsernames = mockFriendsByToken[token] || [];
+      const usernames = [mockUsersByToken[token]?.username, ...friendUsernames].filter(
+        (username): username is string => Boolean(username)
+      );
+      const leaderboard = usernames
+        .map((username) => Object.values(mockUsersByEmail).find((candidate) => candidate.username === username))
+        .filter((user): user is NonNullable<typeof user> => Boolean(user))
+        .sort((a, b) => b.points - a.points)
+        .map((user, index) => ({ username: user.username, points: user.points, rank: index + 1 }));
+
+      return new Response(JSON.stringify({ success: true, leaderboard }), { headers: jsonHeader });
+    }
+
+    // ── Co-Op Rooms ───────────────────────────────────────────────────────────
+    if (url.pathname === "/coop/create" && request.method === "POST") {
+      const { user } = getCurrentUser(request);
+      if (!user) {
+        return new Response(JSON.stringify({ success: false, message: "Authentication required" }), {
+          status: 401,
+          headers: jsonHeader,
+        });
+      }
+
+      const body: any = await request.json();
+      const friendUsername = body.friend_username ? String(body.friend_username).trim().toLowerCase() : null;
+      const session_id = `coop-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      mockCoopRooms[session_id] = {
+        session_id,
+        host_username: user.username,
+        friend_username: friendUsername,
+        started_at: Date.now() / 1000,
+        is_active: true,
+      };
+
+      return new Response(JSON.stringify({ success: true, session_id }), { headers: jsonHeader });
+    }
+
+    if (url.pathname === "/coop/active" && request.method === "GET") {
+      const { user } = getCurrentUser(request);
+      if (!user) {
+        return new Response(JSON.stringify({ success: false, message: "Authentication required" }), {
+          status: 401,
+          headers: jsonHeader,
+        });
+      }
+
+      const rooms = Object.values(mockCoopRooms)
+        .filter((room) => room.is_active && room.host_username !== user.username)
+        .filter((room) => !room.friend_username || room.friend_username === user.username)
+        .map(({ session_id, host_username, started_at }) => ({ session_id, host_username, started_at }));
+
+      return new Response(JSON.stringify({ success: true, rooms }), { headers: jsonHeader });
+    }
+
+    if (url.pathname === "/coop/join" && request.method === "POST") {
+      const { user } = getCurrentUser(request);
+      const body: any = await request.json();
+      const room = mockCoopRooms[String(body.session_id || "")];
+      if (!user || !room || !room.is_active) {
+        return new Response(JSON.stringify({ success: false, message: "Active Co-Op session not found" }), {
+          status: 404,
+          headers: jsonHeader,
+        });
+      }
+      if (!room.friend_username) room.friend_username = user.username;
+      return new Response(JSON.stringify({ success: true, message: "Joined Co-Op focus room" }), { headers: jsonHeader });
+    }
+
+    if (url.pathname === "/coop/end" && request.method === "POST") {
+      const { user } = getCurrentUser(request);
+      const body: any = await request.json();
+      const room = mockCoopRooms[String(body.session_id || "")];
+      if (!user || !room || room.host_username !== user.username) {
+        return new Response(JSON.stringify({ success: false, message: "Co-Op session not found" }), {
+          status: 404,
+          headers: jsonHeader,
+        });
+      }
+      room.is_active = false;
+      return new Response(JSON.stringify({ success: true, message: "Co-Op session ended" }), { headers: jsonHeader });
     }
 
     // Default Fallback

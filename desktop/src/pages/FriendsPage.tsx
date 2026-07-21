@@ -24,13 +24,13 @@ const FriendsPage: React.FC = () => {
   const fetchSocialData = async () => {
     try {
       const fl = await apiGetFriendsList();
-      if (fl.success) setFriendsList(fl.friends);
+      if (fl.success) setFriendsList(Array.isArray(fl.friends) ? fl.friends : []);
 
       const lb = await apiGetFriendsLeaderboard();
-      if (lb.success) setLeaderboard(lb.leaderboard);
+      if (lb.success) setLeaderboard(Array.isArray(lb.leaderboard) ? lb.leaderboard : []);
 
       const ar = await apiGetActiveCoopRooms();
-      if (ar.success) setActiveRooms(ar.rooms);
+      if (ar.success) setActiveRooms(Array.isArray(ar.rooms) ? ar.rooms : []);
     } catch (e) {
       console.error("Error loading social data:", e);
     }
