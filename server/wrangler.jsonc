@@ -14,5 +14,12 @@
 			"pattern": "api.prodo.live",
 			"custom_domain": true
 		}
+	],
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "prodo-db",
+			"database_id": "38036841-460b-4ecf-8048-f2eeeae4db16"
+		}
 	]
 }

@@ -15,27 +15,6 @@ function decodeGoogleToken(credential: string): any {
   }
 }
 
-// In-memory worker state for user sessions
-const mockUsersByToken: Record<string, { username: string; email: string; points: number; balance: number }> = {};
-const mockUsersByEmail: Record<string, { username: string; email: string; token: string; points: number; balance: number }> = {};
-const mockFriendsByToken: Record<string, string[]> = {};
-const mockCoopRooms: Record<string, {
-  session_id: string;
-  host_username: string;
-  friend_username: string | null;
-  started_at: number;
-  is_active: boolean;
-}> = {};
-
-function getBearerToken(request: Request): string {
-  return (request.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "").trim();
-}
-
-function getCurrentUser(request: Request) {
-  const token = getBearerToken(request);
-  return { token, user: mockUsersByToken[token] || null };
-}
-
 export default {
   async fetch(request: Request, env: any, ctx: any): Promise<Response> {
     const url = new URL(request.url);
@@ -72,21 +51,33 @@ export default {
         }
 
         const email = payload.email.toLowerCase();
-        let user = mockUsersByEmail[email];
+        let user = await env.DB.prepare("SELECT * FROM users WHERE email = ? OR google_id = ?")
+          .bind(email, payload.sub || "")
+          .first();
 
+        let token = "";
         if (!user) {
           const username = (payload.name || email.split("@")[0]).replace(/[^a-zA-Z0-9_]/g, "_").toLowerCase();
-          const token = "token_" + Math.random().toString(36).substring(2) + Date.now().toString(36);
-          user = { username, email, token, points: 100, balance: 100 };
-          mockUsersByEmail[email] = user;
-          mockUsersByToken[token] = user;
-          mockFriendsByToken[token] = [];
+          token = "token_" + Math.random().toString(36).substring(2) + Date.now().toString(36);
+          await env.DB.prepare("INSERT INTO users (username, email, google_id, xp, current_balance, auth_token) VALUES (?, ?, ?, 100, 100, ?)")
+            .bind(username, email, payload.sub || "", token)
+            .run();
+          user = await env.DB.prepare("SELECT * FROM users WHERE email = ?").bind(email).first();
+        } else {
+          token = user.auth_token;
+          if (!token) {
+            token = "token_" + Math.random().toString(36).substring(2) + Date.now().toString(36);
+            await env.DB.prepare("UPDATE users SET auth_token = ? WHERE id = ?").bind(token, user.id).run();
+          }
+          if (!user.google_id && payload.sub) {
+            await env.DB.prepare("UPDATE users SET google_id = ? WHERE id = ?").bind(payload.sub, user.id).run();
+          }
         }
 
         return new Response(
           JSON.stringify({
             success: true,
-            token: user.token,
+            token: token,
             user: { username: user.username, email: user.email },
           }),
           { headers: jsonHeader }
@@ -101,215 +92,420 @@ export default {
 
     // ── Standard Login & Register ───────────────────────────────────────────
     if (url.pathname === "/auth/register" && request.method === "POST") {
-      const body: any = await request.json();
-      const email = (body.email || "").toLowerCase();
-      const username = (body.username || "").toLowerCase();
-      const token = "token_" + Math.random().toString(36).substring(2) + Date.now().toString(36);
+      try {
+        const body: any = await request.json();
+        const email = (body.email || "").toLowerCase();
+        const username = (body.username || "").toLowerCase();
 
-      const user = { username, email, token, points: 0, balance: 0 };
-      mockUsersByEmail[email] = user;
-      mockUsersByToken[token] = user;
-      mockFriendsByToken[token] = [];
+        const existing = await env.DB.prepare("SELECT id FROM users WHERE email = ? OR username = ?")
+          .bind(email, username)
+          .first();
 
-      return new Response(
-        JSON.stringify({ success: true, token, user: { username, email } }),
-        { headers: jsonHeader }
-      );
+        if (existing) {
+          return new Response(
+            JSON.stringify({ success: false, message: "Username or email already exists" }),
+            { status: 400, headers: jsonHeader }
+          );
+        }
+
+        const token = "token_" + Math.random().toString(36).substring(2) + Date.now().toString(36);
+        await env.DB.prepare("INSERT INTO users (username, email, xp, current_balance, auth_token) VALUES (?, ?, 100, 100, ?)")
+          .bind(username, email, token)
+          .run();
+
+        return new Response(
+          JSON.stringify({ success: true, token, user: { username, email } }),
+          { headers: jsonHeader }
+        );
+      } catch (err: any) {
+        return new Response(
+          JSON.stringify({ success: false, message: err.message }),
+          { status: 500, headers: jsonHeader }
+        );
+      }
     }
 
     if (url.pathname === "/auth/login" && request.method === "POST") {
-      const body: any = await request.json();
-      const email = (body.email || "").toLowerCase();
-      let user = mockUsersByEmail[email];
+      try {
+        const body: any = await request.json();
+        const email = (body.email || "").toLowerCase();
 
-      if (!user) {
-        const username = email.split("@")[0] || "operator";
-        const token = "token_" + Math.random().toString(36).substring(2) + Date.now().toString(36);
-        user = { username, email, token, points: 100, balance: 100 };
-        mockUsersByEmail[email] = user;
-        mockUsersByToken[token] = user;
-        mockFriendsByToken[token] = [];
+        let user = await env.DB.prepare("SELECT * FROM users WHERE email = ?").bind(email).first();
+        let token = "";
+
+        if (!user) {
+          const username = email.split("@")[0] || "operator";
+          token = "token_" + Math.random().toString(36).substring(2) + Date.now().toString(36);
+          await env.DB.prepare("INSERT INTO users (username, email, xp, current_balance, auth_token) VALUES (?, ?, 100, 100, ?)")
+            .bind(username, email, token)
+            .run();
+          user = await env.DB.prepare("SELECT * FROM users WHERE email = ?").bind(email).first();
+        } else {
+          token = user.auth_token;
+          if (!token) {
+            token = "token_" + Math.random().toString(36).substring(2) + Date.now().toString(36);
+            await env.DB.prepare("UPDATE users SET auth_token = ? WHERE id = ?").bind(token, user.id).run();
+          }
+        }
+
+        return new Response(
+          JSON.stringify({ success: true, token, user: { username: user.username, email: user.email } }),
+          { headers: jsonHeader }
+        );
+      } catch (err: any) {
+        return new Response(
+          JSON.stringify({ success: false, message: err.message }),
+          { status: 500, headers: jsonHeader }
+        );
       }
-
-      return new Response(
-        JSON.stringify({ success: true, token: user.token, user: { username: user.username, email: user.email } }),
-        { headers: jsonHeader }
-      );
     }
 
     // ── User Profile & Sync ──────────────────────────────────────────────────
     if (url.pathname === "/users/me" && request.method === "GET") {
-      const authHeader = request.headers.get("Authorization") || "";
-      const token = authHeader.replace("Bearer ", "").trim();
-      const user = mockUsersByToken[token] || { username: "operator", email: "user@prodo.live", points: 150, balance: 150 };
+      try {
+        const authHeader = request.headers.get("Authorization") || "";
+        const token = authHeader.replace("Bearer ", "").trim();
+        const user = await env.DB.prepare("SELECT * FROM users WHERE auth_token = ?").bind(token).first();
+        if (!user) {
+          return new Response(
+            JSON.stringify({ success: false, message: "User not found" }),
+            { status: 401, headers: jsonHeader }
+          );
+        }
 
-      return new Response(
-        JSON.stringify({
-          username: user.username,
-          email: user.email,
-          total_lifetime_points: user.points,
-          current_balance: user.balance,
-        }),
-        { headers: jsonHeader }
-      );
+        return new Response(
+          JSON.stringify({
+            username: user.username,
+            email: user.email,
+            total_lifetime_points: user.total_lifetime_points,
+            current_balance: user.current_balance,
+          }),
+          { headers: jsonHeader }
+        );
+      } catch (err: any) {
+        return new Response(
+          JSON.stringify({ success: false, message: err.message }),
+          { status: 500, headers: jsonHeader }
+        );
+      }
     }
 
     if (url.pathname === "/users/sync" && request.method === "POST") {
-      return new Response(
-        JSON.stringify({ success: true, points_added: 10, multiplier: 1.0 }),
-        { headers: jsonHeader }
-      );
+      try {
+        const authHeader = request.headers.get("Authorization") || "";
+        const token = authHeader.replace("Bearer ", "").trim();
+        const user = await env.DB.prepare("SELECT * FROM users WHERE auth_token = ?").bind(token).first();
+        if (!user) {
+          return new Response(
+            JSON.stringify({ success: false, message: "User not found" }),
+            { status: 401, headers: jsonHeader }
+          );
+        }
+
+        const body: any = await request.json();
+        const pointsEarned = Number(body.points_earned_since_last_sync || 0);
+        const currentMultiplier = Number(body.current_multiplier || 1.0);
+        const isCamOn = Boolean(body.is_cam_on);
+
+        // Check active co-op sessions
+        const coopCheck = await env.DB.prepare(
+          "SELECT COUNT(*) as count FROM coop_sessions WHERE (host_user_id = ? OR friend_user_id = ?) AND is_active = 1"
+        ).bind(user.id, user.id).first();
+
+        const inCoop = coopCheck ? (Number(coopCheck.count) > 0) : false;
+        const multiplierBoost = (inCoop && isCamOn) ? 5.0 : 1.0;
+        const addedPoints = Math.floor(pointsEarned * multiplierBoost);
+
+        const newXp = (user.xp || 0) + addedPoints;
+        const newLifetime = (user.total_lifetime_points || 0) + addedPoints;
+        const newBalance = (user.current_balance || 0) + addedPoints;
+
+        await env.DB.prepare(
+          "UPDATE users SET xp = ?, total_lifetime_points = ?, current_balance = ?, current_multiplier = ? WHERE id = ?"
+        ).bind(newXp, newLifetime, newBalance, currentMultiplier, user.id).run();
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            points_added: addedPoints,
+            multiplier: currentMultiplier * multiplierBoost,
+          }),
+          { headers: jsonHeader }
+        );
+      } catch (err: any) {
+        return new Response(
+          JSON.stringify({ success: false, message: err.message }),
+          { status: 500, headers: jsonHeader }
+        );
+      }
     }
 
     // ── Friends ──────────────────────────────────────────────────────────────
     if (url.pathname === "/friends/list" && request.method === "GET") {
-      const { token, user } = getCurrentUser(request);
-      if (!user) {
-        return new Response(JSON.stringify({ success: false, message: "Authentication required" }), {
-          status: 401,
-          headers: jsonHeader,
-        });
+      try {
+        const authHeader = request.headers.get("Authorization") || "";
+        const token = authHeader.replace("Bearer ", "").trim();
+        const user = await env.DB.prepare("SELECT * FROM users WHERE auth_token = ?").bind(token).first();
+        if (!user) {
+          return new Response(
+            JSON.stringify({ success: false, message: "User not found" }),
+            { status: 401, headers: jsonHeader }
+          );
+        }
+
+        const { results } = await env.DB.prepare(`
+          SELECT u.username, u.total_lifetime_points as points FROM friends f
+          JOIN users u ON f.friend_id = u.id
+          WHERE f.user_id = ?
+        `).bind(user.id).all();
+
+        return new Response(JSON.stringify({ success: true, friends: results }), { headers: jsonHeader });
+      } catch (err: any) {
+        return new Response(
+          JSON.stringify({ success: false, message: err.message }),
+          { status: 500, headers: jsonHeader }
+        );
       }
-
-      const friendUsernames = mockFriendsByToken[token] || [];
-      const friends = friendUsernames
-        .map((username) => Object.values(mockUsersByEmail).find((candidate) => candidate.username === username))
-        .filter((friend): friend is NonNullable<typeof friend> => Boolean(friend))
-        .map((friend) => ({ username: friend.username, points: friend.points }));
-
-      return new Response(JSON.stringify({ success: true, friends }), { headers: jsonHeader });
     }
 
     if (url.pathname === "/friends/add" && request.method === "POST") {
-      const { token, user } = getCurrentUser(request);
-      if (!user) {
-        return new Response(JSON.stringify({ success: false, message: "Authentication required" }), {
-          status: 401,
-          headers: jsonHeader,
-        });
-      }
+      try {
+        const authHeader = request.headers.get("Authorization") || "";
+        const token = authHeader.replace("Bearer ", "").trim();
+        const user = await env.DB.prepare("SELECT * FROM users WHERE auth_token = ?").bind(token).first();
+        if (!user) {
+          return new Response(
+            JSON.stringify({ success: false, message: "User not found" }),
+            { status: 401, headers: jsonHeader }
+          );
+        }
 
-      const body: any = await request.json();
-      const username = String(body.username || "").trim().toLowerCase();
-      const friend = Object.values(mockUsersByEmail).find((candidate) => candidate.username === username);
-      if (!friend) {
-        return new Response(JSON.stringify({ success: false, message: "Username not found" }), {
-          status: 404,
-          headers: jsonHeader,
-        });
-      }
-      if (friend.token === token) {
-        return new Response(JSON.stringify({ success: false, message: "You cannot add yourself" }), {
-          status: 400,
-          headers: jsonHeader,
-        });
-      }
+        const body: any = await request.json();
+        const friendUsername = String(body.username || "").trim().toLowerCase();
+        const friend = await env.DB.prepare("SELECT * FROM users WHERE lower(username) = ?")
+          .bind(friendUsername)
+          .first();
 
-      const currentFriends = mockFriendsByToken[token] || (mockFriendsByToken[token] = []);
-      if (!currentFriends.includes(friend.username)) currentFriends.push(friend.username);
-      const friendFriends = mockFriendsByToken[friend.token] || (mockFriendsByToken[friend.token] = []);
-      if (!friendFriends.includes(user.username)) friendFriends.push(user.username);
+        if (!friend) {
+          return new Response(JSON.stringify({ success: false, message: "Username not found" }), {
+            status: 404,
+            headers: jsonHeader,
+          });
+        }
 
-      return new Response(JSON.stringify({ success: true, message: "Friend added" }), { headers: jsonHeader });
+        if (friend.id === user.id) {
+          return new Response(JSON.stringify({ success: false, message: "You cannot add yourself" }), {
+            status: 400,
+            headers: jsonHeader,
+          });
+        }
+
+        await env.DB.prepare("INSERT OR IGNORE INTO friends (user_id, friend_id) VALUES (?, ?)")
+          .bind(user.id, friend.id)
+          .run();
+        await env.DB.prepare("INSERT OR IGNORE INTO friends (user_id, friend_id) VALUES (?, ?)")
+          .bind(friend.id, user.id)
+          .run();
+
+        return new Response(JSON.stringify({ success: true, message: "Friend added successfully" }), { headers: jsonHeader });
+      } catch (err: any) {
+        return new Response(
+          JSON.stringify({ success: false, message: err.message }),
+          { status: 500, headers: jsonHeader }
+        );
+      }
     }
 
     // ── Leaderboards ─────────────────────────────────────────────────────────
-    if (url.pathname === "/leaderboard/global") {
-      return new Response(
-        JSON.stringify({
-          success: true,
-          leaderboard: [
-            { username: "ivan", points: 1250, rank: 1 },
-            { username: "ronak", points: 980, rank: 2 },
-            { username: "ritish", points: 840, rank: 3 },
-          ],
-        }),
-        { headers: jsonHeader }
-      );
+    if (url.pathname === "/leaderboard/global" && request.method === "GET") {
+      try {
+        const { results } = await env.DB.prepare(
+          "SELECT username, total_lifetime_points as points FROM users ORDER BY points DESC LIMIT 10"
+        ).all();
+
+        const leaderboard = results.map((row: any, index: number) => ({
+          username: row.username,
+          points: Number(row.points || 0),
+          rank: index + 1,
+        }));
+
+        return new Response(JSON.stringify({ success: true, leaderboard }), { headers: jsonHeader });
+      } catch (err: any) {
+        return new Response(
+          JSON.stringify({ success: false, message: err.message }),
+          { status: 500, headers: jsonHeader }
+        );
+      }
     }
 
     if (url.pathname === "/leaderboard/friends" && request.method === "GET") {
-      const { token } = getCurrentUser(request);
-      const friendUsernames = mockFriendsByToken[token] || [];
-      const usernames = [mockUsersByToken[token]?.username, ...friendUsernames].filter(
-        (username): username is string => Boolean(username)
-      );
-      const leaderboard = usernames
-        .map((username) => Object.values(mockUsersByEmail).find((candidate) => candidate.username === username))
-        .filter((user): user is NonNullable<typeof user> => Boolean(user))
-        .sort((a, b) => b.points - a.points)
-        .map((user, index) => ({ username: user.username, points: user.points, rank: index + 1 }));
+      try {
+        const authHeader = request.headers.get("Authorization") || "";
+        const token = authHeader.replace("Bearer ", "").trim();
+        const user = await env.DB.prepare("SELECT * FROM users WHERE auth_token = ?").bind(token).first();
+        if (!user) {
+          return new Response(
+            JSON.stringify({ success: false, message: "User not found" }),
+            { status: 401, headers: jsonHeader }
+          );
+        }
 
-      return new Response(JSON.stringify({ success: true, leaderboard }), { headers: jsonHeader });
+        const { results } = await env.DB.prepare(`
+          SELECT username, total_lifetime_points as points FROM users WHERE id = ?
+          UNION
+          SELECT u.username, u.total_lifetime_points as points FROM friends f
+          JOIN users u ON f.friend_id = u.id
+          WHERE f.user_id = ?
+          ORDER BY points DESC
+        `).bind(user.id, user.id).all();
+
+        const leaderboard = results.map((row: any, index: number) => ({
+          username: row.username,
+          points: Number(row.points || 0),
+          rank: index + 1,
+        }));
+
+        return new Response(JSON.stringify({ success: true, leaderboard }), { headers: jsonHeader });
+      } catch (err: any) {
+        return new Response(
+          JSON.stringify({ success: false, message: err.message }),
+          { status: 500, headers: jsonHeader }
+        );
+      }
     }
 
     // ── Co-Op Rooms ───────────────────────────────────────────────────────────
     if (url.pathname === "/coop/create" && request.method === "POST") {
-      const { user } = getCurrentUser(request);
-      if (!user) {
-        return new Response(JSON.stringify({ success: false, message: "Authentication required" }), {
-          status: 401,
-          headers: jsonHeader,
-        });
+      try {
+        const authHeader = request.headers.get("Authorization") || "";
+        const token = authHeader.replace("Bearer ", "").trim();
+        const user = await env.DB.prepare("SELECT * FROM users WHERE auth_token = ?").bind(token).first();
+        if (!user) {
+          return new Response(JSON.stringify({ success: false, message: "Authentication required" }), {
+            status: 401,
+            headers: jsonHeader,
+          });
+        }
+
+        const body: any = await request.json();
+        let friendUserId: number | null = null;
+        if (body.friend_username) {
+          const friendUsername = String(body.friend_username).trim().toLowerCase();
+          const friend = await env.DB.prepare("SELECT id FROM users WHERE lower(username) = ?")
+            .bind(friendUsername)
+            .first();
+          if (friend) {
+            friendUserId = Number(friend.id);
+          }
+        }
+
+        const sessionId = `coop-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+        await env.DB.prepare(
+          "INSERT INTO coop_sessions (session_id, host_user_id, friend_user_id, is_active, started_at) VALUES (?, ?, ?, 1, ?)"
+        ).bind(sessionId, user.id, friendUserId, Date.now() / 1000).run();
+
+        return new Response(JSON.stringify({ success: true, session_id: sessionId }), { headers: jsonHeader });
+      } catch (err: any) {
+        return new Response(
+          JSON.stringify({ success: false, message: err.message }),
+          { status: 500, headers: jsonHeader }
+        );
       }
-
-      const body: any = await request.json();
-      const friendUsername = body.friend_username ? String(body.friend_username).trim().toLowerCase() : null;
-      const session_id = `coop-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-      mockCoopRooms[session_id] = {
-        session_id,
-        host_username: user.username,
-        friend_username: friendUsername,
-        started_at: Date.now() / 1000,
-        is_active: true,
-      };
-
-      return new Response(JSON.stringify({ success: true, session_id }), { headers: jsonHeader });
     }
 
     if (url.pathname === "/coop/active" && request.method === "GET") {
-      const { user } = getCurrentUser(request);
-      if (!user) {
-        return new Response(JSON.stringify({ success: false, message: "Authentication required" }), {
-          status: 401,
-          headers: jsonHeader,
-        });
+      try {
+        const authHeader = request.headers.get("Authorization") || "";
+        const token = authHeader.replace("Bearer ", "").trim();
+        const user = await env.DB.prepare("SELECT * FROM users WHERE auth_token = ?").bind(token).first();
+        if (!user) {
+          return new Response(JSON.stringify({ success: false, message: "Authentication required" }), {
+            status: 401,
+            headers: jsonHeader,
+          });
+        }
+
+        const { results } = await env.DB.prepare(`
+          SELECT cs.session_id, u.username as host_username, cs.started_at FROM coop_sessions cs
+          JOIN users u ON cs.host_user_id = u.id
+          WHERE cs.is_active = 1 AND cs.host_user_id != ?
+            AND (cs.friend_user_id IS NULL OR cs.friend_user_id = ?)
+        `).bind(user.id, user.id).all();
+
+        return new Response(JSON.stringify({ success: true, rooms: results }), { headers: jsonHeader });
+      } catch (err: any) {
+        return new Response(
+          JSON.stringify({ success: false, message: err.message }),
+          { status: 500, headers: jsonHeader }
+        );
       }
-
-      const rooms = Object.values(mockCoopRooms)
-        .filter((room) => room.is_active && room.host_username !== user.username)
-        .filter((room) => !room.friend_username || room.friend_username === user.username)
-        .map(({ session_id, host_username, started_at }) => ({ session_id, host_username, started_at }));
-
-      return new Response(JSON.stringify({ success: true, rooms }), { headers: jsonHeader });
     }
 
     if (url.pathname === "/coop/join" && request.method === "POST") {
-      const { user } = getCurrentUser(request);
-      const body: any = await request.json();
-      const room = mockCoopRooms[String(body.session_id || "")];
-      if (!user || !room || !room.is_active) {
-        return new Response(JSON.stringify({ success: false, message: "Active Co-Op session not found" }), {
-          status: 404,
-          headers: jsonHeader,
-        });
+      try {
+        const authHeader = request.headers.get("Authorization") || "";
+        const token = authHeader.replace("Bearer ", "").trim();
+        const user = await env.DB.prepare("SELECT * FROM users WHERE auth_token = ?").bind(token).first();
+        if (!user) {
+          return new Response(JSON.stringify({ success: false, message: "Authentication required" }), {
+            status: 401,
+            headers: jsonHeader,
+          });
+        }
+
+        const body: any = await request.json();
+        const sessionId = String(body.session_id || "");
+        const room = await env.DB.prepare("SELECT * FROM coop_sessions WHERE session_id = ? AND is_active = 1")
+          .bind(sessionId)
+          .first();
+
+        if (!room) {
+          return new Response(JSON.stringify({ success: false, message: "Active Co-Op session not found" }), {
+            status: 404,
+            headers: jsonHeader,
+          });
+        }
+
+        if (!room.friend_user_id) {
+          await env.DB.prepare("UPDATE coop_sessions SET friend_user_id = ? WHERE session_id = ?")
+            .bind(user.id, sessionId)
+            .run();
+        }
+
+        return new Response(JSON.stringify({ success: true, message: "Joined Co-Op focus room" }), { headers: jsonHeader });
+      } catch (err: any) {
+        return new Response(
+          JSON.stringify({ success: false, message: err.message }),
+          { status: 500, headers: jsonHeader }
+        );
       }
-      if (!room.friend_username) room.friend_username = user.username;
-      return new Response(JSON.stringify({ success: true, message: "Joined Co-Op focus room" }), { headers: jsonHeader });
     }
 
     if (url.pathname === "/coop/end" && request.method === "POST") {
-      const { user } = getCurrentUser(request);
-      const body: any = await request.json();
-      const room = mockCoopRooms[String(body.session_id || "")];
-      if (!user || !room || room.host_username !== user.username) {
-        return new Response(JSON.stringify({ success: false, message: "Co-Op session not found" }), {
-          status: 404,
-          headers: jsonHeader,
-        });
+      try {
+        const authHeader = request.headers.get("Authorization") || "";
+        const token = authHeader.replace("Bearer ", "").trim();
+        const user = await env.DB.prepare("SELECT * FROM users WHERE auth_token = ?").bind(token).first();
+        if (!user) {
+          return new Response(JSON.stringify({ success: false, message: "Authentication required" }), {
+            status: 401,
+            headers: jsonHeader,
+          });
+        }
+
+        const body: any = await request.json();
+        const sessionId = String(body.session_id || "");
+        await env.DB.prepare("UPDATE coop_sessions SET is_active = 0 WHERE session_id = ? AND host_user_id = ?")
+          .bind(sessionId, user.id)
+          .run();
+
+        return new Response(JSON.stringify({ success: true, message: "Co-Op session ended" }), { headers: jsonHeader });
+      } catch (err: any) {
+        return new Response(
+          JSON.stringify({ success: false, message: err.message }),
+          { status: 500, headers: jsonHeader }
+        );
       }
-      room.is_active = false;
-      return new Response(JSON.stringify({ success: true, message: "Co-Op session ended" }), { headers: jsonHeader });
     }
 
     // Default Fallback
