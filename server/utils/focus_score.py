@@ -19,32 +19,32 @@ class FocusScoreConfig:
     """Tunable thresholds for webcam focus scoring."""
 
     rolling_window: int = 5
-    focused_threshold: float = 0.50
-    distracted_threshold: float = 0.28
-    current_focus_status_weight: float = 0.70
-    rolling_focus_status_weight: float = 0.30
+    focused_threshold: float = 0.35
+    distracted_threshold: float = 0.20
+    current_focus_status_weight: float = 0.80
+    rolling_focus_status_weight: float = 0.20
 
-    face_presence_weight: float = 0.40
-    head_pose_weight: float = 0.35
-    gaze_weight: float = 0.15
+    face_presence_weight: float = 0.50
+    head_pose_weight: float = 0.30
+    gaze_weight: float = 0.10
     eyes_open_weight: float = 0.10
 
-    yaw_ok_degrees: float = 25.0
-    yaw_max_degrees: float = 60.0
-    pitch_ok_degrees: float = 20.0
-    pitch_max_degrees: float = 50.0
-    pitch_down_ok_degrees: float = 35.0
-    pitch_down_max_degrees: float = 70.0
-    roll_ok_degrees: float = 20.0
-    roll_max_degrees: float = 50.0
+    yaw_ok_degrees: float = 40.0
+    yaw_max_degrees: float = 75.0
+    pitch_ok_degrees: float = 35.0
+    pitch_max_degrees: float = 65.0
+    pitch_down_ok_degrees: float = 45.0
+    pitch_down_max_degrees: float = 80.0
+    roll_ok_degrees: float = 35.0
+    roll_max_degrees: float = 65.0
 
-    eye_closed_ear: float = 0.15
-    eye_open_ear: float = 0.23
+    eye_closed_ear: float = 0.10
+    eye_open_ear: float = 0.18
 
-    gaze_center_tolerance_x: float = 0.22
-    gaze_max_offset_x: float = 0.42
-    gaze_center_tolerance_y: float = 0.25
-    gaze_max_offset_y: float = 0.48
+    gaze_center_tolerance_x: float = 0.35
+    gaze_max_offset_x: float = 0.60
+    gaze_center_tolerance_y: float = 0.40
+    gaze_max_offset_y: float = 0.65
 
 
 LEFT_EYE_EAR = (33, 160, 158, 133, 153, 144)
@@ -443,8 +443,8 @@ def _score_face_presence(points: Any, width: int, height: int) -> float:
     x_max, y_max = points[:, 0].max(), points[:, 1].max()
     face_area_ratio = ((x_max - x_min) * (y_max - y_min)) / float(width * height)
 
-    # Very tiny faces are unreliable; normal seated webcam framing saturates to 1.
-    return _scale_between(face_area_ratio, low=0.015, high=0.080)
+    # Seated webcam framing saturates presence score
+    return _scale_between(face_area_ratio, low=0.003, high=0.030)
 
 
 def _score_head_pose(
