@@ -11,6 +11,7 @@ import os
 import time
 import urllib.request
 import secrets
+import re
 from typing import Any, Dict, List, Optional
 
 from utils.focus_score import calculate_focus_score
@@ -266,12 +267,17 @@ class RespondFriendRequestModel(BaseModel):
 async def register(user: RegisterRequest):
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
+    username = user.username.strip().lower()
+    email = user.email.strip().lower()
+    if not username:
+        conn.close()
+        raise HTTPException(status_code=400, detail="Username cannot be empty")
     pwd_hash = hash_password(user.password)
     token = secrets.token_hex(32)
     try:
         cursor.execute(
             "INSERT INTO users (username, email, password_hash, xp, total_lifetime_points, current_balance, auth_token) VALUES (?, ?, ?, 0, 0, 0, ?)",
-            (user.email.strip().lower(), user.email.strip().lower(), pwd_hash, token)
+            (username, email, pwd_hash, token)
         )
         conn.commit()
     except sqlite3.IntegrityError:
@@ -283,8 +289,8 @@ async def register(user: RegisterRequest):
         "success": True,
         "token": token,
         "user": {
-            "username": user.email.strip().lower(),
-            "email": user.email.strip().lower()
+            "username": username,
+            "email": email
         }
     }
 
@@ -341,7 +347,11 @@ async def google_login(payload: GoogleLoginRequest):
     cursor.execute("SELECT * FROM users WHERE email = ? OR google_id = ?", (email, google_id))
     db_user = cursor.fetchone()
     
-    preferred_username = email
+    # New Google users get a readable, username-only identity. Existing users
+    # keep their chosen username so signing in cannot silently rename them.
+    preferred_username = re.sub(r"[^a-z0-9_.-]+", "_", (name or email.split("@", 1)[0]).lower()).strip("._-")[:32]
+    if not preferred_username:
+        preferred_username = email.split("@", 1)[0].lower() or "operator"
     token = db_user["auth_token"] if db_user and db_user["auth_token"] else secrets.token_hex(32)
 
     if not db_user:
@@ -371,14 +381,6 @@ async def google_login(payload: GoogleLoginRequest):
             update_fields.append("google_id = ?")
             params.append(google_id)
             
-        try:
-            cursor.execute("UPDATE users SET username = ? WHERE id = ?", (preferred_username, db_user["id"]))
-            conn.commit()
-        except sqlite3.IntegrityError:
-            preferred_username = f"{preferred_username}{int(time.time()) % 1000}"
-            cursor.execute("UPDATE users SET username = ? WHERE id = ?", (preferred_username, db_user["id"]))
-            conn.commit()
-        
         params.append(db_user["id"])
         cursor.execute(
             f"UPDATE users SET {', '.join(update_fields)} WHERE id = ?",
@@ -458,14 +460,14 @@ async def add_friend(req: FriendRequest, authorization: Optional[str] = Header(N
     friend_identifier = req.username.strip().lower()
 
     cursor.execute(
-        "SELECT * FROM users WHERE lower(username)=? OR lower(email)=?",
-        (friend_identifier, friend_identifier)
+        "SELECT * FROM users WHERE lower(username)=?",
+        (friend_identifier,)
     )
     friend = cursor.fetchone()
 
     if not friend:
         conn.close()
-        raise HTTPException(status_code=404, detail="Username or email not found")
+        raise HTTPException(status_code=404, detail="Username not found")
 
     if friend["id"] == user["id"]:
         conn.close()
@@ -578,7 +580,7 @@ async def respond_to_friend_request(
     cursor = conn.cursor()
 
     cursor.execute(
-        "SELECT id FROM users WHERE username = ?",
+        "SELECT id FROM users WHERE lower(username) = ?",
         (req.sender_username.strip().lower(),)
     )
 
@@ -676,7 +678,7 @@ async def create_coop(req: CoopCreateRequest, authorization: Optional[str] = Hea
     
     friend_id = None
     if req.friend_username:
-        cursor.execute("SELECT * FROM users WHERE username = ?", (req.friend_username.strip(),))
+        cursor.execute("SELECT * FROM users WHERE lower(username) = ?", (req.friend_username.strip().lower(),))
         friend = cursor.fetchone()
         if not friend:
             conn.close()

@@ -14,6 +14,7 @@ const FocusPage: React.FC = () => {
     graceDuration,
     purchaseApp,
     executeCommand,
+    username,
     phoneWarning,
     dismissPhoneWarning
   } = useFocus();
@@ -46,6 +47,10 @@ const FocusPage: React.FC = () => {
     <div className="flex-grow flex flex-col lg:flex-row gap-6 p-4 lg:p-6 h-auto lg:h-full overflow-y-auto lg:overflow-hidden select-none relative">
       {/* Center Combat Hero Panel */}
       <section className="flex-1 flex flex-col h-auto lg:h-full gap-6 overflow-visible lg:overflow-hidden">
+        <div className="flex items-center justify-between border border-outline-variant bg-surface-container-lowest px-4 py-3 flex-shrink-0">
+          <span className="font-technical-prefix text-technical-prefix text-outline-variant uppercase">CURRENT_OPERATOR</span>
+          <span className="font-log-body font-bold text-primary">{username || "LOADING..."}</span>
+        </div>
         {/* Top Stats Header */}
         <div className="flex gap-6 h-20 flex-shrink-0">
           <div className="flex-1 bg-surface-container-lowest border border-outline-variant p-3 flex flex-col justify-center">

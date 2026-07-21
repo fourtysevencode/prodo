@@ -20,12 +20,13 @@ def run_tests():
     cursor = conn.cursor()
     cursor.execute("DELETE FROM users")
     cursor.execute("DELETE FROM friends")
+    cursor.execute("DELETE FROM friend_requests")
     cursor.execute("DELETE FROM coop_sessions")
     
-    cursor.execute("INSERT INTO users (username, email, password_hash, xp, total_lifetime_points, current_balance, auth_token) VALUES ('a@prodo.live', 'a@prodo.live', 'password123', 100, 100, 100, 'tokenA')")
+    cursor.execute("INSERT INTO users (username, email, password_hash, xp, total_lifetime_points, current_balance, auth_token) VALUES ('operatorA', 'a@prodo.live', 'password123', 100, 100, 100, 'tokenA')")
     idA = cursor.lastrowid
     
-    cursor.execute("INSERT INTO users (username, email, password_hash, xp, total_lifetime_points, current_balance, auth_token) VALUES ('b@prodo.live', 'b@prodo.live', 'password123', 200, 200, 200, 'tokenB')")
+    cursor.execute("INSERT INTO users (username, email, password_hash, xp, total_lifetime_points, current_balance, auth_token) VALUES ('operatorB', 'b@prodo.live', 'password123', 200, 200, 200, 'tokenB')")
     idB = cursor.lastrowid
     
     # Establish friendship
@@ -35,20 +36,20 @@ def run_tests():
     conn.commit()
     conn.close()
 
-    print(f"✅ Friendship established between a@prodo.live (ID: {idA}) and b@prodo.live (ID: {idB})")
+    print(f"✅ Friendship established between operatorA (ID: {idA}) and operatorB (ID: {idB})")
 
-    # 2. Test registration (email as username)
+    # 2. Test registration preserves the supplied username
     reg_response = client.post("/auth/register", json={
-        "username": "c@prodo.live",
+        "username": "operatorC",
         "email": "c@prodo.live",
         "password": "password123"
     })
     assert reg_response.status_code == 200
     reg_data = reg_response.json()
-    assert reg_data["user"]["username"] == "c@prodo.live"
+    assert reg_data["user"]["username"] == "operatorc"
     assert reg_data["user"]["email"] == "c@prodo.live"
     tokenC = reg_data["token"]
-    print("✅ Registration test passed: Username/Email matched:", reg_data["user"])
+    print("✅ Registration test passed: Username is independent from email:", reg_data["user"])
 
     # 3. Test constant auth key (login twice, token should not change)
     login_response_1 = client.post("/auth/login", json={
@@ -68,7 +69,13 @@ def run_tests():
     assert token1 == token2  # Token remains constant across logins
     print("✅ Constant auth key test passed: Token remains constant", token1)
 
-    # 4. Test Co-Op room creation (general/open room)
+    # 4. Friend lookup is username-only
+    email_lookup = client.post("/friends/add", json={"username": "b@prodo.live"}, headers={"Authorization": f"Bearer {tokenC}"})
+    assert email_lookup.status_code == 404
+    username_lookup = client.post("/friends/add", json={"username": "operatorB"}, headers={"Authorization": f"Bearer {tokenC}"})
+    assert username_lookup.status_code == 200
+
+    # 5. Test Co-Op room creation (general/open room)
     coop_create_resp = client.post("/coop/create", json={}, headers={"Authorization": "Bearer tokenA"})
     assert coop_create_resp.status_code == 200
     session_id = coop_create_resp.json()["session_id"]
@@ -80,7 +87,7 @@ def run_tests():
     rooms = coop_active_resp.json()["rooms"]
     assert len(rooms) == 1
     assert rooms[0]["session_id"] == session_id
-    assert rooms[0]["host_username"] == "a@prodo.live"
+    assert rooms[0]["host_username"] == "operatorA"
     print("✅ Discover active rooms test passed: Friend B found room hosted by A")
 
     # 6. Test Co-Op room join

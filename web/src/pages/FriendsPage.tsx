@@ -12,7 +12,7 @@ import type { LeaderboardEntry } from "../api/prodoApi";
 import { useFocus } from "../context/FocusContext";
 
 const FriendsPage: React.FC = () => {
-  const { isCoopActive, setIsCoopActive } = useFocus();
+  const { username, isCoopActive, setIsCoopActive } = useFocus();
   const [friendUsername, setFriendUsername] = useState("");
   const [friendsList, setFriendsList] = useState<{ username: string; points: number }[]>([]);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
@@ -126,13 +126,16 @@ const FriendsPage: React.FC = () => {
         <div className="border border-outline-variant bg-surface-container-lowest p-5 flex flex-col gap-4">
           <div>
             <div className="font-technical-prefix text-technical-prefix text-outline-variant uppercase mb-1">LINK_NEW_OPERATOR</div>
-            <h3 className="font-log-body font-bold text-sm text-primary uppercase">ADD FRIEND BY EMAIL</h3>
+            <h3 className="font-log-body font-bold text-sm text-primary uppercase">ADD FRIEND BY USERNAME</h3>
+            <div className="font-technical-prefix text-[10px] text-amber mt-2 uppercase">
+              YOUR USERNAME: {username || "LOADING..."}
+            </div>
           </div>
           
           <form onSubmit={handleAddFriend} className="flex gap-2">
             <input
               type="text"
-              placeholder="ENTER EMAIL..."
+              placeholder="ENTER USERNAME..."
               value={friendUsername}
               onChange={(e) => setFriendUsername(e.target.value)}
               className="flex-grow bg-background border border-outline-variant text-on-surface px-3 py-2 font-technical-prefix text-xs outline-none focus:border-primary"
