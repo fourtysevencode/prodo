@@ -7,6 +7,8 @@ payload that can be sent to the raid sync loop.
 
 from __future__ import annotations
 
+import os
+import sys
 from dataclasses import dataclass
 from importlib import import_module
 from math import atan2, degrees, sqrt
