@@ -26,7 +26,7 @@ export function getCvBaseUrl(): string {
   if (typeof window !== "undefined" && window.location) {
     const hn = window.location.hostname;
     if (hn && (hn === "prodo.live" || hn === "www.prodo.live" || hn === "prodo-live.pages.dev" || hn === "website-dev.prodo-live.pages.dev")) {
-      return "https://cv.prodo.live";
+      return "https://kazenoko-main--prodo-cv-fastapi-app.modal.run";
     }
   }
 
@@ -37,7 +37,7 @@ export function getCvBaseUrl(): string {
     return import.meta.env.VITE_CV_URL;
   }
 
-  return "http://127.0.0.1:8000";
+  return "https://kazenoko-main--prodo-cv-fastapi-app.modal.run";
 }
 
 export function setApiBaseUrl(url: string) {

@@ -21,15 +21,19 @@ export function getApiBaseUrl(): string {
 export function getCvBaseUrl(): string {
   if (typeof window !== "undefined" && window.location) {
     const hn = window.location.hostname;
-    if (hn && (hn === "prodo.live" || hn === "www.prodo.live" || hn === "prodo-live.pages.dev")) {
-      return "https://cv.prodo.live";
+    if (hn && (hn === "prodo.live" || hn === "www.prodo.live" || hn === "prodo-live.pages.dev" || hn === "website-dev.prodo-live.pages.dev")) {
+      return "https://kazenoko-main--prodo-cv-fastapi-app.modal.run";
     }
   }
 
   const saved = localStorage.getItem("prodo_cv_base_url");
   if (saved) return saved;
 
-  return "http://127.0.0.1:8000";
+  if (import.meta.env.VITE_CV_URL) {
+    return import.meta.env.VITE_CV_URL;
+  }
+
+  return "https://kazenoko-main--prodo-cv-fastapi-app.modal.run";
 }
 
 export function setApiBaseUrl(url: string) {
