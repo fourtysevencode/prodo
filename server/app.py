@@ -91,6 +91,19 @@ def init_db():
         started_at REAL
     )
     """)
+     # Friend requests table
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS friend_requests (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        sender_id INTEGER NOT NULL,
+        receiver_id INTEGER NOT NULL,
+        status TEXT NOT NULL DEFAULT 'PENDING',
+        created_at REAL NOT NULL,
+        UNIQUE(sender_id, receiver_id),
+        FOREIGN KEY(sender_id) REFERENCES users(id),
+        FOREIGN KEY(receiver_id) REFERENCES users(id)
+    )
+    """)
     # Seed dummy users
     cursor.execute("SELECT COUNT(*) FROM users")
     if cursor.fetchone()[0] == 0:
@@ -240,6 +253,13 @@ class AITaskVerifyRequest(BaseModel):
     task_id: str
     answer: str
 
+class FriendRequestModel(BaseModel):
+    username: str
+
+
+class RespondFriendRequestModel(BaseModel):
+    sender_username: str
+    accept: bool
 # ---------- Authentication Endpoints ----------
 
 @app.post("/auth/register")
@@ -430,31 +450,78 @@ async def sync(data: SyncRequest, authorization: Optional[str] = Header(None)):
 @app.post("/friends/add")
 async def add_friend(req: FriendRequest, authorization: Optional[str] = Header(None)):
     user = get_current_user_by_token(authorization)
+
     conn = sqlite3.connect(DB_FILE)
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
-    
+
     friend_identifier = req.username.strip().lower()
-    cursor.execute("SELECT * FROM users WHERE username = ? OR email = ?", (friend_identifier, friend_identifier))
+
+    cursor.execute(
+        "SELECT * FROM users WHERE lower(username)=? OR lower(email)=?",
+        (friend_identifier, friend_identifier)
+    )
     friend = cursor.fetchone()
+
     if not friend:
         conn.close()
         raise HTTPException(status_code=404, detail="Username or email not found")
-        
+
     if friend["id"] == user["id"]:
         conn.close()
-        raise HTTPException(status_code=400, detail="You cannot add yourself as friend")
+        raise HTTPException(status_code=400, detail="You cannot add yourself")
 
-    try:
-        cursor.execute("INSERT INTO friends (user_id, friend_id) VALUES (?, ?)", (user["id"], friend["id"]))
-        cursor.execute("INSERT INTO friends (user_id, friend_id) VALUES (?, ?)", (friend["id"], user["id"]))
-        conn.commit()
-    except sqlite3.IntegrityError:
+    # Already friends?
+    cursor.execute(
+        """
+        SELECT 1 FROM friends
+        WHERE user_id=? AND friend_id=?
+        """,
+        (user["id"], friend["id"])
+    )
+
+    if cursor.fetchone():
         conn.close()
-        return {"success": True, "message": "Already friends"}
+        return {
+            "success": True,
+            "message": "Already friends"
+        }
 
+    # Pending request already exists?
+    cursor.execute(
+        """
+        SELECT status
+        FROM friend_requests
+        WHERE sender_id=? AND receiver_id=?
+        """,
+        (user["id"], friend["id"])
+    )
+
+    existing = cursor.fetchone()
+
+    if existing:
+        conn.close()
+        return {
+            "success": True,
+            "message": "Friend request already sent"
+        }
+
+    cursor.execute(
+        """
+        INSERT INTO friend_requests
+        (sender_id, receiver_id, status, created_at)
+        VALUES (?, ?, 'PENDING', ?)
+        """,
+        (user["id"], friend["id"], time.time())
+    )
+
+    conn.commit()
     conn.close()
-    return {"success": True, "message": f"Successfully added {req.username} as a friend"}
+
+    return {
+        "success": True,
+        "message": "Friend request sent"
+    }
 
 @app.get("/friends/list")
 async def get_friends_list(authorization: Optional[str] = Header(None)):
@@ -470,6 +537,100 @@ async def get_friends_list(authorization: Optional[str] = Header(None)):
     friends_list = [dict(row) for row in cursor.fetchall()]
     conn.close()
     return {"success": True, "friends": friends_list}
+
+
+@app.get("/friends/requests")
+async def get_friend_requests(authorization: Optional[str] = Header(None)):
+    user = get_current_user_by_token(authorization)
+
+    conn = sqlite3.connect(DB_FILE)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT u.username
+        FROM friend_requests fr
+        JOIN users u
+            ON fr.sender_id = u.id
+        WHERE fr.receiver_id = ?
+          AND fr.status = 'PENDING'
+    """, (user["id"],))
+
+    requests = [{"username": row["username"]} for row in cursor.fetchall()]
+
+    conn.close()
+
+    return {
+        "success": True,
+        "requests": requests
+    }
+
+
+@app.post("/friends/respond")
+async def respond_to_friend_request(
+    req: RespondFriendRequestModel,
+    authorization: Optional[str] = Header(None)
+):
+    user = get_current_user_by_token(authorization)
+
+    conn = sqlite3.connect(DB_FILE)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+
+    cursor.execute(
+        "SELECT id FROM users WHERE username = ?",
+        (req.sender_username.strip().lower(),)
+    )
+
+    sender = cursor.fetchone()
+
+    if not sender:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Sender not found")
+
+    cursor.execute("""
+        SELECT *
+        FROM friend_requests
+        WHERE sender_id = ?
+          AND receiver_id = ?
+          AND status = 'PENDING'
+    """, (sender["id"], user["id"]))
+
+    request = cursor.fetchone()
+
+    if not request:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Friend request not found")
+
+    if req.accept:
+        cursor.execute(
+            "INSERT OR IGNORE INTO friends (user_id, friend_id) VALUES (?, ?)",
+            (user["id"], sender["id"])
+        )
+
+        cursor.execute(
+            "INSERT OR IGNORE INTO friends (user_id, friend_id) VALUES (?, ?)",
+            (sender["id"], user["id"])
+        )
+
+        cursor.execute(
+            "UPDATE friend_requests SET status='ACCEPTED' WHERE id=?",
+            (request["id"],)
+        )
+
+    else:
+        cursor.execute(
+            "UPDATE friend_requests SET status='REJECTED' WHERE id=?",
+            (request["id"],)
+        )
+
+    conn.commit()
+    conn.close()
+
+    return {
+        "success": True
+    }
+
 
 # ---------- Leaderboard Endpoints ----------
 
