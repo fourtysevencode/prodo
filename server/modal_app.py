@@ -106,40 +106,65 @@ async def check_focus(
     if expected_secret and provided_key != expected_secret:
         raise HTTPException(status_code=403, detail="Invalid or missing X-Prodo-CV-Key header")
 
-    # 2. Decode image frame
-    import cv2
-    import numpy as np
-    
-    contents = await frame.read()
-    nparr = np.frombuffer(contents, np.uint8)
-    image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-
-    if image is None:
-        raise HTTPException(status_code=400, detail="Invalid image frame format")
-
-    # 3. Calculate focus score using local utils
     try:
-        from utils.focus_score import calculate_focus_score
-    except ImportError:
-        if "/root" not in sys.path:
-            sys.path.insert(0, "/root")
-        from utils.focus_score import calculate_focus_score
+        # 2. Decode image frame
+        import cv2
+        import numpy as np
+        
+        contents = await frame.read()
+        nparr = np.frombuffer(contents, np.uint8)
+        image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
 
-    if session_id not in _rolling_scores_by_session:
-        _rolling_scores_by_session[session_id] = []
+        if image is None:
+            return JSONResponse(
+                content={
+                    "status": "UNCERTAIN",
+                    "focus_score": 0.5,
+                    "rolling_focus_score": 0.5,
+                    "signals": {"face_presence": 0.0, "head_pose": 0.0, "gaze": 0.0, "eyes_open": 0.0},
+                    "phone": False,
+                    "session_id": session_id
+                },
+                headers={"Access-Control-Allow-Origin": "*"}
+            )
 
-    scores_list = _rolling_scores_by_session[session_id]
-    debug_flag = include_debug.lower() == "true"
+        # 3. Calculate focus score using local utils
+        try:
+            from utils.focus_score import calculate_focus_score
+        except ImportError:
+            if "/root" not in sys.path:
+                sys.path.insert(0, "/root")
+            from utils.focus_score import calculate_focus_score
 
-    result = calculate_focus_score(
-        frame=image,
-        rolling_scores=scores_list,
-        frame_is_bgr=True,
-        include_debug=debug_flag,
-    )
+        if session_id not in _rolling_scores_by_session:
+            _rolling_scores_by_session[session_id] = []
 
-    result["session_id"] = session_id
-    return result
+        scores_list = _rolling_scores_by_session[session_id]
+        debug_flag = include_debug.lower() == "true"
+
+        result = calculate_focus_score(
+            frame=image,
+            rolling_scores=scores_list,
+            frame_is_bgr=True,
+            include_debug=debug_flag,
+        )
+
+        result["session_id"] = session_id
+        return JSONResponse(content=result, headers={"Access-Control-Allow-Origin": "*"})
+    except Exception as err:
+        print("CV Frame Processing Exception Handled:", err)
+        return JSONResponse(
+            content={
+                "status": "UNCERTAIN",
+                "focus_score": 0.5,
+                "rolling_focus_score": 0.5,
+                "signals": {"face_presence": 0.5, "head_pose": 0.5, "gaze": 0.5, "eyes_open": 0.5},
+                "phone": False,
+                "session_id": session_id,
+                "error": str(err)
+            },
+            headers={"Access-Control-Allow-Origin": "*"}
+        )
 
 
 @web_app.get("/health")

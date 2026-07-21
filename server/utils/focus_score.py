@@ -141,19 +141,27 @@ def calculate_focus_score(
     rgb_frame = cv2.cvtColor(image, cv2.COLOR_BGR2RGB) if frame_is_bgr else image
     rgb_frame.flags.writeable = False
 
-    face_mesh = face_mesh_module.FaceMesh(
-        static_image_mode=True,
-        max_num_faces=1,
-        refine_landmarks=True,
-        min_detection_confidence=0.50,
-    )
-
     try:
+        face_mesh = face_mesh_module.FaceMesh(
+            static_image_mode=False,
+            max_num_faces=1,
+            refine_landmarks=True,
+            min_detection_confidence=0.50,
+        )
         result = face_mesh.process(rgb_frame)
-    finally:
         face_mesh.close()
+    except Exception as e:
+        print(f"MediaPipe FaceMesh error, falling back to OpenCV: {e}")
+        return _calculate_focus_score_with_opencv(
+            image,
+            rolling_scores,
+            frame_is_bgr=frame_is_bgr,
+            cv2=cv2,
+            config=cfg,
+            include_debug=include_debug,
+        )
 
-    if not result.multi_face_landmarks:
+    if not result or not getattr(result, "multi_face_landmarks", None):
         return _build_payload(
             0.0,
             0.0,
