@@ -1,0 +1,18 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "prodo-api-worker",
+	"main": "src/index.ts",
+	"compatibility_date": "2026-07-17",
+	"compatibility_flags": [
+		"nodejs_compat"
+	],
+	"observability": {
+		"enabled": true
+	},
+	"routes": [
+		{
+			"pattern": "api.prodo.live",
+			"custom_domain": true
+		}
+	]
+}

@@ -14,7 +14,11 @@ import secrets
 import re
 from typing import Any, Dict, List, Optional
 
-from utils.focus_score import calculate_focus_score
+try:
+    from utils.focus_score import calculate_focus_score
+except Exception:
+    def calculate_focus_score(*args, **kwargs):
+        return {"error": "Computer vision models are served exclusively at cv.prodo.live"}
 
 app = FastAPI(title="Prodo Focus Engine API")
 
