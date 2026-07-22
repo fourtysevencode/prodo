@@ -14,10 +14,10 @@ import modal
 # ── Modal Image Setup ──────────────────────────────────────────────────────────
 # Pre-install all required computer vision and ML libraries in the Modal container image.
 
-current_dir = os.path.dirname(os.path.abspath(__file__))
-utils_path = os.path.join(current_dir, "utils")
+currentDir = os.path.dirname(os.path.abspath(__file__))
+utilsPath = os.path.join(currentDir, "utils")
 
-cv_image = (
+cvImage = (
     modal.Image.debian_slim(python_version="3.11")
     .apt_install(["libgl1", "libglib2.0-0", "libsm6", "libxext6", "libxrender-dev"])
     .pip_install([
@@ -29,10 +29,10 @@ cv_image = (
         "onnxruntime",
         "python-multipart"
     ])
-    .add_local_dir(utils_path, remote_path="/root/utils")
+    .add_local_dir(utilsPath, remote_path="/root/utils")
 )
 
-app = modal.App("prodo-cv", image=cv_image)
+app = modal.App("prodo-cv", image=cvImage)
 
 # Ensure /root is on Python sys.path
 if "/root" not in sys.path:
@@ -43,9 +43,9 @@ from fastapi import FastAPI, File, Form, Header, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-web_app = FastAPI(title="Prodo CV Inference API", redirect_slashes=False)
+webApp = FastAPI(title="Prodo CV Inference API", redirect_slashes=False)
 
-web_app.add_middleware(
+webApp.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_credentials=False,
@@ -53,19 +53,20 @@ web_app.add_middleware(
     allow_headers=["*"],
 )
 
-PRODO_CV_SECRET = os.getenv("PRODO_CV_SECRET", "prodo_cv_secret_key_default_2026")
+prodoCvSecret = os.getenv("PRODO_CV_SECRET", "prodo_cv_secret_key_default_2026")
 
-_rolling_scores_by_session = {}
+rollingScoresBySession = {}
 
-@web_app.exception_handler(Exception)
-async def global_exception_handler(request, exc):
+@webApp.exception_handler(Exception)
+async def globalExceptionHandler(request, exc):
+    """Global exception handler converting uncaught inference exceptions into structured JSON responses."""
     import traceback
-    error_str = str(exc)
-    trace_str = traceback.format_exc()
-    print("CV Exception:", trace_str)
+    errorStr = str(exc)
+    traceStr = traceback.format_exc()
+    print("CV Exception:", traceStr)
     return JSONResponse(
         status_code=500,
-        content={"success": False, "error": error_str, "detail": "Internal inference error"},
+        content={"success": False, "error": errorStr, "detail": "Internal inference error"},
         headers={
             "Access-Control-Allow-Origin": "*",
             "Access-Control-Allow-Methods": "*",
@@ -73,8 +74,9 @@ async def global_exception_handler(request, exc):
         },
     )
 
-@web_app.options("/{full_path:path}")
-async def options_handler(full_path: str):
+@webApp.options("/{fullPath:path}")
+async def optionsHandler(fullPath: str):
+    """Handles CORS OPTIONS preflight requests across all endpoints."""
     return JSONResponse(
         content={"status": "ok"},
         headers={
@@ -84,12 +86,12 @@ async def options_handler(full_path: str):
         },
     )
 
-@web_app.post("/check-focus")
-async def check_focus(
+@webApp.post("/check-focus")
+async def checkFocus(
     frame: UploadFile = File(...),
-    session_id: str = Form("default"),
-    include_debug: str = Form("false"),
-    x_prodo_cv_key: Optional[str] = Header(None),
+    sessionId: str = Form("default"),
+    includeDebug: str = Form("false"),
+    xProdoCvKey: Optional[str] = Header(None),
     authorization: Optional[str] = Header(None)
 ):
     """Computer Vision Focus Inference Endpoint.
@@ -97,17 +99,17 @@ async def check_focus(
     Verifies caller security via X-Prodo-CV-Key or Bearer token header,
     decodes the webcam frame, and returns focus scoring & landmark signals.
     """
-    # 1. Security check
-    provided_key = x_prodo_cv_key
-    if not provided_key and authorization and authorization.startswith("Bearer "):
-        provided_key = authorization.split("Bearer ", 1)[1].strip()
+    # 1. Security validation check
+    providedKey = xProdoCvKey
+    if not providedKey and authorization and authorization.startswith("Bearer "):
+        providedKey = authorization.split("Bearer ", 1)[1].strip()
         
-    expected_secret = os.getenv("PRODO_CV_SECRET")
-    if expected_secret and provided_key != expected_secret:
+    expectedSecret = os.getenv("PRODO_CV_SECRET")
+    if expectedSecret and providedKey != expectedSecret:
         raise HTTPException(status_code=403, detail="Invalid or missing X-Prodo-CV-Key header")
 
     try:
-        # 2. Decode image frame
+        # 2. Decode raw image frame buffer with OpenCV
         import cv2
         import numpy as np
         
@@ -123,12 +125,12 @@ async def check_focus(
                     "rolling_focus_score": 0.5,
                     "signals": {"face_presence": 0.0, "head_pose": 0.0, "gaze": 0.0, "eyes_open": 0.0},
                     "phone": False,
-                    "session_id": session_id
+                    "session_id": sessionId
                 },
                 headers={"Access-Control-Allow-Origin": "*"}
             )
 
-        # 3. Calculate focus score using local utils
+        # 3. Import and execute focus score calculator
         try:
             from utils.focus_score import calculate_focus_score
         except ImportError:
@@ -136,20 +138,20 @@ async def check_focus(
                 sys.path.insert(0, "/root")
             from utils.focus_score import calculate_focus_score
 
-        if session_id not in _rolling_scores_by_session:
-            _rolling_scores_by_session[session_id] = []
+        if sessionId not in rollingScoresBySession:
+            rollingScoresBySession[sessionId] = []
 
-        scores_list = _rolling_scores_by_session[session_id]
-        debug_flag = include_debug.lower() == "true"
+        scoresList = rollingScoresBySession[sessionId]
+        debugFlag = includeDebug.lower() == "true"
 
         result = calculate_focus_score(
             frame=image,
-            rolling_scores=scores_list,
+            rolling_scores=scoresList,
             frame_is_bgr=True,
-            include_debug=debug_flag,
+            include_debug=debugFlag,
         )
 
-        result["session_id"] = session_id
+        result["session_id"] = sessionId
         return JSONResponse(content=result, headers={"Access-Control-Allow-Origin": "*"})
     except Exception as err:
         print("CV Frame Processing Exception Handled:", err)
@@ -160,19 +162,19 @@ async def check_focus(
                 "rolling_focus_score": 0.5,
                 "signals": {"face_presence": 0.5, "head_pose": 0.5, "gaze": 0.5, "eyes_open": 0.5},
                 "phone": False,
-                "session_id": session_id,
+                "session_id": sessionId,
                 "error": str(err)
             },
             headers={"Access-Control-Allow-Origin": "*"}
         )
 
 
-@web_app.get("/health")
+@webApp.get("/health")
 async def health():
     return {"status": "ok", "service": "prodo-cv-modal"}
 
 
-@app.function(image=cv_image)
+@app.function(image=cvImage)
 @modal.asgi_app()
-def fastapi_app():
-    return web_app
+def fastapiApp():
+    return webApp

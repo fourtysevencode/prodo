@@ -58,11 +58,11 @@ RIGHT_IRIS = (473, 474, 475, 476, 477)
 
 HEAD_POSE_LANDMARKS = (1, 152, 33, 263, 61, 291)
 HEAD_POSE_MODEL_POINTS = (
-    (0.0, 0.0, 0.0),  # nose tip
-    (0.0, -63.6, -12.5),  # chin
+    (0.0, 0.0, 0.0),       # nose tip
+    (0.0, -63.6, -12.5),   # chin
     (-43.3, 32.7, -26.0),  # left eye outer corner
-    (43.3, 32.7, -26.0),  # right eye outer corner
-    (-28.9, -28.9, -24.1),  # left mouth corner
+    (43.3, 32.7, -26.0),   # right eye outer corner
+    (-28.9, -28.9, -24.1), # left mouth corner
     (28.9, -28.9, -24.1),  # right mouth corner
 )
 
@@ -79,116 +79,80 @@ def calculate_focus_score(
     """Calculate focus status and signal scores from one webcam frame.
 
     Args:
-        frame: A webcam image frame as a NumPy array. OpenCV frames are BGR by
-            default; set ``frame_is_bgr=False`` if the input is already RGB.
+        frame: A webcam image frame as a NumPy array. OpenCV frames are BGR by default.
         rolling_scores: Optional mutable list kept by the caller across frames.
-            The current score is appended and the list is trimmed to the
-            configured rolling window.
-        frame_is_bgr: Whether ``frame`` uses OpenCV's BGR channel order.
+        frame_is_bgr: Whether frame uses OpenCV's BGR channel order.
         config: Optional scoring thresholds.
 
     Returns:
-        A dictionary containing ``status``, ``focus_score``,
-        ``rolling_focus_score``, and nested ``signals`` values for
-        ``face_presence``, ``head_pose``, ``gaze``, and ``eyes_open``.
+        A dictionary containing status, focus_score, rolling_focus_score, and signals.
     """
-
     cfg = config or FocusScoreConfig()
-    cv2, face_mesh_module, np = _load_vision_modules(prefer_mediapipe=prefer_mediapipe)
+    cv2, faceMeshModule, np = _load_vision_modules(prefer_mediapipe=prefer_mediapipe)
 
     if frame is None:
         return _build_payload(
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            rolling_scores,
-            cfg,
+            0.0, 0.0, 0.0, 0.0, rolling_scores, cfg
         )
 
     image = np.asarray(frame)
     if image.ndim != 3 or image.shape[2] < 3:
         raise ValueError("frame must be a color image shaped like (height, width, channels)")
 
-    # Phone detection check
-    phone_detected = False
+    # Check for cell phone detection
+    phoneDetected = False
     try:
-        phone_detected = _run_phone_detection(image)
-    except Exception as e:
-        print(f"Phone detection failed: {e}")
+        phoneDetected = _run_phone_detection(image)
+    except Exception as exc:
+        print(f"Phone detection failed: {exc}")
 
-    if phone_detected:
+    if phoneDetected:
         return _build_payload(
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            rolling_scores,
-            cfg,
+            0.0, 0.0, 0.0, 0.0, rolling_scores, cfg,
             debug={"backend": "onnx-yolo", "phone_detected": True} if include_debug else None,
             phone_detected=True
         )
 
-    if face_mesh_module is None:
+    if faceMeshModule is None:
         return _calculate_focus_score_with_opencv(
-            image,
-            rolling_scores,
-            frame_is_bgr=frame_is_bgr,
-            cv2=cv2,
-            config=cfg,
-            include_debug=include_debug,
+            image, rolling_scores, frame_is_bgr=frame_is_bgr, cv2=cv2, config=cfg, include_debug=include_debug
         )
 
     height, width = image.shape[:2]
-    rgb_frame = cv2.cvtColor(image, cv2.COLOR_BGR2RGB) if frame_is_bgr else image
-    rgb_frame.flags.writeable = False
+    rgbFrame = cv2.cvtColor(image, cv2.COLOR_BGR2RGB) if frame_is_bgr else image
+    rgbFrame.flags.writeable = False
 
     try:
-        face_mesh = face_mesh_module.FaceMesh(
+        faceMesh = faceMeshModule.FaceMesh(
             static_image_mode=True,
             max_num_faces=1,
             refine_landmarks=True,
             min_detection_confidence=0.30,
         )
-        result = face_mesh.process(rgb_frame)
-        face_mesh.close()
-    except Exception as e:
-        print(f"MediaPipe FaceMesh error, falling back to OpenCV: {e}")
+        result = faceMesh.process(rgbFrame)
+        faceMesh.close()
+    except Exception as exc:
+        print(f"MediaPipe FaceMesh error, falling back to OpenCV: {exc}")
         return _calculate_focus_score_with_opencv(
-            image,
-            rolling_scores,
-            frame_is_bgr=frame_is_bgr,
-            cv2=cv2,
-            config=cfg,
-            include_debug=include_debug,
+            image, rolling_scores, frame_is_bgr=frame_is_bgr, cv2=cv2, config=cfg, include_debug=include_debug
         )
 
     if not result or not getattr(result, "multi_face_landmarks", None):
         return _build_payload(
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            rolling_scores,
-            cfg,
+            0.0, 0.0, 0.0, 0.0, rolling_scores, cfg,
             debug={"backend": "mediapipe", "face_count": 0} if include_debug else None,
         )
 
     landmarks = result.multi_face_landmarks[0].landmark
     points = _landmarks_to_points(landmarks, width, height, np)
 
-    face_presence = _score_face_presence(points, width, height)
-    head_pose = _score_head_pose(points, width, height, cv2, np, cfg)
-    eyes_open = _score_eyes_open(points, cfg)
-    gaze = _score_gaze(points, head_pose, cfg, np)
+    facePresence = _score_face_presence(points, width, height)
+    headPose = _score_head_pose(points, width, height, cv2, np, cfg)
+    eyesOpen = _score_eyes_open(points, cfg)
+    gazeScore = _score_gaze(points, headPose, cfg, np)
 
     return _build_payload(
-        face_presence,
-        head_pose,
-        gaze,
-        eyes_open,
-        rolling_scores,
-        cfg,
+        facePresence, headPose, gazeScore, eyesOpen, rolling_scores, cfg,
         debug={"backend": "mediapipe", "face_count": 1} if include_debug else None,
     )
 
@@ -199,33 +163,28 @@ def _load_vision_modules(*, prefer_mediapipe: bool) -> tuple[Any, Any, Any]:
         import numpy as np
     except ImportError as exc:
         raise ImportError(
-            "calculate_focus_score requires opencv-python and numpy. "
-            "Install them in the environment that processes webcam snapshots."
+            "calculate_focus_score requires opencv-python and numpy."
         ) from exc
 
-    face_mesh_module = None
+    faceMeshModule = None
     if not prefer_mediapipe:
-        return cv2, face_mesh_module, np
+        return cv2, faceMeshModule, np
 
     try:
         import mediapipe as mp
-
         try:
-            face_mesh_module = mp.solutions.face_mesh
+            faceMeshModule = mp.solutions.face_mesh
         except AttributeError:
-            for module_name in (
-                "mediapipe.solutions.face_mesh",
-                "mediapipe.python.solutions.face_mesh",
-            ):
+            for moduleName in ("mediapipe.solutions.face_mesh", "mediapipe.python.solutions.face_mesh"):
                 try:
-                    face_mesh_module = import_module(module_name)
+                    faceMeshModule = import_module(moduleName)
                     break
                 except ImportError:
                     continue
     except ImportError:
-        face_mesh_module = None
+        faceMeshModule = None
 
-    return cv2, face_mesh_module, np
+    return cv2, faceMeshModule, np
 
 
 def _calculate_focus_score_with_opencv(
@@ -237,118 +196,90 @@ def _calculate_focus_score_with_opencv(
     config: FocusScoreConfig,
     include_debug: bool,
 ) -> Dict[str, Any]:
-    gray_code = cv2.COLOR_BGR2GRAY if frame_is_bgr else cv2.COLOR_RGB2GRAY
-    gray = cv2.cvtColor(image, gray_code)
+    grayCode = cv2.COLOR_BGR2GRAY if frame_is_bgr else cv2.COLOR_RGB2GRAY
+    gray = cv2.cvtColor(image, grayCode)
     gray = cv2.equalizeHist(gray)
     height, width = gray.shape[:2]
 
-    cascade_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cascades")
-    face_filenames = (
+    cascadeDir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cascades")
+    faceFilenames = (
         "haarcascade_frontalface_default.xml",
         "haarcascade_frontalface_alt2.xml",
         "haarcascade_profileface.xml",
     )
 
-    face_cascades = []
-    for filename in face_filenames:
-        local_path = os.path.join(cascade_dir, filename)
-        if os.path.exists(local_path):
-            cc = cv2.CascadeClassifier(local_path)
+    faceCascades = []
+    for filename in faceFilenames:
+        localPath = os.path.join(cascadeDir, filename)
+        if os.path.exists(localPath):
+            cc = cv2.CascadeClassifier(localPath)
             if not cc.empty():
-                face_cascades.append(cc)
+                faceCascades.append(cc)
                 continue
         if getattr(cv2, "data", None) and getattr(cv2.data, "haarcascades", None):
-            sys_path = os.path.join(cv2.data.haarcascades, filename)
-            if os.path.exists(sys_path):
-                cc = cv2.CascadeClassifier(sys_path)
+            sysPath = os.path.join(cv2.data.haarcascades, filename)
+            if os.path.exists(sysPath):
+                cc = cv2.CascadeClassifier(sysPath)
                 if not cc.empty():
-                    face_cascades.append(cc)
+                    faceCascades.append(cc)
 
-    eye_cascade_path = os.path.join(cascade_dir, "haarcascade_eye.xml")
-    if not os.path.exists(eye_cascade_path) and getattr(cv2, "data", None) and getattr(cv2.data, "haarcascades", None):
-        eye_cascade_path = os.path.join(cv2.data.haarcascades, "haarcascade_eye.xml")
+    eyeCascadePath = os.path.join(cascadeDir, "haarcascade_eye.xml")
+    if not os.path.exists(eyeCascadePath) and getattr(cv2, "data", None) and getattr(cv2.data, "haarcascades", None):
+        eyeCascadePath = os.path.join(cv2.data.haarcascades, "haarcascade_eye.xml")
 
-    eye_cascade = cv2.CascadeClassifier(eye_cascade_path) if os.path.exists(eye_cascade_path) else cv2.CascadeClassifier()
+    eyeCascade = cv2.CascadeClassifier(eyeCascadePath) if os.path.exists(eyeCascadePath) else cv2.CascadeClassifier()
 
-    min_face_size = max(40, int(min(width, height) * 0.08))
+    minFaceSize = max(40, int(min(width, height) * 0.08))
     faces = []
-    for face_cascade in face_cascades:
-        if face_cascade.empty():
+    for faceCascade in faceCascades:
+        if faceCascade.empty():
             continue
 
-        detected = face_cascade.detectMultiScale(
+        detected = faceCascade.detectMultiScale(
             gray,
             scaleFactor=1.05,
             minNeighbors=3,
-            minSize=(min_face_size, min_face_size),
+            minSize=(minFaceSize, minFaceSize),
         )
         faces.extend(tuple(face) for face in detected)
 
     if len(faces) == 0:
         return _build_payload(
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            rolling_scores,
-            config,
-            debug={
-                "backend": "opencv_haar",
-                "face_count": 0,
-                "min_face_size": min_face_size,
-                "frame_size": [width, height],
-            }
-            if include_debug
-            else None,
+            0.0, 0.0, 0.0, 0.0, rolling_scores, config,
+            debug={"backend": "opencv_haar", "face_count": 0} if include_debug else None,
         )
 
-    x, y, face_width, face_height = max(faces, key=lambda face: face[2] * face[3])
-    face_area_ratio = (face_width * face_height) / float(width * height)
-    face_presence = _scale_between(face_area_ratio, low=0.015, high=0.080)
+    x, y, faceWidth, faceHeight = max(faces, key=lambda f: f[2] * f[3])
+    faceAreaRatio = (faceWidth * faceHeight) / float(width * height)
+    facePresence = _scale_between(faceAreaRatio, low=0.003, high=0.030)
 
-    face_center_x = x + face_width / 2.0
-    face_center_y = y + face_height / 2.0
-    horizontal_offset = abs((face_center_x / width) - 0.5)
-    vertical_delta = (face_center_y / height) - 0.48
-    horizontal_score = _offset_score(horizontal_offset, ok_offset=0.14, max_offset=0.34)
-    if vertical_delta > 0:
-        vertical_score = _offset_score(vertical_delta, ok_offset=0.24, max_offset=0.45)
+    faceCenterX = x + faceWidth / 2.0
+    faceCenterY = y + faceHeight / 2.0
+    horizontalOffset = abs((faceCenterX / width) - 0.5)
+    verticalDelta = (faceCenterY / height) - 0.48
+    horizontalScore = _offset_score(horizontalOffset, ok_offset=0.14, max_offset=0.34)
+    if verticalDelta > 0:
+        verticalScore = _offset_score(verticalDelta, ok_offset=0.24, max_offset=0.45)
     else:
-        vertical_score = _offset_score(abs(vertical_delta), ok_offset=0.16, max_offset=0.36)
-    head_pose = 0.70 * horizontal_score + 0.30 * vertical_score
+        verticalScore = _offset_score(abs(verticalDelta), ok_offset=0.16, max_offset=0.36)
+    headPose = 0.70 * horizontalScore + 0.30 * verticalScore
 
-    face_gray = gray[y : y + face_height, x : x + face_width]
+    faceGray = gray[y : y + faceHeight, x : x + faceWidth]
     eyes = ()
-    if not eye_cascade.empty():
-        eyes = eye_cascade.detectMultiScale(
-            face_gray,
+    if not eyeCascade.empty():
+        eyes = eyeCascade.detectMultiScale(
+            faceGray,
             scaleFactor=1.1,
             minNeighbors=3,
             minSize=(14, 14),
         )
-    eyes_open = _clamp(len(eyes) / 2.0)
+    eyesOpen = _clamp(len(eyes) / 2.0)
 
-    # Haar cascades do not provide iris position, so approximate gaze from
-    # face position. Missing eyes remain strict, but do not erase a strong
-    # downward-reading posture entirely.
-    gaze = (0.80 * head_pose) if len(eyes) == 0 else (0.65 * head_pose + 0.35 * eyes_open)
+    gazeScore = (0.80 * headPose) if len(eyes) == 0 else (0.65 * headPose + 0.35 * eyesOpen)
 
     return _build_payload(
-        face_presence,
-        head_pose,
-        gaze,
-        eyes_open,
-        rolling_scores,
-        config,
-        debug={
-            "backend": "opencv_haar",
-            "face_count": len(faces),
-            "face_box": [int(x), int(y), int(face_width), int(face_height)],
-            "eye_count": int(len(eyes)),
-            "frame_size": [width, height],
-        }
-        if include_debug
-        else None,
+        facePresence, headPose, gazeScore, eyesOpen, rolling_scores, config,
+        debug={"backend": "opencv_haar", "face_count": len(faces)} if include_debug else None,
     )
 
 
@@ -388,44 +319,44 @@ def _build_payload(
         "eyes_open": round(_clamp(eyes_open), 4),
     }
 
-    total_weight = (
+    totalWeight = (
         config.face_presence_weight
         + config.head_pose_weight
         + config.gaze_weight
         + config.eyes_open_weight
     )
-    focus_score = (
+    focusScore = (
         config.face_presence_weight * signals["face_presence"]
         + config.head_pose_weight * signals["head_pose"]
         + config.gaze_weight * signals["gaze"]
         + config.eyes_open_weight * signals["eyes_open"]
-    ) / total_weight
-    focus_score = round(_clamp(focus_score), 4)
+    ) / totalWeight
+    focusScore = round(_clamp(focusScore), 4)
 
     if rolling_scores is not None:
-        rolling_scores.append(focus_score)
+        rolling_scores.append(focusScore)
         del rolling_scores[:-config.rolling_window]
-        rolling_focus_score = round(_clamp(fmean(rolling_scores)), 4)
+        rollingFocusScore = round(_clamp(fmean(rolling_scores)), 4)
     else:
-        rolling_focus_score = focus_score
+        rollingFocusScore = focusScore
 
-    status_total_weight = config.current_focus_status_weight + config.rolling_focus_status_weight
-    if status_total_weight <= 0:
-        status_focus_score = focus_score
+    statusTotalWeight = config.current_focus_status_weight + config.rolling_focus_status_weight
+    if statusTotalWeight <= 0:
+        statusFocusScore = focusScore
     else:
-        status_focus_score = round(
+        statusFocusScore = round(
             _clamp(
                 (
-                    config.current_focus_status_weight * focus_score
-                    + config.rolling_focus_status_weight * rolling_focus_score
+                    config.current_focus_status_weight * focusScore
+                    + config.rolling_focus_status_weight * rollingFocusScore
                 )
-                / status_total_weight
+                / statusTotalWeight
             ),
             4,
         )
 
-    current_frame_has_no_focus_signal = (
-        focus_score <= 0.05
+    currentFrameHasNoFocusSignal = (
+        focusScore <= 0.05
         or (
             signals["face_presence"] <= 0.05
             and signals["head_pose"] <= 0.05
@@ -434,19 +365,19 @@ def _build_payload(
         )
     )
 
-    if current_frame_has_no_focus_signal:
+    if currentFrameHasNoFocusSignal:
         status = "DISTRACTED"
-    elif status_focus_score >= config.focused_threshold:
+    elif statusFocusScore >= config.focused_threshold:
         status = "FOCUSED"
-    elif status_focus_score < config.distracted_threshold:
+    elif statusFocusScore < config.distracted_threshold:
         status = "DISTRACTED"
     else:
         status = "UNCERTAIN"
 
     payload = {
         "status": status,
-        "focus_score": focus_score,
-        "rolling_focus_score": rolling_focus_score,
+        "focus_score": focusScore,
+        "rolling_focus_score": rollingFocusScore,
         "signals": signals,
         "phone": False,
     }
@@ -461,12 +392,12 @@ def _landmarks_to_points(landmarks: Sequence[Any], width: int, height: int, np: 
 
 
 def _score_face_presence(points: Any, width: int, height: int) -> float:
-    x_min, y_min = points[:, 0].min(), points[:, 1].min()
-    x_max, y_max = points[:, 0].max(), points[:, 1].max()
-    face_area_ratio = ((x_max - x_min) * (y_max - y_min)) / float(width * height)
+    xMin, yMin = points[:, 0].min(), points[:, 1].min()
+    xMax, yMax = points[:, 0].max(), points[:, 1].max()
+    faceAreaRatio = ((xMax - xMin) * (yMax - yMin)) / float(width * height)
 
     # Seated webcam framing saturates presence score
-    return _scale_between(face_area_ratio, low=0.003, high=0.030)
+    return _scale_between(faceAreaRatio, low=0.003, high=0.030)
 
 
 def _score_head_pose(
@@ -477,36 +408,34 @@ def _score_head_pose(
     np: Any,
     config: FocusScoreConfig,
 ) -> float:
-    image_points = np.array([points[index, :2] for index in HEAD_POSE_LANDMARKS], dtype=np.float64)
-    model_points = np.array(HEAD_POSE_MODEL_POINTS, dtype=np.float64)
-    focal_length = float(width)
-    camera_matrix = np.array(
-        ((focal_length, 0.0, width / 2.0), (0.0, focal_length, height / 2.0), (0.0, 0.0, 1.0)),
+    """Calculates 3D head pose orientation using solvePnP and Euler angle conversion."""
+    imagePoints = np.array([points[index, :2] for index in HEAD_POSE_LANDMARKS], dtype=np.float64)
+    modelPoints = np.array(HEAD_POSE_MODEL_POINTS, dtype=np.float64)
+    focalLength = float(width)
+    cameraMatrix = np.array(
+        ((focalLength, 0.0, width / 2.0), (0.0, focalLength, height / 2.0), (0.0, 0.0, 1.0)),
         dtype=np.float64,
     )
     distortion = np.zeros((4, 1), dtype=np.float64)
 
-    success, rotation_vector, _ = cv2.solvePnP(
-        model_points,
-        image_points,
-        camera_matrix,
-        distortion,
-        flags=cv2.SOLVEPNP_ITERATIVE,
+    success, rotationVector, _ = cv2.solvePnP(
+        modelPoints, imagePoints, cameraMatrix, distortion, flags=cv2.SOLVEPNP_ITERATIVE
     )
     if not success:
         return 0.0
 
-    rotation_matrix, _ = cv2.Rodrigues(rotation_vector)
-    pitch, yaw, roll = _rotation_matrix_to_euler(rotation_matrix)
+    rotationMatrix, _ = cv2.Rodrigues(rotationVector)
+    pitch, yaw, roll = _rotation_matrix_to_euler(rotationMatrix)
 
-    yaw_score = _angle_score(yaw, config.yaw_ok_degrees, config.yaw_max_degrees)
-    pitch_score = _pitch_score(pitch, config)
-    roll_score = _angle_score(roll, config.roll_ok_degrees, config.roll_max_degrees)
+    yawScore = _angle_score(yaw, config.yaw_ok_degrees, config.yaw_max_degrees)
+    pitchScore = _pitch_score(pitch, config)
+    rollScore = _angle_score(roll, config.roll_ok_degrees, config.roll_max_degrees)
 
-    return 0.55 * yaw_score + 0.35 * pitch_score + 0.10 * roll_score
+    return 0.55 * yawScore + 0.35 * pitchScore + 0.10 * rollScore
 
 
 def _rotation_matrix_to_euler(rotation_matrix: Any) -> tuple[float, float, float]:
+    """Converts a 3x3 OpenCV rotation matrix to Euler angles (pitch, yaw, roll) in degrees."""
     sy = sqrt(rotation_matrix[0, 0] ** 2 + rotation_matrix[1, 0] ** 2)
     singular = sy < 1e-6
 
@@ -523,11 +452,11 @@ def _rotation_matrix_to_euler(rotation_matrix: Any) -> tuple[float, float, float
 
 
 def _score_eyes_open(points: Any, config: FocusScoreConfig) -> float:
-    left_ear = _eye_aspect_ratio(points, LEFT_EYE_EAR)
-    right_ear = _eye_aspect_ratio(points, RIGHT_EYE_EAR)
-    average_ear = (left_ear + right_ear) / 2.0
+    leftEar = _eye_aspect_ratio(points, LEFT_EYE_EAR)
+    rightEar = _eye_aspect_ratio(points, RIGHT_EYE_EAR)
+    averageEar = (leftEar + rightEar) / 2.0
 
-    return _scale_between(average_ear, low=config.eye_closed_ear, high=config.eye_open_ear)
+    return _scale_between(averageEar, low=config.eye_closed_ear, high=config.eye_open_ear)
 
 
 def _eye_aspect_ratio(points: Any, indices: Sequence[int]) -> float:
@@ -545,16 +474,14 @@ def _score_gaze(points: Any, head_pose_score: float, config: FocusScoreConfig, n
     if len(points) <= max(RIGHT_IRIS):
         return head_pose_score
 
-    left_score = _single_eye_gaze_score(points, LEFT_EYE_BOX, LEFT_IRIS, config, np)
-    right_score = _single_eye_gaze_score(points, RIGHT_EYE_BOX, RIGHT_IRIS, config, np)
+    leftScore = _single_eye_gaze_score(points, LEFT_EYE_BOX, LEFT_IRIS, config, np)
+    rightScore = _single_eye_gaze_score(points, RIGHT_EYE_BOX, RIGHT_IRIS, config, np)
 
-    if left_score is None or right_score is None:
+    if leftScore is None or rightScore is None:
         return head_pose_score
 
-    iris_score = (left_score + right_score) / 2.0
-
-    # Head direction is a stabilizer because iris-only gaze is noisy on webcams.
-    return 0.75 * iris_score + 0.25 * head_pose_score
+    irisScore = (leftScore + rightScore) / 2.0
+    return 0.75 * irisScore + 0.25 * head_pose_score
 
 
 def _single_eye_gaze_score(
@@ -564,35 +491,27 @@ def _single_eye_gaze_score(
     config: FocusScoreConfig,
     np: Any,
 ) -> Optional[float]:
-    eye_points = np.array([points[index, :2] for index in eye_indices], dtype=np.float64)
-    iris_center = np.array([points[index, :2] for index in iris_indices], dtype=np.float64).mean(axis=0)
+    eyePoints = np.array([points[index, :2] for index in eye_indices], dtype=np.float64)
+    irisCenter = np.array([points[index, :2] for index in iris_indices], dtype=np.float64).mean(axis=0)
 
-    x_min, y_min = eye_points.min(axis=0)
-    x_max, y_max = eye_points.max(axis=0)
-    eye_width = x_max - x_min
-    eye_height = y_max - y_min
+    xMin, yMin = eyePoints.min(axis=0)
+    xMax, yMax = eyePoints.max(axis=0)
+    eyeWidth = xMax - xMin
+    eyeHeight = yMax - yMin
 
-    if eye_width <= 0 or eye_height <= 0:
+    if eyeWidth <= 0 or eyeHeight <= 0:
         return None
 
-    x_ratio = (iris_center[0] - x_min) / eye_width
-    y_ratio = (iris_center[1] - y_min) / eye_height
+    xRatio = (irisCenter[0] - xMin) / eyeWidth
+    yRatio = (irisCenter[1] - yMin) / eyeHeight
 
-    x_offset = abs(float(x_ratio) - 0.5)
-    y_offset = abs(float(y_ratio) - 0.5)
+    xOffset = abs(float(xRatio) - 0.5)
+    yOffset = abs(float(yRatio) - 0.5)
 
-    x_score = _offset_score(
-        x_offset,
-        config.gaze_center_tolerance_x,
-        config.gaze_max_offset_x,
-    )
-    y_score = _offset_score(
-        y_offset,
-        config.gaze_center_tolerance_y,
-        config.gaze_max_offset_y,
-    )
+    xScore = _offset_score(xOffset, config.gaze_center_tolerance_x, config.gaze_max_offset_x)
+    yScore = _offset_score(yOffset, config.gaze_center_tolerance_y, config.gaze_max_offset_y)
 
-    return 0.75 * x_score + 0.25 * y_score
+    return 0.75 * xScore + 0.25 * yScore
 
 
 def _angle_score(angle_degrees: float, ok_degrees: float, max_degrees: float) -> float:
@@ -601,17 +520,8 @@ def _angle_score(angle_degrees: float, ok_degrees: float, max_degrees: float) ->
 
 def _pitch_score(pitch_degrees: float, config: FocusScoreConfig) -> float:
     if pitch_degrees >= 0:
-        return _offset_score(
-            pitch_degrees,
-            config.pitch_down_ok_degrees,
-            config.pitch_down_max_degrees,
-        )
-
-    return _offset_score(
-        abs(pitch_degrees),
-        config.pitch_ok_degrees,
-        config.pitch_max_degrees,
-    )
+        return _offset_score(pitch_degrees, config.pitch_down_ok_degrees, config.pitch_down_max_degrees)
+    return _offset_score(abs(pitch_degrees), config.pitch_ok_degrees, config.pitch_max_degrees)
 
 
 def _offset_score(offset: float, ok_offset: float, max_offset: float) -> float:
@@ -619,7 +529,6 @@ def _offset_score(offset: float, ok_offset: float, max_offset: float) -> float:
         return 1.0
     if offset >= max_offset:
         return 0.0
-
     return 1.0 - ((offset - ok_offset) / (max_offset - ok_offset))
 
 
@@ -628,7 +537,6 @@ def _scale_between(value: float, low: float, high: float) -> float:
         return 0.0
     if value >= high:
         return 1.0
-
     return (value - low) / (high - low)
 
 
@@ -643,27 +551,28 @@ def _clamp(value: float, low: float = 0.0, high: float = 1.0) -> float:
 _ONNX_SESSION = None
 
 def _run_phone_detection(image: Any) -> bool:
+    """Runs YOLOv8 ONNX object detection model to detect cell phone distraction."""
     global _ONNX_SESSION
     if _ONNX_SESSION is None:
         import onnxruntime
         import os
-        model_paths = [
+        modelPaths = [
             "model/model.onnx",
             "../model/model.onnx",
             "/code/model/model.onnx",
             "/root/prodo/model/model.onnx"
         ]
-        model_path = None
-        for p in model_paths:
+        modelPath = None
+        for p in modelPaths:
             if os.path.exists(p):
-                model_path = p
+                modelPath = p
                 break
         
-        if not model_path:
+        if not modelPath:
             return False
             
         _ONNX_SESSION = onnxruntime.InferenceSession(
-            model_path, 
+            modelPath, 
             providers=["CPUExecutionProvider"]
         )
 
@@ -671,20 +580,17 @@ def _run_phone_detection(image: Any) -> bool:
     import numpy as np
 
     # YOLOv8 input is 640x640 RGB
-    img_resized = cv2.resize(image, (640, 640))
-    img_rgb = cv2.cvtColor(img_resized, cv2.COLOR_BGR2RGB)
-    img_data = img_rgb.astype(np.float32) / 255.0
-    img_data = img_data.transpose(2, 0, 1)
-    img_data = np.expand_dims(img_data, axis=0)
+    imgResized = cv2.resize(image, (640, 640))
+    imgRgb = cv2.cvtColor(imgResized, cv2.COLOR_BGR2RGB)
+    imgData = imgRgb.astype(np.float32) / 255.0
+    imgData = imgData.transpose(2, 0, 1)
+    imgData = np.expand_dims(imgData, axis=0)
     
-    outputs = _ONNX_SESSION.run(None, {"images": img_data})[0]
-    # YOLOv8 output: [1, 84, 8400] for COCO 80-class model.
-    # Indices 0-3: bbox (x, y, w, h). Index 4+cls_id = class score.
-    # Class 67 = cell phone → output index 4 + 67 = 71.
-    phone_confs = outputs[0, 71, :]
-    max_phone_conf = float(phone_confs.max())
+    outputs = _ONNX_SESSION.run(None, {"images": imgData})[0]
+    phoneConfs = outputs[0, 71, :]
+    maxPhoneConf = float(phoneConfs.max())
 
-    if max_phone_conf > 0.40:
+    if maxPhoneConf > 0.40:
         return True
 
     return False
