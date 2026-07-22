@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useFocus } from "../context/FocusContext";
 
 const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
-  const { xp, netLink, sessionTime, isTracking, startTracking, stopTracking, setIsAuthenticated, username } = useFocus();
+  const { xp, sessionTime, isTracking, startTracking, stopTracking, setIsAuthenticated, username } = useFocus();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -24,10 +24,9 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
   const navItems = [
     { path: "/focus", label: "FOCUS", icon: "radar" },
     { path: "/logs", label: "LOGS", icon: "receipt_long" },
+    { path: "/leaderboard", label: "RANKINGS", icon: "leaderboard" },
     { path: "/vault", label: "VAULT", icon: "lock" },
     { path: "/friends", label: "FRIENDS", icon: "group" },
-    { path: "/config", label: "CONFIG", icon: "settings_input_component" },
-    { path: "/help", label: "HELP", icon: "help" },
     { path: "/settings", label: "SETTINGS", icon: "settings" },
   ];
 
@@ -35,47 +34,40 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
     <div className="bg-[#0A0A0A] text-on-surface h-screen w-screen overflow-hidden font-log-body relative flex flex-col select-none">
       
       {/* TopNavBar */}
-      <header className="flex justify-between items-center px-container-padding w-full h-8 bg-background border-b border-outline-variant z-50 flex-shrink-0">
-        <div className="flex items-center gap-3 h-full">
-          <img src="/favicon.svg" alt="Prodo Logo" className="w-5 h-5" />
-          <span className="font-technical-prefix text-technical-prefix text-primary uppercase tracking-widest">
-            PRODO_NEURAL_NET_V2.0
-          </span>
-          <nav className="hidden md:flex h-full border-l border-outline-variant ml-2 pl-2">
-            <span className="h-full px-4 flex items-center font-technical-prefix text-technical-prefix text-outline-variant">
-              NET_LINK: {isTracking ? `${netLink}%` : "OFFLINE"}
-            </span>
-            <span className="h-full px-4 flex items-center font-technical-prefix text-technical-prefix text-outline-variant">
-              SYS_TIME: {formatSessionTime(sessionTime)}
-            </span>
-          </nav>
-        </div>
+      <header className="flex justify-between items-center px-6 w-full h-10 bg-background border-b border-outline-variant z-50 flex-shrink-0">
+        {/* Left: Active/Inactive status indicator */}
         <div className="flex items-center gap-2">
-          <Link to="/settings" className="text-on-surface-variant hover:text-primary transition-colors p-1 flex items-center">
-            <span className="material-symbols-outlined text-[18px]">settings</span>
-          </Link>
-          <button 
-            onClick={() => navigate("/login")} 
-            className="text-on-surface-variant hover:text-primary transition-colors p-1 flex items-center"
-            title="Authenticate"
-          >
-            <span className="material-symbols-outlined text-[18px]">account_circle</span>
-          </button>
+          <span className={`w-2.5 h-2.5 rounded-full ${isTracking ? "bg-emerald animate-pulse" : "bg-outline-variant"}`}></span>
+          <span className={`font-technical-prefix text-[10px] uppercase font-bold tracking-widest ${isTracking ? "text-emerald" : "text-outline-variant"}`}>
+            {isTracking ? "ACTIVE" : "INACTIVE"}
+          </span>
+        </div>
+
+        {/* Center: PRODO App Name */}
+        <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2">
+          <span className="font-value-lg text-[20px] text-primary tracking-widest uppercase">PRODO</span>
+        </div>
+
+        {/* Right: Time Active Counter */}
+        <div className="flex items-center gap-2 font-technical-prefix text-[11px] text-outline-variant">
+          <span className="uppercase text-[9px] tracking-wider opacity-60">TIME ACTIVE</span>
+          <span className="font-bold text-primary">{formatSessionTime(sessionTime)}</span>
         </div>
       </header>
 
       {/* Main Layout Body */}
-      <div className="flex w-full h-[calc(100vh-32px)] overflow-hidden">
+      <div className="flex w-full h-[calc(100vh-40px)] overflow-hidden">
         
         {/* Left Sidebar */}
-        <aside className="w-16 md:w-20 h-full border-r border-outline-variant bg-surface-container-lowest flex flex-col items-center py-gutter z-40 flex-shrink-0">
-          {/* Operator Node Status */}
+        <aside className="w-16 md:w-20 h-full border-r border-outline-variant bg-surface-container-lowest flex flex-col items-center py-4 z-40 flex-shrink-0">
+          
+          {/* Logo Header */}
           <div className="flex flex-col items-center gap-2 mb-6">
-            <div className="w-10 h-10 bg-surface-variant flex items-center justify-center border border-outline-variant">
-              <span className="material-symbols-outlined text-outline">admin_panel_settings</span>
-            </div>
+            <img src="/favicon.svg" alt="Prodo Logo" className="w-8 h-8 hover:scale-105 transition-transform" />
             <div className="text-center hidden md:block">
-              <div className="font-technical-prefix text-[8px] text-outline-variant truncate max-w-[70px]" title={username || "SYS_OP_01"}>{username || "SYS_OP_01"}</div>
+              <div className="font-technical-prefix text-[8px] text-outline-variant truncate max-w-[70px]" title={username || "OPERATOR"}>
+                {username || "OPERATOR"}
+              </div>
             </div>
           </div>
 
@@ -108,14 +100,15 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
           <div className="mt-auto flex flex-col items-center w-full gap-4 px-2">
             <button
               onClick={() => {
-                if (window.confirm("Confirm termination of Prodo HUD Core Session?")) {
-                  sessionStorage.removeItem("prodo_token");
+                if (window.confirm("Confirm logout from Prodo?")) {
+                  localStorage.removeItem("prodo_token");
                   setIsAuthenticated(false);
                   stopTracking();
                   navigate("/login");
                 }
               }}
               className="flex flex-col items-center justify-center gap-1 py-2 text-on-surface-variant hover:text-crimson transition-all group w-full"
+              title="Logout"
             >
               <span className="material-symbols-outlined text-[20px] group-hover:scale-110 transition-transform">
                 power_settings_new
