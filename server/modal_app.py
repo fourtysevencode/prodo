@@ -74,8 +74,8 @@ async def globalExceptionHandler(request, exc):
         },
     )
 
-@webApp.options("/{fullPath:path}")
-async def optionsHandler(fullPath: str):
+@webApp.options("/{full_path:path}")
+async def options_handler(full_path: str):
     """Handles CORS OPTIONS preflight requests across all endpoints."""
     return JSONResponse(
         content={"status": "ok"},
@@ -176,5 +176,5 @@ async def health():
 
 @app.function(image=cvImage)
 @modal.asgi_app()
-def fastapiApp():
+def fastapi_app():
     return webApp
