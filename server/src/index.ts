@@ -2,16 +2,26 @@
  * Prodo API Cloudflare Worker Entry Point
  * 
  * Modular HTTP router serving authentication, user profile sync, friends, leaderboards,
- * and co-op focus sessions backed by a serverless Cloudflare D1 SQL database.
+ * seamless device OAuth handoff, telemetry, and co-op focus sessions backed by Cloudflare D1.
  */
 
 import { Env } from "./types";
 import { getCorsHeaders, createJsonResponse, createErrorResponse } from "./utils/cors";
-import { handleGoogleAuth, handleRegister, handleLogin } from "./routes/authRoutes";
+import { 
+  handleGoogleAuth, 
+  handleRegister, 
+  handleLogin, 
+  handleUpdateUsername, 
+  handleTesterLogin, 
+  handleDeviceCodeRequest, 
+  handleDeviceCodeApprove, 
+  handleDeviceCodePoll 
+} from "./routes/authRoutes";
 import { handleGetMe, handleSync } from "./routes/userRoutes";
 import { handleGetFriendsList, handleAddFriend } from "./routes/friendRoutes";
 import { handleGlobalLeaderboard, handleFriendsLeaderboard } from "./routes/leaderboardRoutes";
 import { handleCreateCoop, handleGetActiveCoop, handleJoinCoop, handleEndCoop } from "./routes/coopRoutes";
+import { handleTelemetryLog } from "./routes/telemetryRoutes";
 
 export default {
   async fetch(request: Request, env: Env, _ctx: ExecutionContext): Promise<Response> {
@@ -33,6 +43,16 @@ export default {
     if (path === "/auth/google" && method === "POST") return handleGoogleAuth(request, env);
     if (path === "/auth/register" && method === "POST") return handleRegister(request, env);
     if (path === "/auth/login" && method === "POST") return handleLogin(request, env);
+    if (path === "/auth/username" && method === "POST") return handleUpdateUsername(request, env);
+    if (path === "/auth/tester" && method === "POST") return handleTesterLogin(request, env);
+
+    // ── Seamless Device OAuth Handoff (Tauri Web Auth) ────────────────────────
+    if (path === "/auth/device-code" && method === "POST") return handleDeviceCodeRequest(request, env);
+    if (path === "/auth/device-approve" && method === "POST") return handleDeviceCodeApprove(request, env);
+    if (path === "/auth/device-poll" && method === "POST") return handleDeviceCodePoll(request, env);
+
+    // ── Telemetry Logging ───────────────────────────────────────────────────
+    if (path === "/telemetry/log" && method === "POST") return handleTelemetryLog(request, env);
 
     // ── User Profile & Sync Endpoints ─────────────────────────────────────────
     if (path === "/users/me" && method === "GET") return handleGetMe(request, env);

@@ -8,7 +8,10 @@ CREATE TABLE IF NOT EXISTS users (
     current_multiplier REAL DEFAULT 1.0,
     total_lifetime_points INTEGER DEFAULT 0,
     current_balance INTEGER DEFAULT 0,
-    auth_token TEXT
+    auth_token TEXT,
+    is_tester INTEGER DEFAULT 0,
+    tester_expires_at REAL,
+    needs_handle INTEGER DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS friends (
@@ -36,4 +39,12 @@ CREATE TABLE IF NOT EXISTS friend_requests (
     UNIQUE(sender_id, receiver_id),
     FOREIGN KEY(sender_id) REFERENCES users(id),
     FOREIGN KEY(receiver_id) REFERENCES users(id)
+);
+
+CREATE TABLE IF NOT EXISTS device_auths (
+    device_code TEXT PRIMARY KEY,
+    user_id INTEGER,
+    auth_token TEXT,
+    status TEXT DEFAULT 'PENDING',
+    created_at REAL NOT NULL
 );

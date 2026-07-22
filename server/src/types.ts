@@ -17,6 +17,9 @@ export interface UserRecord {
   total_lifetime_points: number;
   current_balance: number;
   auth_token: string | null;
+  is_tester?: number;
+  tester_expires_at?: number | null;
+  needs_handle?: number;
 }
 
 export interface GoogleTokenPayload {
@@ -35,4 +38,12 @@ export interface CoopRoomRecord {
   session_id: string;
   host_username: string;
   started_at: number;
+}
+
+export interface DeviceAuthRecord {
+  device_code: string;
+  user_id: number | null;
+  auth_token: string | null;
+  status: "PENDING" | "APPROVED" | "EXPIRED";
+  created_at: number;
 }
