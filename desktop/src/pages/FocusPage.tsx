@@ -135,7 +135,7 @@ const FocusPage: React.FC = () => {
           </div>
           <div className="bg-surface-container-lowest border border-outline-variant relative flex items-center justify-center flex-grow overflow-hidden min-h-[160px]">
             {latestFrame ? (
-              <img src={latestFrame} alt="Live CV Feed" className="w-full h-full object-cover" />
+              <img src={latestFrame} alt="Live CV Feed" className="w-full h-full object-cover grayscale contrast-125" />
             ) : (
               <div className="flex flex-col items-center gap-2 text-outline-variant opacity-40">
                 <span className="material-symbols-outlined text-[48px]">videocam_off</span>

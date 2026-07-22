@@ -153,7 +153,7 @@ const LeaderboardPage: React.FC = () => {
               <span className="material-symbols-outlined text-[40px] text-crimson">signal_disconnected</span>
               <div className="font-technical-prefix text-xs text-crimson uppercase">{error}</div>
               <div className="font-technical-prefix text-[9px] text-outline-variant">
-                Start the server: <code className="text-primary bg-background px-1">server/.venv/bin/uvicorn server.app:app --reload</code>
+                Unable to reach Cloudflare Worker API (<code className="text-primary bg-background px-1">https://api.prodo.live</code>)
               </div>
               <button
                 onClick={fetchData}
