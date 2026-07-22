@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
 
 const LandingPage: React.FC = () => {
   const [showDownloadModal, setShowDownloadModal] = useState(false);
@@ -22,12 +21,12 @@ const LandingPage: React.FC = () => {
           </span>
         </div>
         <div className="flex items-center gap-6">
-          <Link 
-            to="/login"
+          <a 
+            href="https://prodo.live/#/focus"
             className="px-5 py-2 border border-outline-variant hover:border-primary text-xs font-technical-prefix font-bold uppercase transition-all duration-300"
           >
             Launch Dashboard
-          </Link>
+          </a>
         </div>
       </header>
 
@@ -49,12 +48,12 @@ const LandingPage: React.FC = () => {
 
         {/* CTA Actions */}
         <div className="flex flex-col sm:flex-row gap-4 mt-8 w-full max-w-md justify-center">
-          <Link 
-            to="/login"
+          <a 
+            href="https://prodo.live/#/login"
             className="flex-1 py-4 bg-primary text-background font-technical-prefix font-bold uppercase text-xs hover:bg-white transition-all duration-300 shadow-lg shadow-primary/20 text-center"
           >
             Sign Up & Launch
-          </Link>
+          </a>
           <button 
             onClick={() => setShowDownloadModal(true)}
             className="flex-grow py-4 border border-outline-variant hover:border-amber hover:text-amber transition-all duration-300 font-technical-prefix font-bold uppercase text-xs bg-[#0E0E0E]/50"
