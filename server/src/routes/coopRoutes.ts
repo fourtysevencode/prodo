@@ -1,6 +1,6 @@
 import { Env, UserRecord } from "../types";
 import { createJsonResponse, createErrorResponse } from "../utils/cors";
-import { extractBearerToken } from "../utils/googleAuth";
+import { extractBearerToken, generateSecureToken } from "../utils/googleAuth";
 
 /**
  * Handles POST /coop/create
@@ -27,7 +27,7 @@ export async function handleCreateCoop(request: Request, env: Env): Promise<Resp
       }
     }
 
-    const sessionId = `coop-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const sessionId = generateSecureToken("coop_");
     const currentTime = Date.now() / 1000;
 
     await env.DB.prepare(

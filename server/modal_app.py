@@ -163,7 +163,7 @@ async def checkFocus(
                 "signals": {"face_presence": 0.5, "head_pose": 0.5, "gaze": 0.5, "eyes_open": 0.5},
                 "phone": False,
                 "session_id": sessionId,
-                "error": str(err)
+                "error": "Internal frame processing exception"
             },
             headers={"Access-Control-Allow-Origin": "*"}
         )

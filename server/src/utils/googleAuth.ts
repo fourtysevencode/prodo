@@ -38,3 +38,13 @@ export function extractBearerToken(request: Request): string {
   const authHeader = request.headers.get("Authorization") || "";
   return authHeader.replace(/^Bearer\s+/i, "").trim();
 }
+
+/**
+ * Generates a cryptographically secure random token string using Web Crypto CSPRNG.
+ */
+export function generateSecureToken(prefix = "token_", length = 16): string {
+  const array = new Uint8Array(length);
+  crypto.getRandomValues(array);
+  const hex = Array.from(array, (byte) => byte.toString(16).padStart(2, "0")).join("");
+  return `${prefix}${hex}`;
+}

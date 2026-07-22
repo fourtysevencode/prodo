@@ -1,6 +1,6 @@
 import { Env, UserRecord, DeviceAuthRecord } from "../types";
 import { createJsonResponse, createErrorResponse } from "../utils/cors";
-import { decodeGoogleToken, extractBearerToken } from "../utils/googleAuth";
+import { decodeGoogleToken, extractBearerToken, generateSecureToken } from "../utils/googleAuth";
 
 /**
  * Handles POST /auth/google
@@ -28,7 +28,7 @@ export async function handleGoogleAuth(request: Request, env: Env): Promise<Resp
       const generatedUsername = (payload.name || userEmail.split("@")[0])
         .replace(/[^a-zA-Z0-9_]/g, "_")
         .toLowerCase();
-      authToken = "token_" + Math.random().toString(36).substring(2) + Date.now().toString(36);
+      authToken = generateSecureToken("token_");
       needsHandle = true;
 
       await env.DB.prepare(
@@ -41,7 +41,7 @@ export async function handleGoogleAuth(request: Request, env: Env): Promise<Resp
     } else {
       authToken = user.auth_token || "";
       if (!authToken) {
-        authToken = "token_" + Math.random().toString(36).substring(2) + Date.now().toString(36);
+        authToken = generateSecureToken("token_");
         await env.DB.prepare("UPDATE users SET auth_token = ? WHERE id = ?").bind(authToken, user.id).run();
       }
       if (!user.google_id && googleId) {
@@ -107,10 +107,10 @@ export async function handleUpdateUsername(request: Request, env: Env): Promise<
  */
 export async function handleTesterLogin(_request: Request, env: Env): Promise<Response> {
   try {
-    const randomHash = Math.random().toString(36).substring(2, 8);
+    const randomHash = generateSecureToken("", 4);
     const testerUsername = `tester_${randomHash}`;
     const testerEmail = `tester_${randomHash}@prodo.live`;
-    const authToken = "tester_token_" + Math.random().toString(36).substring(2) + Date.now().toString(36);
+    const authToken = generateSecureToken("tester_token_");
     const expiresAt = (Date.now() / 1000) + (30 * 60); // 30 minutes TTL
 
     await env.DB.prepare(
@@ -152,7 +152,7 @@ export async function handleRegister(request: Request, env: Env): Promise<Respon
       return createErrorResponse("Username or email already exists", 400);
     }
 
-    const authToken = "token_" + Math.random().toString(36).substring(2) + Date.now().toString(36);
+    const authToken = generateSecureToken("token_");
     await env.DB.prepare(
       "INSERT INTO users (username, email, xp, current_balance, auth_token) VALUES (?, ?, 100, 100, ?)"
     )
@@ -186,7 +186,7 @@ export async function handleLogin(request: Request, env: Env): Promise<Response>
 
     if (!user) {
       const generatedUsername = userEmail.split("@")[0] || "operator";
-      authToken = "token_" + Math.random().toString(36).substring(2) + Date.now().toString(36);
+      authToken = generateSecureToken("token_");
       await env.DB.prepare(
         "INSERT INTO users (username, email, xp, current_balance, auth_token) VALUES (?, ?, 100, 100, ?)"
       )
@@ -197,7 +197,7 @@ export async function handleLogin(request: Request, env: Env): Promise<Response>
     } else {
       authToken = user.auth_token || "";
       if (!authToken) {
-        authToken = "token_" + Math.random().toString(36).substring(2) + Date.now().toString(36);
+        authToken = generateSecureToken("token_");
         await env.DB.prepare("UPDATE users SET auth_token = ? WHERE id = ?").bind(authToken, user.id).run();
       }
     }
@@ -216,7 +216,7 @@ export async function handleLogin(request: Request, env: Env): Promise<Response>
 
 export async function handleDeviceCodeRequest(_request: Request, env: Env): Promise<Response> {
   try {
-    const deviceCode = "devcode_" + Math.random().toString(36).substring(2) + Date.now().toString(36);
+    const deviceCode = generateSecureToken("devcode_");
     const createdAt = Date.now() / 1000;
 
     await env.DB.prepare(
