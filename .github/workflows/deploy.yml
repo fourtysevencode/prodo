@@ -9,6 +9,9 @@ jobs:
   deploy-frontend:
     name: Deploy Cloudflare Pages
     runs-on: ubuntu-latest
+    environment:
+      name: Cloudflare Pages (Frontend)
+      url: https://prodo.live
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -38,6 +41,9 @@ jobs:
   deploy-worker:
     name: Deploy Cloudflare Workers
     runs-on: ubuntu-latest
+    environment:
+      name: Cloudflare Workers (API)
+      url: https://api.prodo.live
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -57,6 +63,9 @@ jobs:
   deploy-modal:
     name: Deploy Modal Server
     runs-on: ubuntu-latest
+    environment:
+      name: Modal Server (CV Engine)
+      url: https://kazenoko-main--prodo-cv-fastapi-app.modal.run
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
