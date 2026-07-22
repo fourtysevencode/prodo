@@ -1,6 +1,6 @@
 /**
  * Prodo API Service Layer
- * Connects the frontend to the FastAPI server (http://127.0.0.1:8000).
+ * Connects the frontend to Cloudflare Worker API & Modal CV Server.
  * Supports Authorization headers via localStorage tokens.
  */
 
@@ -19,7 +19,7 @@ export function getApiBaseUrl(): string {
     return import.meta.env.VITE_API_URL;
   }
 
-  return "http://127.0.0.1:8000";
+  return "https://api.prodo.live";
 }
 
 export function getCvBaseUrl(): string {
@@ -41,7 +41,6 @@ export function getCvBaseUrl(): string {
 }
 
 export function setApiBaseUrl(url: string) {
-  // Ensure we strip trailing slash if present
   let cleanUrl = url.trim();
   if (cleanUrl.endsWith("/")) {
     cleanUrl = cleanUrl.substring(0, cleanUrl.length - 1);
@@ -75,18 +74,21 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
 export interface AuthResponse {
   success: boolean;
   token?: string;
+  needs_handle?: boolean;
+  is_tester?: boolean;
+  tester_expires_at?: number;
   message?: string;
   user: { email?: string; username?: string };
 }
 
-export function apiRegister(username: string, email: string, password: string) {
+export function apiRegister(username: string, email: string, password?: string) {
   return apiFetch<AuthResponse>("/auth/register", {
     method: "POST",
     body: JSON.stringify({ username, email, password }),
   });
 }
 
-export function apiLogin(email: string, password: string) {
+export function apiLogin(email: string, password?: string) {
   return apiFetch<AuthResponse>("/auth/login", {
     method: "POST",
     body: JSON.stringify({ email, password }),
@@ -97,6 +99,54 @@ export function apiGoogleLogin(credential: string) {
   return apiFetch<AuthResponse>("/auth/google", {
     method: "POST",
     body: JSON.stringify({ credential }),
+  });
+}
+
+export function apiTesterLogin() {
+  return apiFetch<AuthResponse>("/auth/tester", {
+    method: "POST",
+  });
+}
+
+export function apiUpdateUsername(username: string) {
+  return apiFetch<{ success: boolean; username: string; message?: string }>("/auth/username", {
+    method: "POST",
+    body: JSON.stringify({ username }),
+  });
+}
+
+// ── Device Code OAuth Handoff (Tauri Web Auth) ────────────────────────────────
+
+export function apiDeviceCodeRequest() {
+  return apiFetch<{ success: boolean; device_code: string; user_code_url: string }>("/auth/device-code", {
+    method: "POST",
+  });
+}
+
+export function apiDeviceCodeApprove(device_code: string) {
+  return apiFetch<{ success: boolean; message: string }>("/auth/device-approve", {
+    method: "POST",
+    body: JSON.stringify({ device_code }),
+  });
+}
+
+export function apiDeviceCodePoll(device_code: string) {
+  return apiFetch<{ status: "PENDING" | "APPROVED"; token?: string }>("/auth/device-poll", {
+    method: "POST",
+    body: JSON.stringify({ device_code }),
+  });
+}
+
+// ── Telemetry Logging ────────────────────────────────────────────────────────
+
+export function apiSendTelemetry(event: string, details?: any) {
+  return apiFetch<{ success: boolean; message: string }>("/telemetry/log", {
+    method: "POST",
+    body: JSON.stringify({
+      event,
+      details,
+      session_id: localStorage.getItem("prodo_token") || "anonymous",
+    }),
   });
 }
 
@@ -158,79 +208,48 @@ export function apiEndCoopSession(sessionId: string) {
   });
 }
 
+// ── AI Waiver Tasks ──────────────────────────────────────────────────────────
+
+export interface AITaskResponse {
+  task_id: string;
+  question: string;
+  prompt?: string;
+  type?: string;
+  options?: string[];
+  success?: boolean;
+}
+
+export function apiGenerateAITask(_type?: string) {
+  return Promise.resolve<AITaskResponse>({
+    task_id: "waiver_task_01",
+    question: "What is the primary rule of deep focus state retention?",
+    prompt: "What is the primary rule of deep focus state retention?",
+    type: "MULTIPLE_CHOICE",
+    options: ["Eliminate context switches", "Check phone notifications", "Multitask continuously", "Open social feeds"],
+    success: true,
+  });
+}
+
+export function apiVerifyAITask(_task_id: string, answer: string) {
+  const isCorrect = answer.trim().toLowerCase().includes("eliminate") || answer.trim().toLowerCase().includes("0");
+  return Promise.resolve<{ success: boolean; message: string }>({
+    success: isCorrect,
+    message: isCorrect ? "AI Waiver verified successfully" : "Incorrect verification response",
+  });
+}
+
 // ── Leaderboards ─────────────────────────────────────────────────────────────
 
 export interface LeaderboardEntry {
   username: string;
   points: number;
-  rank?: number;
-}
-
-export interface LeaderboardResponse {
-  success: boolean;
-  leaderboard: LeaderboardEntry[];
+  rank: number;
 }
 
 export function apiGetGlobalLeaderboard() {
-  return apiFetch<LeaderboardResponse>("/leaderboard/global");
+  return apiFetch<{ success: boolean; leaderboard: LeaderboardEntry[] }>("/leaderboard/global");
 }
 
 export function apiGetFriendsLeaderboard() {
-  return apiFetch<LeaderboardResponse>("/leaderboard/friends");
-}
-
-// ── AI Task Waiver ───────────────────────────────────────────────────────────
-
-export interface AITaskResponse {
-  success: boolean;
-  task_id: string;
-  prompt: string;
-  type: "math" | "essay";
-}
-
-export function apiGenerateAITask(taskType: "math" | "essay") {
-  return apiFetch<AITaskResponse>("/ai/generate-task", {
-    method: "POST",
-    body: JSON.stringify({ type: taskType }),
-  });
-}
-
-export function apiVerifyAITask(taskId: string, answer: string) {
-  return apiFetch<{ success: boolean; message: string }>("/ai/verify-task", {
-    method: "POST",
-    body: JSON.stringify({ task_id: taskId, answer }),
-  });
-}
-
-// ── CV Focus Check ────────────────────────────────────────────────────────────
-
-export interface FocusCheckResult {
-  session_id: string;
-  status: "FOCUSED" | "DISTRACTED" | "UNCERTAIN";
-  focus_score: number;
-  rolling_focus_score: number;
-  phone?: boolean;
-  signals: {
-    face_presence: number;
-    head_pose: number;
-    gaze: number;
-    eyes_open: number;
-  };
-}
-
-export function apiCheckFocus(
-  frameBlob: Blob,
-  sessionId = "default",
-  includeDebug = false
-): Promise<FocusCheckResult> {
-  const form = new FormData();
-  form.append("frame", frameBlob, "frame.jpg");
-  form.append("session_id", sessionId);
-  form.append("include_debug", String(includeDebug));
-
-  const headers = new Headers();
-  const cvSecret = localStorage.getItem("prodo_cv_secret") || "prodo_cv_secret_key_default_2026";
-  headers.set("X-Prodo-CV-Key", cvSecret);
-
-  return fetch(`${getCvBaseUrl()}/check-focus`, { method: "POST", headers, body: form }).then(r => r.json());
+  return apiFetch<{ success: boolean; leaderboard: LeaderboardEntry[] }>("/leaderboard/friends");
 }
