@@ -1,0 +1,115 @@
+name: Security Scan & Vulnerability Audit
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  npm-security-audit:
+    name: Audit NPM Dependencies (Web & Desktop)
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '-s')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Audit Web Dependencies
+        run: npm audit --audit-level=high || true
+        working-directory: web
+
+      - name: Audit Desktop Dependencies
+        run: npm audit --audit-level=high || true
+        working-directory: desktop
+
+  python-security-audit:
+    name: Audit Python Server Security (Bandit & Pip Audit)
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '-s')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Security Tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install bandit pip-audit
+
+      - name: Run Bandit Static Security Analysis
+        run: bandit -r server/ -x server/.venv/ || true
+
+      - name: Audit Python Package Dependencies
+        run: pip-audit || true
+
+  rust-security-audit:
+    name: Audit Rust Crates (Tauri Backend)
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '-s')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install Rust Stable Toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Cargo Audit
+        run: cargo install cargo-audit || true
+
+      - name: Run Cargo Security Audit
+        run: cargo audit || true
+        working-directory: desktop/src-tauri
+
+  secret-scanning:
+    name: Secret & Credential Leak Detection
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '-s')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Gitleaks Secret Scanner
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+
+  codeql-analysis:
+    name: CodeQL SAST Analysis
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '-s')
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [ 'javascript-typescript', 'python' ]
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3

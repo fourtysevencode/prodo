@@ -103,3 +103,15 @@ Automated builds for **Windows, macOS, Linux, and Native Kotlin Android** are co
 - Manual trigger available via GitHub Actions UI (**Workflow Dispatch**).
 - Automatic release build on tag push (e.g., `git push origin v0.1.0`).
 - Artifacts are downloadable directly from the GitHub Actions run details or drafted release tags.
+
+---
+
+## 7. Automated Security Scans & Vulnerability Audits
+
+Automated security checks are configured in `.github/workflows/security.yml`:
+
+- **CodeQL SAST Analysis**: GitHub static code analysis for JavaScript/TypeScript and Python.
+- **NPM Vulnerability Audit**: Scans `web/` and `desktop/` npm dependencies.
+- **Python Security Audit**: Runs `bandit` static analysis and `pip-audit` dependency check on `server/`.
+- **Rust Crate Audit**: Runs `cargo audit` on `desktop/src-tauri/`.
+- **Secret & Token Leak Detection**: Uses `gitleaks` to scan for hardcoded credentials or API keys.
