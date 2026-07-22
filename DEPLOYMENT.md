@@ -86,3 +86,21 @@ Ensure the following repository secrets are configured in GitHub (`Settings -> S
 - `CLOUDFLARE_ACCOUNT_ID`
 - `MODAL_TOKEN_ID`
 - `MODAL_TOKEN_SECRET`
+
+---
+
+## 6. Cross-Platform Desktop & Mobile Artifact Builds
+
+Automated builds for **Windows, macOS, Linux, Android, and iOS** are configured in `.github/workflows/build-desktop.yml`.
+
+### A. Supported Build Artifacts
+- **Windows**: `.msi` installer & `.exe` executable (`windows-latest`)
+- **macOS**: `.dmg` disk image & `.app` bundle (`macos-latest`)
+- **Linux**: `.AppImage` & `.deb` package (`ubuntu-22.04`)
+- **Android**: `.apk` application package (`ubuntu-22.04`)
+- **iOS**: Xcode project & iOS build artifacts (`macos-latest`)
+
+### B. Triggering Artifact Builds
+- Automatic on push to `main` branch or pull requests.
+- Manual trigger available via GitHub Actions UI (**Workflow Dispatch**).
+- Artifacts are downloadable directly from the GitHub Actions run details or drafted release tags.
