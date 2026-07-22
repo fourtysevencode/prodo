@@ -5,7 +5,6 @@ import FocusPage from "./pages/FocusPage";
 import LogsPage from "./pages/LogsPage";
 import LeaderboardPage from "./pages/LeaderboardPage";
 import VaultPage from "./pages/VaultPage";
-import ConfigPage from "./pages/ConfigPage";
 import SettingsPage from "./pages/SettingsPage";
 import LoginPage from "./pages/LoginPage";
 import HelpPage from "./pages/HelpPage";
@@ -13,32 +12,31 @@ import NotFoundPage from "./pages/NotFoundPage";
 import FriendsPage from "./pages/FriendsPage";
 import PunishmentsPage from "./pages/PunishmentsPage";
 import LandingPage from "./pages/LandingPage";
-import SyncPage from "./pages/SyncPage";
+import AuthorizeDesktopPage from "./pages/AuthorizeDesktopPage";
 
 function App() {
   return (
     <FocusProvider>
       <Router>
         <Routes>
-          {/* Default landing page */}
+          {/* Default Landing Page for prodo.live */}
           <Route path="/" element={<LandingPage />} />
           
-          {/* Standalone Authentication Screen */}
+          {/* Standalone Authentication & OAuth Screens */}
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/authorize-desktop" element={<AuthorizeDesktopPage />} />
           <Route path="/punishments" element={<PunishmentsPage />} />
 
-          {/* Core HUD views nested in layout frame */}
+          {/* Core App Views nested in Layout */}
           <Route path="/focus" element={<Layout><FocusPage /></Layout>} />
           <Route path="/logs" element={<Layout><LogsPage /></Layout>} />
           <Route path="/leaderboard" element={<Layout><LeaderboardPage /></Layout>} />
           <Route path="/vault" element={<Layout><VaultPage /></Layout>} />
-          <Route path="/sync" element={<Layout><SyncPage /></Layout>} />
           <Route path="/friends" element={<Layout><FriendsPage /></Layout>} />
-          <Route path="/config" element={<Layout><ConfigPage /></Layout>} />
           <Route path="/settings" element={<Layout><SettingsPage /></Layout>} />
           <Route path="/help" element={<Layout><HelpPage /></Layout>} />
 
-          {/* 404 Routing Exceptions */}
+          {/* 404 Fallback */}
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </Router>
@@ -47,4 +45,3 @@ function App() {
 }
 
 export default App;
-
