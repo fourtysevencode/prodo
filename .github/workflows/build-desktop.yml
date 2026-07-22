@@ -68,8 +68,37 @@ jobs:
             desktop/src-tauri/target/release/*.deb
             desktop/src-tauri/target/release/*.AppImage
 
-  build-android:
-    name: Build Android APK
+  build-native-android:
+    name: Build Native Kotlin Android App
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Java JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Build Native Kotlin Android APK
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug
+        working-directory: mobile
+
+      - name: Upload Native Kotlin Android APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: prodo-native-kotlin-android-apk
+          path: mobile/app/build/outputs/apk/debug/app-debug.apk
+
+  build-tauri-android:
+    name: Build Tauri Android APK
     runs-on: ubuntu-22.04
 
     steps:
@@ -114,10 +143,10 @@ jobs:
         env:
           NDK_HOME: ${{ steps.setup-android.outputs.sdk-path }}/ndk/25.2.9519653
 
-      - name: Upload Android APK Artifact
+      - name: Upload Tauri Android APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: prodo-android-apk
+          name: prodo-tauri-android-apk
           path: desktop/src-tauri/gen/android/app/build/outputs/apk/
 
   build-ios:
