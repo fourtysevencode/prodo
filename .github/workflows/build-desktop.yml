@@ -1,11 +1,10 @@
 name: Build Cross-Platform Apps (Windows, macOS, Linux, Android, iOS)
 
 on:
-  push:
-    branches:
-      - main
-  pull_request:
   workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
 
 jobs:
   build-desktop:
