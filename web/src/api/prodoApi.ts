@@ -223,34 +223,55 @@ export function apiEndCoopSession(sessionId: string) {
   });
 }
 
-// ── AI Waiver Tasks ──────────────────────────────────────────────────────────
+// ── AI Whimsical Punishment & Waiver Tasks ─────────────────────────────────
+
+export interface AIPunishmentTask {
+  task_id: string;
+  task_type: "MULTIPLE_CHOICE" | "TYPING_PLEDGE" | "RIDDLE";
+  title: string;
+  description: string;
+  prompt: string;
+  options?: string[];
+  correct_answer: string;
+  explanation: string;
+  provider_used?: string;
+}
 
 export interface AITaskResponse {
   task_id: string;
   question: string;
-  prompt?: string;
+  prompt: string;
   type?: string;
   options?: string[];
   success?: boolean;
 }
 
-export function apiGenerateAITask(_type?: string) {
-  return Promise.resolve<AITaskResponse>({
-    task_id: "waiver_task_01",
-    question: "What is the primary rule of deep focus state retention?",
-    prompt: "What is the primary rule of deep focus state retention?",
-    type: "MULTIPLE_CHOICE",
-    options: ["Eliminate context switches", "Check phone notifications", "Multitask continuously", "Open social feeds"],
-    success: true,
+export function apiGenerateAIPunishment() {
+  return apiFetch<{ success: boolean; task: AIPunishmentTask }>("/ai/generate-punishment", {
+    method: "POST",
   });
 }
 
-export function apiVerifyAITask(_task_id: string, answer: string) {
-  const isCorrect = answer.trim().toLowerCase().includes("eliminate") || answer.trim().toLowerCase().includes("0");
-  return Promise.resolve<{ success: boolean; message: string }>({
-    success: isCorrect,
-    message: isCorrect ? "AI Waiver verified successfully" : "Incorrect verification response",
+export function apiVerifyAIPunishment(user_answer: string, correct_answer: string) {
+  return apiFetch<{ success: boolean; reward_xp?: number; message: string }>("/ai/verify-punishment", {
+    method: "POST",
+    body: JSON.stringify({ user_answer, correct_answer }),
   });
+}
+
+export function apiGenerateAITask(_type?: string) {
+  return apiGenerateAIPunishment().then(res => ({
+    task_id: res.task.task_id,
+    question: res.task.title,
+    prompt: res.task.prompt,
+    type: res.task.task_type === "RIDDLE" ? "math" : "essay",
+    options: res.task.options,
+    success: true,
+  }));
+}
+
+export function apiVerifyAITask(_task_id: string, answer: string, correct_answer?: string) {
+  return apiVerifyAIPunishment(answer, correct_answer || answer);
 }
 
 // ── Leaderboards ─────────────────────────────────────────────────────────────
