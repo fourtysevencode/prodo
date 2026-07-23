@@ -4,6 +4,8 @@
 
 export interface Env {
   DB: D1Database;
+  GEMINI_API_KEY?: string;
+  GROQ_API_KEY?: string;
 }
 
 export interface UserRecord {
@@ -56,4 +58,16 @@ export interface TelemetryLogRecord {
   session_id: string;
   details: string;
   created_at: number;
+}
+
+export interface AIPunishmentTask {
+  task_id: string;
+  task_type: "MULTIPLE_CHOICE" | "TYPING_PLEDGE" | "RIDDLE";
+  title: string;
+  description: string;
+  prompt: string;
+  options?: string[];
+  correct_answer: string;
+  explanation: string;
+  provider_used?: string;
 }

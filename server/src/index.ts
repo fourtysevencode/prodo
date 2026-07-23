@@ -2,7 +2,7 @@
  * Prodo API Cloudflare Worker Entry Point
  * 
  * Modular HTTP router serving authentication, user profile sync, friends, leaderboards,
- * seamless device OAuth handoff, dev tooling, telemetry, and co-op focus sessions backed by Cloudflare D1.
+ * AI-generated whimsical punishments, dev tooling, telemetry, and co-op focus sessions backed by Cloudflare D1.
  */
 
 import { Env } from "./types";
@@ -23,6 +23,7 @@ import { handleGlobalLeaderboard, handleFriendsLeaderboard } from "./routes/lead
 import { handleCreateCoop, handleGetActiveCoop, handleJoinCoop, handleEndCoop } from "./routes/coopRoutes";
 import { handleTelemetryLog, handleGetDevTelemetry } from "./routes/telemetryRoutes";
 import { handleDevLogin, handleDevStats } from "./routes/devRoutes";
+import { handleGeneratePunishment, handleVerifyPunishment } from "./routes/aiRoutes";
 
 export default {
   async fetch(request: Request, env: Env, _ctx: ExecutionContext): Promise<Response> {
@@ -51,6 +52,14 @@ export default {
     if (path === "/auth/device-code" && method === "POST") return handleDeviceCodeRequest(request, env);
     if (path === "/auth/device-approve" && method === "POST") return handleDeviceCodeApprove(request, env);
     if (path === "/auth/device-poll" && method === "POST") return handleDeviceCodePoll(request, env);
+
+    // ── AI Whimsical Punishment Enforcer Pipeline ─────────────────────────────
+    if (path === "/ai/generate-punishment" && (method === "POST" || method === "GET")) {
+      return handleGeneratePunishment(request, env);
+    }
+    if (path === "/ai/verify-punishment" && method === "POST") {
+      return handleVerifyPunishment(request, env);
+    }
 
     // ── Telemetry & Developer Tooling Endpoints (dev.prodo.live) ──────────────
     if (path === "/telemetry/log" && method === "POST") return handleTelemetryLog(request, env);
