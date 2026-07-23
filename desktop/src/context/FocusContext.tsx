@@ -300,7 +300,7 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   );
 
   const adjustXp = (amount: number) => {
-    setXp(prev => Math.max(0, prev + amount));
+    setXp(prev => prev + amount);
   };
 
   return (
