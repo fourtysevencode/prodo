@@ -11,7 +11,9 @@ CREATE TABLE IF NOT EXISTS users (
     auth_token TEXT,
     is_tester INTEGER DEFAULT 0,
     tester_expires_at REAL,
-    needs_handle INTEGER DEFAULT 0
+    needs_handle INTEGER DEFAULT 0,
+    is_dev INTEGER DEFAULT 0,
+    dev_token TEXT
 );
 
 CREATE TABLE IF NOT EXISTS friends (
@@ -46,5 +48,13 @@ CREATE TABLE IF NOT EXISTS device_auths (
     user_id INTEGER,
     auth_token TEXT,
     status TEXT DEFAULT 'PENDING',
+    created_at REAL NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS telemetry_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    event TEXT NOT NULL,
+    session_id TEXT,
+    details TEXT,
     created_at REAL NOT NULL
 );

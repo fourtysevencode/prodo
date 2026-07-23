@@ -2,7 +2,7 @@
  * Prodo API Cloudflare Worker Entry Point
  * 
  * Modular HTTP router serving authentication, user profile sync, friends, leaderboards,
- * seamless device OAuth handoff, telemetry, and co-op focus sessions backed by Cloudflare D1.
+ * seamless device OAuth handoff, dev tooling, telemetry, and co-op focus sessions backed by Cloudflare D1.
  */
 
 import { Env } from "./types";
@@ -21,7 +21,8 @@ import { handleGetMe, handleSync } from "./routes/userRoutes";
 import { handleGetFriendsList, handleAddFriend } from "./routes/friendRoutes";
 import { handleGlobalLeaderboard, handleFriendsLeaderboard } from "./routes/leaderboardRoutes";
 import { handleCreateCoop, handleGetActiveCoop, handleJoinCoop, handleEndCoop } from "./routes/coopRoutes";
-import { handleTelemetryLog } from "./routes/telemetryRoutes";
+import { handleTelemetryLog, handleGetDevTelemetry } from "./routes/telemetryRoutes";
+import { handleDevLogin, handleDevStats } from "./routes/devRoutes";
 
 export default {
   async fetch(request: Request, env: Env, _ctx: ExecutionContext): Promise<Response> {
@@ -51,8 +52,11 @@ export default {
     if (path === "/auth/device-approve" && method === "POST") return handleDeviceCodeApprove(request, env);
     if (path === "/auth/device-poll" && method === "POST") return handleDeviceCodePoll(request, env);
 
-    // ── Telemetry Logging ───────────────────────────────────────────────────
+    // ── Telemetry & Developer Tooling Endpoints (dev.prodo.live) ──────────────
     if (path === "/telemetry/log" && method === "POST") return handleTelemetryLog(request, env);
+    if (path === "/dev/login" && method === "POST") return handleDevLogin(request, env);
+    if (path === "/dev/stats" && method === "GET") return handleDevStats(request, env);
+    if (path === "/dev/telemetry" && method === "GET") return handleGetDevTelemetry(request, env);
 
     // ── User Profile & Sync Endpoints ─────────────────────────────────────────
     if (path === "/users/me" && method === "GET") return handleGetMe(request, env);

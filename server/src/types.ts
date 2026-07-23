@@ -20,6 +20,8 @@ export interface UserRecord {
   is_tester?: number;
   tester_expires_at?: number | null;
   needs_handle?: number;
+  is_dev?: number;
+  dev_token?: string | null;
 }
 
 export interface GoogleTokenPayload {
@@ -45,5 +47,13 @@ export interface DeviceAuthRecord {
   user_id: number | null;
   auth_token: string | null;
   status: "PENDING" | "APPROVED" | "EXPIRED";
+  created_at: number;
+}
+
+export interface TelemetryLogRecord {
+  id: number;
+  event: string;
+  session_id: string;
+  details: string;
   created_at: number;
 }

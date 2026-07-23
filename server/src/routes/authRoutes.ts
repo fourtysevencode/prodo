@@ -111,7 +111,7 @@ export async function handleTesterLogin(_request: Request, env: Env): Promise<Re
     const testerUsername = `tester_${randomHash}`;
     const testerEmail = `tester_${randomHash}@prodo.live`;
     const authToken = generateSecureToken("tester_token_");
-    const expiresAt = (Date.now() / 1000) + (30 * 60); // 30 minutes TTL
+    const expiresAt = (Date.now() / 1000) + (5 * 60); // 5 minutes TTL
 
     await env.DB.prepare(
       "INSERT INTO users (username, email, xp, current_balance, auth_token, is_tester, tester_expires_at) VALUES (?, ?, 500, 500, ?, 1, ?)"
