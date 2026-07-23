@@ -115,3 +115,13 @@ Automated security checks are configured in `.github/workflows/security.yml`:
 - **Python Security Audit**: Runs `bandit` static analysis and `pip-audit` dependency check on `server/`.
 - **Rust Crate Audit**: Runs `cargo audit` on `desktop/src-tauri/`.
 - **Secret & Token Leak Detection**: Uses `gitleaks` to scan for hardcoded credentials or API keys.
+
+---
+
+## 8. Developer Portal & Telemetry (`dev.prodo.live`)
+
+The developer site is served via Cloudflare Pages and Worker API for developer tooling:
+
+1. **Custom Domain**: In Cloudflare Pages, add `dev.prodo.live` as a Custom Domain pointing to `prodo-live.pages.dev`.
+2. **Dev Token Auth**: Access requires authenticating via `/dev/login` using developer credentials.
+3. **Telemetry Logs**: All client telemetry dispatches (`/telemetry/log`) are persisted to D1 and inspectable in real-time on `dev.prodo.live`.

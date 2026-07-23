@@ -156,9 +156,14 @@ const LoginPage: React.FC = () => {
         {/* Simple Brand */}
         <div className="flex items-center gap-3">
           <img src="/favicon.svg" alt="Prodo Logo" className="w-10 h-10" />
-          <h1 className="font-value-xl text-[48px] leading-none text-primary uppercase tracking-widest">
-            PRODO
-          </h1>
+          <div className="flex items-baseline gap-1">
+            <h1 className="font-value-xl text-[48px] leading-none text-primary uppercase tracking-widest">
+              PRODO
+            </h1>
+            <span className="font-technical-prefix text-[10px] text-amber uppercase font-bold tracking-wider relative top-[2px]">
+              BETA
+            </span>
+          </div>
         </div>
 
         {/* Mode Switcher Tabs */}

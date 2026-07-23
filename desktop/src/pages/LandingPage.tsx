@@ -16,9 +16,14 @@ const LandingPage: React.FC = () => {
       <header className="relative w-full max-w-7xl mx-auto px-6 h-20 flex justify-between items-center z-50">
         <div className="flex items-center gap-3">
           <img src="/favicon.svg" alt="Prodo Logo" className="w-8 h-8" />
-          <span className="font-value-lg text-2xl text-primary tracking-widest uppercase drop-shadow-[0_0_8px_rgba(229,226,225,0.2)]">
-            PRODO
-          </span>
+          <div className="flex items-baseline gap-1">
+            <span className="font-value-lg text-2xl text-primary tracking-widest uppercase drop-shadow-[0_0_8px_rgba(229,226,225,0.2)]">
+              PRODO
+            </span>
+            <span className="font-technical-prefix text-[9px] text-amber uppercase font-bold tracking-wider relative top-[2px]">
+              BETA
+            </span>
+          </div>
         </div>
         <div className="flex items-center gap-6">
           <a 

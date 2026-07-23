@@ -13,9 +13,12 @@ import FriendsPage from "./pages/FriendsPage";
 import PunishmentsPage from "./pages/PunishmentsPage";
 import LandingPage from "./pages/LandingPage";
 import AuthorizeDesktopPage from "./pages/AuthorizeDesktopPage";
+import DevPage from "./pages/DevPage";
+import TesterReviewPage from "./pages/TesterReviewPage";
 
 function MainAppRoutes() {
   const isWwwDomain = typeof window !== "undefined" && window.location.hostname === "www.prodo.live";
+  const isDevDomain = typeof window !== "undefined" && window.location.hostname === "dev.prodo.live";
 
   // www.prodo.live renders ONLY the Landing Page. Nothing else.
   if (isWwwDomain) {
@@ -26,11 +29,22 @@ function MainAppRoutes() {
     );
   }
 
+  // dev.prodo.live renders ONLY the Developer Portal. Nothing else.
+  if (isDevDomain) {
+    return (
+      <Routes>
+        <Route path="*" element={<DevPage />} />
+      </Routes>
+    );
+  }
+
   return (
     <Routes>
       {/* Root / on prodo.live routes directly to the Focus Dashboard */}
       <Route path="/" element={<Navigate to="/focus" replace />} />
       <Route path="/landing" element={<LandingPage />} />
+      <Route path="/dev" element={<DevPage />} />
+      <Route path="/tester-review" element={<TesterReviewPage />} />
       
       {/* Standalone Authentication & OAuth Screens */}
       <Route path="/login" element={<LoginPage />} />

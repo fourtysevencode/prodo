@@ -43,9 +43,10 @@ const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
           </span>
         </div>
 
-        {/* Center: PRODO App Name */}
-        <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2">
+        {/* Center: PRODO App Name with BETA Footer */}
+        <div className="absolute left-1/2 -translate-x-1/2 flex items-baseline gap-1 relative">
           <span className="font-value-lg text-[20px] text-primary tracking-widest uppercase">PRODO</span>
+          <span className="font-technical-prefix text-[8px] text-amber uppercase font-bold tracking-wider relative top-[2px]">BETA</span>
         </div>
 
         {/* Right: Time Active Counter */}
