@@ -7,7 +7,7 @@
 export function getApiBaseUrl(): string {
   if (typeof window !== "undefined" && window.location) {
     const hn = window.location.hostname;
-    if (hn && (hn === "prodo.live" || hn === "www.prodo.live" || hn === "prodo-live.pages.dev" || hn === "website-dev.prodo-live.pages.dev")) {
+    if (hn && (hn === "prodo.live" || hn === "www.prodo.live" || hn === "dev.prodo.live" || hn === "prodo-live.pages.dev" || hn === "website-dev.prodo-live.pages.dev")) {
       return "https://api.prodo.live";
     }
   }
@@ -25,7 +25,7 @@ export function getApiBaseUrl(): string {
 export function getCvBaseUrl(): string {
   if (typeof window !== "undefined" && window.location) {
     const hn = window.location.hostname;
-    if (hn && (hn === "prodo.live" || hn === "www.prodo.live" || hn === "prodo-live.pages.dev" || hn === "website-dev.prodo-live.pages.dev")) {
+    if (hn && (hn === "prodo.live" || hn === "www.prodo.live" || hn === "dev.prodo.live" || hn === "prodo-live.pages.dev" || hn === "website-dev.prodo-live.pages.dev")) {
       return "https://kazenoko-main--prodo-cv-fastapi-app.modal.run";
     }
   }
@@ -48,8 +48,8 @@ export function setApiBaseUrl(url: string) {
   localStorage.setItem("prodo_api_base_url", cleanUrl);
 }
 
-async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const token = localStorage.getItem("prodo_token");
+async function apiFetch<T>(path: string, init?: RequestInit, customToken?: string): Promise<T> {
+  const token = customToken || localStorage.getItem("prodo_token");
   const headers = new Headers(init?.headers);
   headers.set("Content-Type", "application/json");
   if (token) {
@@ -137,7 +137,7 @@ export function apiDeviceCodePoll(device_code: string) {
   });
 }
 
-// ── Telemetry Logging ────────────────────────────────────────────────────────
+// ── Telemetry & Dev Tooling ──────────────────────────────────────────────────
 
 export function apiSendTelemetry(event: string, details?: any) {
   return apiFetch<{ success: boolean; message: string }>("/telemetry/log", {
@@ -148,6 +148,21 @@ export function apiSendTelemetry(event: string, details?: any) {
       session_id: localStorage.getItem("prodo_token") || "anonymous",
     }),
   });
+}
+
+export function apiDevLogin(passphrase: string, email?: string) {
+  return apiFetch<{ success: boolean; dev_token: string; message?: string }>("/dev/login", {
+    method: "POST",
+    body: JSON.stringify({ passphrase, email }),
+  });
+}
+
+export function apiGetDevStats(devToken: string) {
+  return apiFetch<{ success: boolean; stats: any }>("/dev/stats", { method: "GET" }, devToken);
+}
+
+export function apiGetDevTelemetry(devToken: string) {
+  return apiFetch<{ success: boolean; logs: any[] }>("/dev/telemetry", { method: "GET" }, devToken);
 }
 
 // ── User ─────────────────────────────────────────────────────────────────────

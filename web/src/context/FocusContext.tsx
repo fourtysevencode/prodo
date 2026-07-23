@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from "react";
 import { apiSync, apiGetMe, apiSendTelemetry, getCvBaseUrl } from "../api/prodoApi";
+import { TesterWidget } from "../components/TesterWidget";
 
 export interface Infraction {
   timestamp: string;
@@ -66,6 +67,9 @@ interface FocusContextType {
   // Phone detection
   phoneWarning: boolean;
   dismissPhoneWarning: () => void;
+  // Tester Mode
+  isTester: boolean;
+  adjustXp: (amount: number) => void;
 }
 
 const FocusContext = createContext<FocusContextType | undefined>(undefined);
@@ -289,6 +293,16 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return `Unknown command: '${cmd}'. Type 'help' for options.`;
   };
 
+  // Tester mode status
+  const isTester = Boolean(
+    username.toLowerCase().startsWith("tester_") ||
+    localStorage.getItem("prodo_token")?.startsWith("tester_token_")
+  );
+
+  const adjustXp = (amount: number) => {
+    setXp(prev => Math.max(0, prev + amount));
+  };
+
   return (
     <FocusContext.Provider
       value={{
@@ -331,9 +345,12 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setIsCalibrating,
         phoneWarning,
         dismissPhoneWarning,
+        isTester,
+        adjustXp,
       }}
     >
       {children}
+      <TesterWidget />
     </FocusContext.Provider>
   );
 };
