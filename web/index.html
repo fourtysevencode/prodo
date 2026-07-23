@@ -14,6 +14,24 @@
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
     rel="stylesheet" />
   <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script>
+    // Auto-redirect www.prodo.live to apex domain
+    if (typeof window !== "undefined" && window.location.hostname === "www.prodo.live") {
+      window.location.replace("https://prodo.live" + window.location.pathname + window.location.search + window.location.hash);
+    }
+    // Auto-reload on stale deployment asset MIME mismatch errors
+    window.addEventListener("error", function (e) {
+      if (e.target && (e.target.tagName === "SCRIPT" || e.target.tagName === "LINK")) {
+        const key = "prodo_asset_reload_ts";
+        const last = sessionStorage.getItem(key);
+        const now = Date.now();
+        if (!last || now - parseInt(last) > 10000) {
+          sessionStorage.setItem(key, now.toString());
+          window.location.reload();
+        }
+      }
+    }, true);
+  </script>
 </head>
 
 <body>
