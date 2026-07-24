@@ -7,7 +7,14 @@
 export function getApiBaseUrl(): string {
   if (typeof window !== "undefined" && window.location) {
     const hn = window.location.hostname;
-    if (hn && (hn === "prodo.live" || hn === "www.prodo.live" || hn === "dev.prodo.live" || hn === "prodo-live.pages.dev" || hn === "website-dev.prodo-live.pages.dev")) {
+    if (
+      hn &&
+      (hn === "prodo.live" ||
+        hn === "www.prodo.live" ||
+        hn === "beta.prodo.live" ||
+        hn === "dev.prodo.live" ||
+        hn.endsWith(".pages.dev"))
+    ) {
       return "https://api.prodo.live";
     }
   }
@@ -25,7 +32,14 @@ export function getApiBaseUrl(): string {
 export function getCvBaseUrl(): string {
   if (typeof window !== "undefined" && window.location) {
     const hn = window.location.hostname;
-    if (hn && (hn === "prodo.live" || hn === "www.prodo.live" || hn === "dev.prodo.live" || hn === "prodo-live.pages.dev" || hn === "website-dev.prodo-live.pages.dev")) {
+    if (
+      hn &&
+      (hn === "prodo.live" ||
+        hn === "www.prodo.live" ||
+        hn === "beta.prodo.live" ||
+        hn === "dev.prodo.live" ||
+        hn.endsWith(".pages.dev"))
+    ) {
       return "https://kazenoko-main--prodo-cv-fastapi-app.modal.run";
     }
   }
@@ -48,6 +62,9 @@ export function setApiBaseUrl(url: string) {
   localStorage.setItem("prodo_api_base_url", cleanUrl);
 }
 
+// Fallback Worker endpoint for when custom domain DNS (api.prodo.live / beta.prodo.live) is propagating
+const FALLBACK_WORKER_URL = "https://prodo-api-worker.kazenoko.workers.dev";
+
 async function apiFetch<T>(path: string, init?: RequestInit, customToken?: string): Promise<T> {
   const token = customToken || localStorage.getItem("prodo_token");
   const headers = new Headers(init?.headers);
@@ -57,16 +74,37 @@ async function apiFetch<T>(path: string, init?: RequestInit, customToken?: strin
   }
 
   const base = getApiBaseUrl();
-  const res = await fetch(`${base}${path}`, {
-    ...init,
-    headers,
-  });
+  
+  try {
+    const res = await fetch(`${base}${path}`, {
+      ...init,
+      headers,
+    });
 
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`API ${path} → ${res.status}: ${err}`);
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error(`API ${path} → ${res.status}: ${err}`);
+    }
+    return res.json() as Promise<T>;
+  } catch (primaryErr: any) {
+    // If custom domain fails due to DNS propagation (e.g. Failed to fetch), retry against direct workers.dev domain
+    if (base !== FALLBACK_WORKER_URL && primaryErr instanceof TypeError) {
+      try {
+        const fallbackRes = await fetch(`${FALLBACK_WORKER_URL}${path}`, {
+          ...init,
+          headers,
+        });
+        if (!fallbackRes.ok) {
+          const err = await fallbackRes.text();
+          throw new Error(`API ${path} → ${fallbackRes.status}: ${err}`);
+        }
+        return fallbackRes.json() as Promise<T>;
+      } catch (fallbackErr) {
+        throw primaryErr;
+      }
+    }
+    throw primaryErr;
   }
-  return res.json() as Promise<T>;
 }
 
 // ── Auth ─────────────────────────────────────────────────────────────────────
