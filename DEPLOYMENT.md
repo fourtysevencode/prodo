@@ -128,11 +128,23 @@ The developer site is served via Cloudflare Pages and Worker API for developer t
 
 ---
 
-## 9. Whimsical Beta Frontend (`beta.prodo.live`)
+## 10. Troubleshooting Cloudflare Error 522 (Connection Timed Out)
 
-The cheerful, accessible light-themed frontend is served via Cloudflare Pages:
+Cloudflare Error 522 occurs when Cloudflare edge servers cannot establish a TCP connection to the destination origin host within 15 seconds.
 
-1. **Custom Domain**: In Cloudflare Pages (`prodo-live`), add `beta.prodo.live` as a Custom Domain pointing to `prodo-live.pages.dev`.
-2. **Domain Matching**: The React application detects requests on `beta.prodo.live` and automatically renders `WhimsicalLayout` with light mode palette, pill search header, numbered status badges, and royal blue action controls.
-3. **Local Testing**: The Whimsical frontend is also accessible locally on standard dev builds at `http://localhost:5173/#/beta`.
+### Root Causes & Fixes:
+1. **Cloudflare Pages Custom Domain (`beta.prodo.live` / `prodo.live`)**:
+   - **Cause**: An incorrect A/AAAA or CNAME record exists in Cloudflare DNS for `beta` pointing to an unreachable IP or an invalid origin.
+   - **Fix**: In Cloudflare DNS Dashboard (`prodo.live`), delete any manual A records for `beta` and ensure a single **CNAME** record exists:
+     - **Name**: `beta`
+     - **Target**: `prodo-live.pages.dev`
+     - **Proxy Status**: `Proxied` (Orange Cloud)
+
+2. **Cloudflare Worker Custom Domain (`api.prodo.live`)**:
+   - **Cause**: Cloudflare Worker custom domain route is misconfigured or pointing to an unrouteable origin IP.
+   - **Fix**: In Cloudflare Workers Dashboard (`prodo-api-worker`) -> **Settings -> Triggers -> Custom Domains**, add `api.prodo.live`. Cloudflare will automatically configure DNS records to route directly to Worker runtime without origin timeouts.
+
+3. **Automatic Client-Side Fallback**:
+   - The Prodo web client (`web/src/api/prodoApi.ts`) includes automatic 522 error detection. If `https://api.prodo.live` returns Error 522 while DNS or Cloudflare custom domain routing is configuring, client requests automatically failover to `https://prodo-api-worker.kazenoko.workers.dev`.
+
 
