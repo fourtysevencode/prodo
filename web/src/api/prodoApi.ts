@@ -82,13 +82,27 @@ async function apiFetch<T>(path: string, init?: RequestInit, customToken?: strin
     });
 
     if (!res.ok) {
-      const err = await res.text();
-      throw new Error(`API ${path} → ${res.status}: ${err}`);
+      const errText = await res.text();
+      // If primary domain returns Cloudflare 522 (Origin Connection Timeout) or 5xx status, attempt fallback to workers.dev
+      if (base !== FALLBACK_WORKER_URL && res.status >= 500) {
+        try {
+          const fallbackRes = await fetch(`${FALLBACK_WORKER_URL}${path}`, {
+            ...init,
+            headers,
+          });
+          if (fallbackRes.ok) {
+            return fallbackRes.json() as Promise<T>;
+          }
+        } catch (_fbErr) {
+          // Fallback failed, continue to throw primary error
+        }
+      }
+      throw new Error(`API ${path} → ${res.status}: ${errText}`);
     }
     return res.json() as Promise<T>;
   } catch (primaryErr: any) {
-    // If custom domain fails due to DNS propagation (e.g. Failed to fetch), retry against direct workers.dev domain
-    if (base !== FALLBACK_WORKER_URL && primaryErr instanceof TypeError) {
+    // If custom domain fails due to DNS propagation or connection timeout (e.g. Failed to fetch), retry against direct workers.dev domain
+    if (base !== FALLBACK_WORKER_URL && (primaryErr instanceof TypeError || primaryErr.message?.includes("522"))) {
       try {
         const fallbackRes = await fetch(`${FALLBACK_WORKER_URL}${path}`, {
           ...init,
