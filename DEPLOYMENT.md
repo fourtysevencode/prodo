@@ -125,3 +125,14 @@ The developer site is served via Cloudflare Pages and Worker API for developer t
 1. **Custom Domain**: In Cloudflare Pages, add `dev.prodo.live` as a Custom Domain pointing to `prodo-live.pages.dev`.
 2. **Dev Token Auth**: Access requires authenticating via `/dev/login` using developer credentials.
 3. **Telemetry Logs**: All client telemetry dispatches (`/telemetry/log`) are persisted to D1 and inspectable in real-time on `dev.prodo.live`.
+
+---
+
+## 9. Whimsical Beta Frontend (`beta.prodo.live`)
+
+The cheerful, accessible light-themed frontend is served via Cloudflare Pages:
+
+1. **Custom Domain**: In Cloudflare Pages (`prodo-live`), add `beta.prodo.live` as a Custom Domain pointing to `prodo-live.pages.dev`.
+2. **Domain Matching**: The React application detects requests on `beta.prodo.live` and automatically renders `WhimsicalLayout` with light mode palette, pill search header, numbered status badges, and royal blue action controls.
+3. **Local Testing**: The Whimsical frontend is also accessible locally on standard dev builds at `http://localhost:5173/#/beta`.
+
