@@ -33,7 +33,7 @@ export default {
 
     // Handle CORS OPTIONS Preflight
     if (method === "OPTIONS") {
-      return new Response(null, { status: 204, headers: getCorsHeaders() });
+      return new Response(null, { status: 204, headers: getCorsHeaders(request) });
     }
 
     // Health check endpoint
