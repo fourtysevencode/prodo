@@ -5,11 +5,13 @@
 /**
  * Returns standard CORS headers to permit cross-origin requests and Google Auth popups.
  */
-export function getCorsHeaders(): Record<string, string> {
+export function getCorsHeaders(request?: Request): Record<string, string> {
+  const origin = request ? (request.headers.get("Origin") || "*") : "*";
   return {
-    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Origin": origin,
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS, PUT, DELETE",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Prodo-Client-Key",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Prodo-Client-Key, X-Prodo-CV-Key",
+    "Access-Control-Max-Age": "86400",
     "Cross-Origin-Opener-Policy": "same-origin-allow-popups",
   };
 }
@@ -17,12 +19,12 @@ export function getCorsHeaders(): Record<string, string> {
 /**
  * Creates a JSON HTTP Response object with proper content-type and CORS headers.
  */
-export function createJsonResponse(data: any, status = 200): Response {
+export function createJsonResponse(data: any, status = 200, request?: Request): Response {
   return new Response(JSON.stringify(data), {
     status,
     headers: {
       "Content-Type": "application/json",
-      ...getCorsHeaders(),
+      ...getCorsHeaders(request),
     },
   });
 }
@@ -30,6 +32,7 @@ export function createJsonResponse(data: any, status = 200): Response {
 /**
  * Creates a formatted JSON error response.
  */
-export function createErrorResponse(message: string, status = 400): Response {
-  return createJsonResponse({ success: false, message }, status);
+export function createErrorResponse(message: string, status = 400, request?: Request): Response {
+  return createJsonResponse({ success: false, message }, status, request);
 }
+
