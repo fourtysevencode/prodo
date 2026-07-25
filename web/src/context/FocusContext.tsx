@@ -67,6 +67,12 @@ interface FocusContextType {
   // Phone detection
   phoneWarning: boolean;
   dismissPhoneWarning: () => void;
+  // Theme & Dev Mode Controls
+  theme: "dark" | "light";
+  toggleTheme: () => void;
+  setTheme: (theme: "dark" | "light") => void;
+  isDev: boolean;
+  setIsDev: (val: boolean) => void;
   // Tester Mode
   isTester: boolean;
   adjustXp: (amount: number) => void;
@@ -100,6 +106,33 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
+
+  // Theme Management ("dark" | "light")
+  const [theme, setThemeState] = useState<"dark" | "light">(() => {
+    return (localStorage.getItem("prodo_theme") as "dark" | "light") || "dark";
+  });
+
+  // Developer Role Flag
+  const [isDev, setIsDev] = useState<boolean>(() => {
+    return localStorage.getItem("prodo_is_dev") === "true" || localStorage.getItem("prodo_role") === "dev";
+  });
+
+  useEffect(() => {
+    if (theme === "dark") {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+    localStorage.setItem("prodo_theme", theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setThemeState(prev => (prev === "dark" ? "light" : "dark"));
+  };
+
+  const setTheme = (newTheme: "dark" | "light") => {
+    setThemeState(newTheme);
+  };
 
   useEffect(() => {
     if (isAuthenticated) {
