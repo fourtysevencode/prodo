@@ -68,7 +68,7 @@ except ImportError:
 
 # ── Cloudflare Worker Python Pyodide Fetch Handler ───────────────────────────
 
-async def on_fetch(request, env=None):
+async def on_fetch(request, env=None, ctx=None):
     """
     Cloudflare Worker Pyodide Entry Point (`on_fetch`).
     Provides zero-dependency routing for Cloudflare Worker Pyodide runtime.

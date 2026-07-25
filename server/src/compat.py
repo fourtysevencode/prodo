@@ -26,10 +26,7 @@ def create_json_response(content: Dict[str, Any], status_code: int = 200) -> Any
     Creates a JSON HTTP response that works seamlessly in FastAPI TestClient
     as well as Cloudflare Workers Pyodide runtime.
     """
-    if HAS_FASTAPI and FastAPIJSONResponse is not None:
-        return FastAPIJSONResponse(status_code=status_code, content=content)
-
-    # Cloudflare Pyodide JS Response fallback
+    # Prioritize Cloudflare Pyodide JS Response if running in Cloudflare Worker environment
     try:
         from js import Response, Headers
         headers = Headers.new()
@@ -38,9 +35,13 @@ def create_json_response(content: Dict[str, Any], status_code: int = 200) -> Any
         headers.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, DELETE")
         headers.set("Access-Control-Allow-Headers", "*")
         return Response.new(json.dumps(content), status=status_code, headers=headers)
-    except Exception:
-        # Generic dictionary fallback
-        return {"status_code": status_code, "content": content}
+    except (ImportError, Exception):
+        pass
+
+    if HAS_FASTAPI and FastAPIJSONResponse is not None:
+        return FastAPIJSONResponse(status_code=status_code, content=content)
+
+    return {"status_code": status_code, "content": content}
 
 
 def create_error_response(message: str, status_code: int = 400) -> Any:
