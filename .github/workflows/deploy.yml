@@ -58,15 +58,18 @@ jobs:
         with:
           node-version: 22
 
+      - name: Install uv
+        run: pip install uv
+
       - name: Install Python Dependencies & Run Tests
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pytest tests/
+          uv venv
+          uv pip install -r requirements.txt
+          uv run pytest tests/
         working-directory: server
 
       - name: Deploy Cloudflare Worker
-        run: npx wrangler deploy
+        run: uvx --from workers-py pywrangler deploy
         working-directory: server
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
