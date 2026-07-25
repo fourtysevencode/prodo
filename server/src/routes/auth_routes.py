@@ -9,12 +9,17 @@ import time
 import uuid
 import secrets
 from typing import Optional
-from fastapi import APIRouter, Request, Header
-from fastapi.responses import JSONResponse
 
+from ..compat import create_json_response, create_error_response
 from ..database import query_one, execute_db
 
-router = APIRouter(prefix="/auth", tags=["Authentication"])
+try:
+    from fastapi import APIRouter, Request, Header
+    router = APIRouter(prefix="/auth", tags=["Authentication"])
+except ImportError:
+    router = None
+    Request = None
+    Header = None
 
 
 def generate_token(prefix: str = "token_") -> str:
@@ -26,22 +31,26 @@ def extract_bearer_token(auth_header: Optional[str]) -> Optional[str]:
     """Helper function to extract token from 'Bearer <token>' Authorization header."""
     if not auth_header:
         return None
-    parts = auth_header.split(" ")
+    parts = str(auth_header).split(" ")
     if len(parts) == 2 and parts[0].lower() == "bearer":
         return parts[1]
-    return auth_header.strip()
+    return str(auth_header).strip()
 
 
-async def parse_json_body(request: Request) -> dict:
+async def parse_json_body(request) -> dict:
     """Helper to safely parse JSON body from incoming HTTP request."""
     try:
-        return await request.json()
+        if hasattr(request, "json"):
+            res = request.json()
+            if hasattr(res, "__await__"):
+                return await res
+            return res
     except Exception:
-        return {}
+        pass
+    return {}
 
 
-@router.post("/register")
-async def register(request: Request):
+async def handle_register(request):
     """
     Registers a new user account with email, username, and password.
     Initializes starter XP (100) and balance (100).
@@ -52,7 +61,7 @@ async def register(request: Request):
     password_raw = str(body.get("password") or "")
 
     if not email_raw or not username_raw or not password_raw:
-        return JSONResponse(status_code=400, content={"success": False, "error": "Email, username, and password are required."})
+        return create_error_response("Email, username, and password are required.", 400)
 
     email_clean = email_raw.lower()
     username_clean = username_raw.lower()
@@ -63,10 +72,7 @@ async def register(request: Request):
         (email_clean, username_clean)
     )
     if existing:
-        return JSONResponse(
-            status_code=400,
-            content={"success": False, "error": "Email or username already registered."}
-        )
+        return create_error_response("Email or username already registered.", 400)
 
     # Generate persistent auth token for auto-login
     auth_token = generate_token("token_")
@@ -80,16 +86,15 @@ async def register(request: Request):
         (username_clean, email_clean, password_raw, auth_token)
     )
 
-    return {
+    return create_json_response({
         "success": True,
         "token": auth_token,
         "needs_handle": False,
         "user": {"username": username_clean, "email": email_clean}
-    }
+    })
 
 
-@router.post("/login")
-async def login(request: Request):
+async def handle_login(request):
     """
     Authenticates an existing user account using email and password.
     Returns user profile state and token.
@@ -99,31 +104,27 @@ async def login(request: Request):
     password_raw = str(body.get("password") or "")
 
     if not email_clean or not password_raw:
-        return JSONResponse(status_code=400, content={"success": False, "error": "Email and password are required."})
+        return create_error_response("Email and password are required.", 400)
 
     # Query database for user matching given email
     user = query_one("SELECT * FROM users WHERE lower(email) = ?", (email_clean,))
     if not user or user.get("password_hash") != password_raw:
-        return JSONResponse(
-            status_code=401,
-            content={"success": False, "error": "Invalid email or password credentials."}
-        )
+        return create_error_response("Invalid email or password credentials.", 401)
 
     # Ensure user has a valid auth token
     auth_token = user.get("auth_token") or generate_token("token_")
     if not user.get("auth_token"):
         execute_db("UPDATE users SET auth_token = ? WHERE id = ?", (auth_token, user["id"]))
 
-    return {
+    return create_json_response({
         "success": True,
         "token": auth_token,
         "needs_handle": bool(user.get("needs_handle")),
         "user": {"username": user["username"], "email": user["email"]}
-    }
+    })
 
 
-@router.post("/google")
-async def google_auth(request: Request):
+async def handle_google_auth(request):
     """
     Google OAuth login handler. Accepts Google ID token credential,
     extracts claims, and either logs in or registers the user.
@@ -131,7 +132,7 @@ async def google_auth(request: Request):
     body = await parse_json_body(request)
     raw_cred = str(body.get("credential") or "").strip()
     if not raw_cred:
-        return JSONResponse(status_code=400, content={"success": False, "error": "Invalid Google credential."})
+        return create_error_response("Invalid Google credential.", 400)
 
     # Generate synthetic email for credential string
     synth_email = f"google_user_{raw_cred[:8].lower()}@prodo.live"
@@ -146,45 +147,43 @@ async def google_auth(request: Request):
         )
         user = query_one("SELECT * FROM users WHERE email = ?", (synth_email,))
 
-    return {
+    return create_json_response({
         "success": True,
         "token": user["auth_token"],
         "needs_handle": bool(user.get("needs_handle")),
         "user": {"username": user["username"], "email": user["email"]}
-    }
+    })
 
 
-@router.post("/username")
-async def update_username(request: Request, authorization: Optional[str] = Header(None)):
+async def handle_update_username(request, authorization: Optional[str] = None):
     """
     Updates the user's handle/username. Requires valid Bearer authorization token.
     """
-    token = extract_bearer_token(authorization)
+    token = extract_bearer_token(authorization or (request.headers.get("authorization") if hasattr(request, "headers") else None))
     if not token:
-        return JSONResponse(status_code=401, content={"success": False, "error": "Authorization header missing."})
+        return create_error_response("Authorization header missing.", 401)
 
     user = query_one("SELECT * FROM users WHERE auth_token = ?", (token,))
     if not user:
-        return JSONResponse(status_code=401, content={"success": False, "error": "User session expired or invalid."})
+        return create_error_response("User session expired or invalid.", 401)
 
     body = await parse_json_body(request)
     new_username = str(body.get("username") or "").strip().lower()
 
     if not new_username or len(new_username) < 3:
-        return JSONResponse(status_code=400, content={"success": False, "error": "Username must be at least 3 characters."})
+        return create_error_response("Username must be at least 3 characters.", 400)
 
     # Check if handle is already taken by another account
     existing = query_one("SELECT id FROM users WHERE lower(username) = ? AND id != ?", (new_username, user["id"]))
     if existing:
-        return JSONResponse(status_code=400, content={"success": False, "error": "Username is already taken."})
+        return create_error_response("Username is already taken.", 400)
 
     execute_db("UPDATE users SET username = ?, needs_handle = 0 WHERE id = ?", (new_username, user["id"]))
 
-    return {"success": True, "username": new_username, "message": "Username handle updated successfully."}
+    return create_json_response({"success": True, "username": new_username, "message": "Username handle updated successfully."})
 
 
-@router.post("/tester")
-async def tester_login(request: Request):
+async def handle_tester_login(request=None):
     """
     Generates a temporary 24-hour guest/tester account.
     """
@@ -201,15 +200,14 @@ async def tester_login(request: Request):
         (tester_username, tester_email, auth_token, time.time() + 86400)
     )
 
-    return {
+    return create_json_response({
         "success": True,
         "token": auth_token,
         "user": {"username": tester_username, "email": tester_email}
-    }
+    })
 
 
-@router.post("/device-code")
-async def request_device_code(request: Request):
+async def handle_request_device_code(request=None):
     """
     Desktop OAuth Flow Step 1: Generates a unique 6-character device code for Tauri desktop authentication.
     """
@@ -218,35 +216,33 @@ async def request_device_code(request: Request):
         "INSERT INTO device_auths (device_code, status, created_at) VALUES (?, 'PENDING', ?)",
         (device_code, time.time())
     )
-    return {"success": True, "device_code": device_code, "verification_url": f"https://prodo.live/#/authorize-desktop?code={device_code}"}
+    return create_json_response({"success": True, "device_code": device_code, "verification_url": f"https://prodo.live/#/authorize-desktop?code={device_code}"})
 
 
-@router.post("/device-approve")
-async def approve_device_code(request: Request, authorization: Optional[str] = Header(None)):
+async def handle_approve_device_code(request, authorization: Optional[str] = None):
     """
     Desktop OAuth Flow Step 2: Approves a pending device code from the logged-in web app session.
     """
-    token = extract_bearer_token(authorization)
+    token = extract_bearer_token(authorization or (request.headers.get("authorization") if hasattr(request, "headers") else None))
     user = query_one("SELECT * FROM users WHERE auth_token = ?", (token,))
     if not user:
-        return JSONResponse(status_code=401, content={"success": False, "error": "Unauthorized user session."})
+        return create_error_response("Unauthorized user session.", 401)
 
     body = await parse_json_body(request)
     device_code = str(body.get("device_code") or "").upper()
 
     device_auth = query_one("SELECT * FROM device_auths WHERE device_code = ?", (device_code,))
     if not device_auth:
-        return JSONResponse(status_code=404, content={"success": False, "error": "Invalid device code."})
+        return create_error_response("Invalid device code.", 404)
 
     execute_db(
         "UPDATE device_auths SET status = 'APPROVED', user_id = ?, auth_token = ? WHERE device_code = ?",
         (user["id"], user["auth_token"], device_code)
     )
-    return {"success": True, "message": "Device authorization granted."}
+    return create_json_response({"success": True, "message": "Device authorization granted."})
 
 
-@router.post("/device-poll")
-async def poll_device_code(request: Request):
+async def handle_poll_device_code(request):
     """
     Desktop OAuth Flow Step 3: Desktop app polls endpoint to retrieve auth token once user approves in browser.
     """
@@ -255,9 +251,44 @@ async def poll_device_code(request: Request):
 
     device_auth = query_one("SELECT * FROM device_auths WHERE device_code = ?", (device_code,))
     if not device_auth:
-        return JSONResponse(status_code=404, content={"success": False, "error": "Invalid or expired device code."})
+        return create_error_response("Invalid or expired device code.", 404)
 
     if device_auth["status"] == "APPROVED":
-        return {"success": True, "status": "APPROVED", "auth_token": device_auth["auth_token"]}
+        return create_json_response({"success": True, "status": "APPROVED", "auth_token": device_auth["auth_token"]})
 
-    return {"success": True, "status": "PENDING"}
+    return create_json_response({"success": True, "status": "PENDING"})
+
+
+# Bind endpoints to FastAPI APIRouter if router exists
+if router is not None:
+    @router.post("/register")
+    async def register_route(request: Request):
+        return await handle_register(request)
+
+    @router.post("/login")
+    async def login_route(request: Request):
+        return await handle_login(request)
+
+    @router.post("/google")
+    async def google_route(request: Request):
+        return await handle_google_auth(request)
+
+    @router.post("/username")
+    async def username_route(request: Request, authorization: Optional[str] = Header(None)):
+        return await handle_update_username(request, authorization)
+
+    @router.post("/tester")
+    async def tester_route(request: Request):
+        return await handle_tester_login(request)
+
+    @router.post("/device-code")
+    async def device_code_route(request: Request):
+        return await handle_request_device_code(request)
+
+    @router.post("/device-approve")
+    async def device_approve_route(request: Request, authorization: Optional[str] = Header(None)):
+        return await handle_approve_device_code(request, authorization)
+
+    @router.post("/device-poll")
+    async def device_poll_route(request: Request):
+        return await handle_poll_device_code(request)

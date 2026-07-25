@@ -6,30 +6,34 @@ and submit periodic telemetry / focus point sync payloads (`/users/sync`).
 """
 
 from typing import Optional
-from fastapi import APIRouter, Request, Header
-from fastapi.responses import JSONResponse
 
+from ..compat import create_json_response, create_error_response
 from ..database import query_one, execute_db
 from .auth_routes import extract_bearer_token, parse_json_body
 
-router = APIRouter(prefix="/users", tags=["User Profile"])
+try:
+    from fastapi import APIRouter, Request, Header
+    router = APIRouter(prefix="/users", tags=["User Profile"])
+except ImportError:
+    router = None
+    Request = None
+    Header = None
 
 
-@router.get("/me")
-async def get_me(authorization: Optional[str] = Header(None)):
+async def handle_get_me(request=None, authorization: Optional[str] = None):
     """
     Returns current user details, XP balance, multiplier, and developer status.
     """
-    token = extract_bearer_token(authorization)
+    token = extract_bearer_token(authorization or (request.headers.get("authorization") if hasattr(request, "headers") else None))
     if not token:
-        return JSONResponse(status_code=401, content={"success": False, "error": "Missing authorization token."})
+        return create_error_response("Missing authorization token.", 401)
 
     # Retrieve user matching the token
     user = query_one("SELECT * FROM users WHERE auth_token = ?", (token,))
     if not user:
-        return JSONResponse(status_code=401, content={"success": False, "error": "Invalid or expired session token."})
+        return create_error_response("Invalid or expired session token.", 401)
 
-    return {
+    return create_json_response({
         "success": True,
         "user": {
             "id": user["id"],
@@ -43,22 +47,21 @@ async def get_me(authorization: Optional[str] = Header(None)):
             "is_tester": bool(user.get("is_tester")),
             "needs_handle": bool(user.get("needs_handle")),
         }
-    }
+    })
 
 
-@router.post("/sync")
-async def sync_user_data(request: Request, authorization: Optional[str] = Header(None)):
+async def handle_sync_user_data(request, authorization: Optional[str] = None):
     """
     Periodic focus state sync endpoint. Receives newly earned XP points, gaze multiplier,
     and system status telemetry to update the user's persistent balance.
     """
-    token = extract_bearer_token(authorization)
+    token = extract_bearer_token(authorization or (request.headers.get("authorization") if hasattr(request, "headers") else None))
     if not token:
-        return JSONResponse(status_code=401, content={"success": False, "error": "Authorization token missing."})
+        return create_error_response("Authorization token missing.", 401)
 
     user = query_one("SELECT * FROM users WHERE auth_token = ?", (token,))
     if not user:
-        return JSONResponse(status_code=401, content={"success": False, "error": "Session token invalid."})
+        return create_error_response("Session token invalid.", 401)
 
     body = await parse_json_body(request)
 
@@ -79,10 +82,20 @@ async def sync_user_data(request: Request, authorization: Optional[str] = Header
         (new_xp, new_total, new_balance, new_multiplier, user["id"])
     )
 
-    return {
+    return create_json_response({
         "success": True,
         "xp": new_xp,
         "total_lifetime_points": new_total,
         "current_balance": new_balance,
         "multiplier": new_multiplier
-    }
+    })
+
+
+if router is not None:
+    @router.get("/me")
+    async def get_me_route(request: Request, authorization: Optional[str] = Header(None)):
+        return await handle_get_me(request, authorization)
+
+    @router.post("/sync")
+    async def sync_user_data_route(request: Request, authorization: Optional[str] = Header(None)):
+        return await handle_sync_user_data(request, authorization)

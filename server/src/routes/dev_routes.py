@@ -5,58 +5,61 @@ Handles dev authentication (`/dev/login`), dev stats (`/dev/stats`), and telemet
 """
 
 from typing import Optional
-from fastapi import APIRouter, Request, Header
-from fastapi.responses import JSONResponse
 
+from ..compat import create_json_response, create_error_response
 from ..database import query_one, query_all, execute_db
 from .auth_routes import extract_bearer_token, parse_json_body
 
-router = APIRouter(prefix="/dev", tags=["Developer Tools"])
+try:
+    from fastapi import APIRouter, Request, Header
+    router = APIRouter(prefix="/dev", tags=["Developer Tools"])
+except ImportError:
+    router = None
+    Request = None
+    Header = None
 
 DEV_SECRET = "prodo_dev_master_key_2026"
 
 
-@router.post("/login")
-async def dev_login(request: Request, authorization: Optional[str] = Header(None)):
+async def handle_dev_login(request, authorization: Optional[str] = None):
     """
     Authenticates account for developer portal access (dev.prodo.live).
     Sets the `is_dev = 1` flag on the user record.
     """
-    token = extract_bearer_token(authorization)
+    token = extract_bearer_token(authorization or (request.headers.get("authorization") if hasattr(request, "headers") else None))
     if not token:
-        return JSONResponse(status_code=401, content={"success": False, "error": "User authentication required."})
+        return create_error_response("User authentication required.", 401)
 
     user = query_one("SELECT * FROM users WHERE auth_token = ?", (token,))
     if not user:
-        return JSONResponse(status_code=401, content={"success": False, "error": "Invalid session token."})
+        return create_error_response("Invalid session token.", 401)
 
     body = await parse_json_body(request)
     secret_key = str(body.get("secret_key") or "")
 
     if secret_key != DEV_SECRET:
-        return JSONResponse(status_code=403, content={"success": False, "error": "Incorrect developer authorization key."})
+        return create_error_response("Incorrect developer authorization key.", 403)
 
     execute_db("UPDATE users SET is_dev = 1 WHERE id = ?", (user["id"],))
 
-    return {"success": True, "message": "Developer privileges granted successfully!"}
+    return create_json_response({"success": True, "message": "Developer privileges granted successfully!"})
 
 
-@router.get("/stats")
-async def get_dev_stats(authorization: Optional[str] = Header(None)):
+async def handle_get_dev_stats(request=None, authorization: Optional[str] = None):
     """
     Returns platform health & telemetry metrics for dev.prodo.live portal.
     """
-    token = extract_bearer_token(authorization)
+    token = extract_bearer_token(authorization or (request.headers.get("authorization") if hasattr(request, "headers") else None))
     user = query_one("SELECT * FROM users WHERE auth_token = ?", (token,)) if token else None
 
     if not user or not user.get("is_dev"):
-        return JSONResponse(status_code=403, content={"success": False, "error": "Access requires a developer account."})
+        return create_error_response("Access requires a developer account.", 403)
 
     user_count = query_one("SELECT COUNT(*) AS count FROM users")
     coop_count = query_one("SELECT COUNT(*) AS count FROM coop_sessions WHERE is_active = 1")
     telemetry_count = query_one("SELECT COUNT(*) AS count FROM telemetry_logs")
 
-    return {
+    return create_json_response({
         "success": True,
         "stats": {
             "total_users": user_count["count"] if user_count else 0,
@@ -64,19 +67,32 @@ async def get_dev_stats(authorization: Optional[str] = Header(None)):
             "total_telemetry_events": telemetry_count["count"] if telemetry_count else 0,
             "system_status": "OPERATIONAL",
         }
-    }
+    })
 
 
-@router.get("/telemetry")
-async def get_dev_telemetry(authorization: Optional[str] = Header(None)):
+async def handle_get_dev_telemetry(request=None, authorization: Optional[str] = None):
     """
     Fetches raw telemetry log feed for dev portal inspection.
     """
-    token = extract_bearer_token(authorization)
+    token = extract_bearer_token(authorization or (request.headers.get("authorization") if hasattr(request, "headers") else None))
     user = query_one("SELECT * FROM users WHERE auth_token = ?", (token,)) if token else None
 
     if not user or not user.get("is_dev"):
-        return JSONResponse(status_code=403, content={"success": False, "error": "Access requires a developer account."})
+        return create_error_response("Access requires a developer account.", 403)
 
     logs = query_all("SELECT * FROM telemetry_logs ORDER BY created_at DESC LIMIT 100")
-    return {"success": True, "logs": logs}
+    return create_json_response({"success": True, "logs": logs})
+
+
+if router is not None:
+    @router.post("/login")
+    async def dev_login_route(request: Request, authorization: Optional[str] = Header(None)):
+        return await handle_dev_login(request, authorization)
+
+    @router.get("/stats")
+    async def dev_stats_route(request: Request, authorization: Optional[str] = Header(None)):
+        return await handle_get_dev_stats(request, authorization)
+
+    @router.get("/telemetry")
+    async def dev_telemetry_route(request: Request, authorization: Optional[str] = Header(None)):
+        return await handle_get_dev_telemetry(request, authorization)

@@ -6,17 +6,21 @@ and friends-only focus rankings (`/leaderboard/friends`).
 """
 
 from typing import Optional
-from fastapi import APIRouter, Header
-from fastapi.responses import JSONResponse
 
+from ..compat import create_json_response
 from ..database import query_all, query_one
 from .auth_routes import extract_bearer_token
 
-router = APIRouter(prefix="/leaderboard", tags=["Leaderboard"])
+try:
+    from fastapi import APIRouter, Request, Header
+    router = APIRouter(prefix="/leaderboard", tags=["Leaderboard"])
+except ImportError:
+    router = None
+    Request = None
+    Header = None
 
 
-@router.api_route("/global", methods=["GET", "POST"])
-async def get_global_leaderboard():
+async def handle_get_global_leaderboard():
     """
     Returns the top 50 users ranked by total focus XP.
     """
@@ -27,22 +31,21 @@ async def get_global_leaderboard():
     LIMIT 50
     """
     entries = query_all(sql)
-    return {"success": True, "leaderboard": entries}
+    return create_json_response({"success": True, "leaderboard": entries})
 
 
-@router.api_route("/friends", methods=["GET", "POST"])
-async def get_friends_leaderboard(authorization: Optional[str] = Header(None)):
+async def handle_get_friends_leaderboard(request=None, authorization: Optional[str] = None):
     """
     Returns leaderboard rankings restricted to the authenticated user and their linked friends.
     """
-    token = extract_bearer_token(authorization)
+    token = extract_bearer_token(authorization or (request.headers.get("authorization") if hasattr(request, "headers") else None))
     if not token:
         # Fallback to global if no token provided
-        return await get_global_leaderboard()
+        return await handle_get_global_leaderboard()
 
     user = query_one("SELECT * FROM users WHERE auth_token = ?", (token,))
     if not user:
-        return await get_global_leaderboard()
+        return await handle_get_global_leaderboard()
 
     # Query friends + self rankings
     sql = """
@@ -52,4 +55,14 @@ async def get_friends_leaderboard(authorization: Optional[str] = Header(None)):
     ORDER BY u.xp DESC
     """
     entries = query_all(sql, (user["id"], user["id"]))
-    return {"success": True, "leaderboard": entries}
+    return create_json_response({"success": True, "leaderboard": entries})
+
+
+if router is not None:
+    @router.api_route("/global", methods=["GET", "POST"])
+    async def global_leaderboard_route():
+        return await handle_get_global_leaderboard()
+
+    @router.api_route("/friends", methods=["GET", "POST"])
+    async def friends_leaderboard_route(request: Request, authorization: Optional[str] = Header(None)):
+        return await handle_get_friends_leaderboard(request, authorization)

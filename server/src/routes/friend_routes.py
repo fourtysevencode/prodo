@@ -5,27 +5,31 @@ Provides endpoints to list linked friends (`/friends/list`) and send friend invi
 """
 
 from typing import Optional
-from fastapi import APIRouter, Request, Header
-from fastapi.responses import JSONResponse
 
+from ..compat import create_json_response, create_error_response
 from ..database import query_one, query_all, execute_db
 from .auth_routes import extract_bearer_token, parse_json_body
 
-router = APIRouter(prefix="/friends", tags=["Friends"])
+try:
+    from fastapi import APIRouter, Request, Header
+    router = APIRouter(prefix="/friends", tags=["Friends"])
+except ImportError:
+    router = None
+    Request = None
+    Header = None
 
 
-@router.get("/list")
-async def get_friends_list(authorization: Optional[str] = Header(None)):
+async def handle_get_friends_list(request=None, authorization: Optional[str] = None):
     """
     Returns the list of accepted friends and their current XP scores for the authenticated user.
     """
-    token = extract_bearer_token(authorization)
+    token = extract_bearer_token(authorization or (request.headers.get("authorization") if hasattr(request, "headers") else None))
     if not token:
-        return JSONResponse(status_code=401, content={"success": False, "error": "Missing token."})
+        return create_error_response("Missing token.", 401)
 
     user = query_one("SELECT * FROM users WHERE auth_token = ?", (token,))
     if not user:
-        return JSONResponse(status_code=401, content={"success": False, "error": "Invalid token session."})
+        return create_error_response("Invalid token session.", 401)
 
     # Fetch all friends connected to current user ID
     sql = """
@@ -36,35 +40,34 @@ async def get_friends_list(authorization: Optional[str] = Header(None)):
     """
     friends = query_all(sql, (user["id"],))
 
-    return {"success": True, "friends": friends}
+    return create_json_response({"success": True, "friends": friends})
 
 
-@router.post("/add")
-async def add_friend(request: Request, authorization: Optional[str] = Header(None)):
+async def handle_add_friend(request, authorization: Optional[str] = None):
     """
     Adds a target friend user handle to the authenticated user's friend directory.
     Creates reciprocal entries in the friends table.
     """
-    token = extract_bearer_token(authorization)
+    token = extract_bearer_token(authorization or (request.headers.get("authorization") if hasattr(request, "headers") else None))
     if not token:
-        return JSONResponse(status_code=401, content={"success": False, "error": "Unauthorized."})
+        return create_error_response("Unauthorized.", 401)
 
     user = query_one("SELECT * FROM users WHERE auth_token = ?", (token,))
     if not user:
-        return JSONResponse(status_code=401, content={"success": False, "error": "Invalid user."})
+        return create_error_response("Invalid user.", 401)
 
     body = await parse_json_body(request)
     target_handle = str(body.get("friend_username") or "").strip().lower()
 
     if not target_handle:
-        return JSONResponse(status_code=400, content={"success": False, "error": "Friend username is required."})
+        return create_error_response("Friend username is required.", 400)
 
     target_user = query_one("SELECT * FROM users WHERE lower(username) = ?", (target_handle,))
     if not target_user:
-        return JSONResponse(status_code=404, content={"success": False, "error": f"User '{target_handle}' not found."})
+        return create_error_response(f"User '{target_handle}' not found.", 404)
 
     if target_user["id"] == user["id"]:
-        return JSONResponse(status_code=400, content={"success": False, "error": "You cannot add yourself as a friend."})
+        return create_error_response("You cannot add yourself as a friend.", 400)
 
     # Insert reciprocal friendship entries
     try:
@@ -73,4 +76,14 @@ async def add_friend(request: Request, authorization: Optional[str] = Header(Non
     except Exception as e:
         print("Friend add error:", e)
 
-    return {"success": True, "message": f"Successfully linked with {target_user['username']}!"}
+    return create_json_response({"success": True, "message": f"Successfully linked with {target_user['username']}!"})
+
+
+if router is not None:
+    @router.get("/list")
+    async def get_friends_list_route(request: Request, authorization: Optional[str] = Header(None)):
+        return await handle_get_friends_list(request, authorization)
+
+    @router.post("/add")
+    async def add_friend_route(request: Request, authorization: Optional[str] = Header(None)):
+        return await handle_add_friend(request, authorization)
