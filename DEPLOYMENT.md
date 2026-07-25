@@ -1,9 +1,13 @@
-# Prodo Deployment Guide
+# Prodo Web Frontend Deployment Guide
+This document explains how to deploy the Prodo web platform across all supported subdomains (`www.prodo.live`, `prodo.live`, `dev.prodo.live`, `beta.prodo.live`).
 
-This guide explains how to deploy all three components of the Prodo platform:
-1. **Frontend Web App** (Cloudflare Pages)
-2. **API Backend Worker & D1 Database** (Cloudflare Workers & D1)
-3. **Computer Vision Focus Inference Engine** (Modal.com Serverless)
+---
+
+## Deployment Architecture & Subdomains
+- **`www.prodo.live`**: Public marketing & landing site.
+- **`prodo.live`**: Main authenticated web application.
+- **`dev.prodo.live`**: Developer portal (restricted to accounts with `isDev` flag, returns 403 Forbidden for unauthorized users).
+- **`beta.prodo.live`**: Strictly routes to a **403 Forbidden** page.
 
 ---
 
@@ -130,21 +134,29 @@ The developer site is served via Cloudflare Pages and Worker API for developer t
 
 ## 10. Troubleshooting Cloudflare Error 522 (Connection Timed Out)
 
-Cloudflare Error 522 occurs when Cloudflare edge servers cannot establish a TCP connection to the destination origin host within 15 seconds.
+### Verified Terminal Diagnostic Test Results
+- `https://prodo-live.pages.dev` → **HTTP 200 OK** (Pages deployment live & healthy)
+- `https://api.prodo.live` → **HTTP 200 OK** (Worker API live & healthy)
+- `https://beta.prodo.live` → **HTTP 522** (Connection Timed Out - Cloudflare DNS pointing to unreachable origin IP)
 
-### Root Causes & Fixes:
-1. **Cloudflare Pages Custom Domain (`beta.prodo.live` / `prodo.live`)**:
-   - **Cause**: An incorrect A/AAAA or CNAME record exists in Cloudflare DNS for `beta` pointing to an unreachable IP or an invalid origin.
-   - **Fix**: In Cloudflare DNS Dashboard (`prodo.live`), delete any manual A records for `beta` and ensure a single **CNAME** record exists:
+### Cause of Error 522:
+In Cloudflare DNS, `beta.prodo.live` resolves to an old origin IP address (`172.67.153.149` / `104.21.3.177`). Cloudflare attempts a TCP handshake to port 443 on that IP address, which times out after 15 seconds.
+
+### Exact 2-Step Fix in Cloudflare Dashboard:
+
+1. **Add Custom Domain in Cloudflare Pages**:
+   - Go to **Cloudflare Dashboard** -> **Workers & Pages** -> **`prodo-live`**.
+   - Select **Custom Domains** -> Click **Set up a custom domain**.
+   - Enter `beta.prodo.live` and click **Continue**.
+
+2. **Update DNS Record in Cloudflare DNS**:
+   - Go to **Cloudflare Dashboard** -> Select domain `prodo.live` -> **DNS** -> **Records**.
+   - Delete any existing **A/AAAA** records for `beta`.
+   - Add/verify a **CNAME** record:
+     - **Type**: `CNAME`
      - **Name**: `beta`
      - **Target**: `prodo-live.pages.dev`
-     - **Proxy Status**: `Proxied` (Orange Cloud)
+     - **Proxy Status**: `Proxied` (Orange Cloud ON)
 
-2. **Cloudflare Worker Custom Domain (`api.prodo.live`)**:
-   - **Cause**: Cloudflare Worker custom domain route is misconfigured or pointing to an unrouteable origin IP.
-   - **Fix**: In Cloudflare Workers Dashboard (`prodo-api-worker`) -> **Settings -> Triggers -> Custom Domains**, add `api.prodo.live`. Cloudflare will automatically configure DNS records to route directly to Worker runtime without origin timeouts.
-
-3. **Automatic Client-Side Fallback**:
-   - The Prodo web client (`web/src/api/prodoApi.ts`) includes automatic 522 error detection. If `https://api.prodo.live` returns Error 522 while DNS or Cloudflare custom domain routing is configuring, client requests automatically failover to `https://prodo-api-worker.kazenoko.workers.dev`.
 
 
