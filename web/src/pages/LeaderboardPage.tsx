@@ -175,7 +175,7 @@ const LeaderboardPage: React.FC = () => {
               key={entry.username}
               entry={entry}
               rank={idx + 1}
-              highlight={entry.username.toLowerCase() === currentUser.toLowerCase()}
+              highlight={(entry.username || "").toLowerCase() === currentUser.toLowerCase()}
             />
           ))}
         </div>

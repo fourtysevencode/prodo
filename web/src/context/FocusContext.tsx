@@ -312,7 +312,7 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const executeCommand = (cmd: string): string => {
-    const trimmed = cmd.trim().toLowerCase();
+    const trimmed = (cmd || "").trim().toLowerCase();
     if (trimmed === "help") return "Available commands: help, status, clear, reset";
     if (trimmed === "status") return `Tracking: ${isTracking ? "ACTIVE" : "IDLE"} | XP: ${xp}`;
     if (trimmed === "clear") {
@@ -323,7 +323,7 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const isTester = Boolean(
-    username.toLowerCase().startsWith("tester_") ||
+    (username || "").toLowerCase().startsWith("tester_") ||
     localStorage.getItem("prodo_token")?.startsWith("tester_token_")
   );
 

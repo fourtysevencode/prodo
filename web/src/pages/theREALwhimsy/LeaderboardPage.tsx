@@ -147,7 +147,7 @@ const WhimsicalLeaderboardPage: React.FC = () => {
           <div className="flex flex-col gap-3">
             {activeList.map((entry, idx) => {
               const rank = idx + 1;
-              const isCurrent = entry.username.toLowerCase() === currentUser.toLowerCase();
+              const isCurrent = (entry.username || "").toLowerCase() === currentUser.toLowerCase();
 
               return (
                 <div
