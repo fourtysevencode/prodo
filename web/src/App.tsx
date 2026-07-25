@@ -83,7 +83,7 @@ function MainAppRoutes() {
       <Route path="/punishments" element={<PunishmentsPage />} />
 
       {/* Main Whimsical App Views */}
-      <Route path="/focus" element={<WhimsicalLayout><FocusPage /></WhimsicalLayout>} />
+      <Route path="/focus" element={<FocusPage />} />
       <Route path="/logs" element={<WhimsicalLayout><LogsPage /></WhimsicalLayout>} />
       <Route path="/leaderboard" element={<WhimsicalLayout><LeaderboardPage /></WhimsicalLayout>} />
       <Route path="/vault" element={<WhimsicalLayout><VaultPage /></WhimsicalLayout>} />
