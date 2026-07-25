@@ -6,12 +6,11 @@ and submit periodic telemetry / focus point sync payloads (`/users/sync`).
 """
 
 from typing import Optional
-from fastapi import APIRouter, Header
+from fastapi import APIRouter, Request, Header
 from fastapi.responses import JSONResponse
 
-from ..models import SyncRequest
 from ..database import query_one, execute_db
-from .auth_routes import extract_bearer_token
+from .auth_routes import extract_bearer_token, parse_json_body
 
 router = APIRouter(prefix="/users", tags=["User Profile"])
 
@@ -48,7 +47,7 @@ async def get_me(authorization: Optional[str] = Header(None)):
 
 
 @router.post("/sync")
-async def sync_user_data(body: SyncRequest, authorization: Optional[str] = Header(None)):
+async def sync_user_data(request: Request, authorization: Optional[str] = Header(None)):
     """
     Periodic focus state sync endpoint. Receives newly earned XP points, gaze multiplier,
     and system status telemetry to update the user's persistent balance.
@@ -61,12 +60,14 @@ async def sync_user_data(body: SyncRequest, authorization: Optional[str] = Heade
     if not user:
         return JSONResponse(status_code=401, content={"success": False, "error": "Session token invalid."})
 
+    body = await parse_json_body(request)
+
     # Calculate new XP and lifetime points totals
-    xp_gained = max(0, body.xp_gained or 0)
+    xp_gained = max(0, int(body.get("xp_gained") or body.get("xp") or 0))
     new_xp = (user.get("xp") or 0) + xp_gained
     new_total = (user.get("total_lifetime_points") or 0) + xp_gained
     new_balance = (user.get("current_balance") or 0) + xp_gained
-    new_multiplier = body.current_multiplier or 1.0
+    new_multiplier = float(body.get("current_multiplier") or 1.0)
 
     # Update database record
     execute_db(
