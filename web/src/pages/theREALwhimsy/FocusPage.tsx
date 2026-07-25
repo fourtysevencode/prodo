@@ -67,7 +67,7 @@ const FocusPage: React.FC = () => {
               </div>
               <div>
                 <div className="text-[10px] font-bold text-on-surface/50 uppercase tracking-widest">Focus Balance</div>
-                <div className="font-display font-black text-2xl text-on-surface">{xp.toLocaleString()} XP</div>
+                <div className="font-display font-black text-2xl text-on-surface">{(xp || 0).toLocaleString()} XP</div>
               </div>
             </div>
           </div>

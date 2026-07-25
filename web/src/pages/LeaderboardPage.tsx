@@ -43,7 +43,7 @@ const RankRow: React.FC<{ entry: LeaderboardEntry; rank: number; highlight?: boo
       <div className="text-right flex-shrink-0">
         <div className="font-technical-prefix text-[8px] text-outline-variant">TOTAL_XP</div>
         <div className={`font-value-lg text-base ${isTop3 ? "text-amber" : "text-primary"}`}>
-          {entry.points.toLocaleString()}
+          {(entry.points || 0).toLocaleString()}
         </div>
       </div>
     </div>

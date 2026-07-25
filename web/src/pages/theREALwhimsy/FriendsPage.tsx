@@ -284,7 +284,7 @@ const WhimsicalFriendsPage: React.FC = () => {
                           {friend.username}
                         </h4>
                         <p className="text-[10px] font-black text-secondary uppercase tracking-wider">
-                          {friend.points.toLocaleString()} XP
+                          {(friend.points || 0).toLocaleString()} XP
                         </p>
                       </div>
                     </div>

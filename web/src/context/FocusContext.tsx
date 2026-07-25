@@ -138,9 +138,9 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (isAuthenticated) {
       apiGetMe()
         .then(profile => {
-          setUsername(profile.username);
-          setEmail(profile.email);
-          setXp(profile.current_balance);
+          setUsername(profile.user?.username || "");
+          setEmail(profile.user?.email || "");
+          setXp(profile.user?.current_balance || 0);
         })
         .catch(err => {
           console.error("Failed to load operator profile:", err);

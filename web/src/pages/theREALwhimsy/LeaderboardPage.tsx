@@ -195,7 +195,7 @@ const WhimsicalLeaderboardPage: React.FC = () => {
                   <div className="bg-background border border-lavender/50 rounded-full px-4 py-2 flex items-center gap-2 shadow-sm">
                     <span className="material-symbols-outlined text-secondary text-lg">bolt</span>
                     <span className="font-extrabold text-sm text-on-surface">
-                      {entry.points.toLocaleString()}
+                      {(entry.points || 0).toLocaleString()}
                     </span>
                     <span className="text-[10px] font-bold text-on-surface/50">XP</span>
                   </div>

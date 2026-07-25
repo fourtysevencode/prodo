@@ -78,7 +78,7 @@ export const TesterWidget: React.FC = () => {
       {/* Balance Indicator */}
       <div className="flex justify-between items-center bg-background px-3 py-1.5 border border-outline-variant">
         <span className="font-technical-prefix text-[9px] text-outline-variant uppercase">CURRENT XP</span>
-        <span className="font-value-lg text-sm text-primary">{xp.toLocaleString()} XP</span>
+        <span className="font-value-lg text-sm text-primary">{(xp || 0).toLocaleString()} XP</span>
       </div>
 
       {/* XP Controls */}

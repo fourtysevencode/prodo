@@ -227,7 +227,7 @@ export interface UserProfile {
 }
 
 export function apiGetMe() {
-  return apiFetch<UserProfile>("/users/me");
+  return apiFetch<{ success: boolean; user: UserProfile }>("/users/me");
 }
 
 export function apiSync(points_earned_since_last_sync: number, current_multiplier: number, is_cam_on?: boolean) {

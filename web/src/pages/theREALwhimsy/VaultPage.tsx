@@ -92,7 +92,7 @@ const WhimsicalVaultPage: React.FC = () => {
         <div className="bg-background/80 border border-lavender/50 rounded-full px-5 py-2.5 flex items-center gap-2 shadow-sm">
           <span className="material-symbols-outlined text-secondary text-xl">bolt</span>
           <span className="text-[10px] font-black text-on-surface/50 uppercase">AVAILABLE XP</span>
-          <span className="text-lg font-black text-on-surface">{xp.toLocaleString()}</span>
+          <span className="text-lg font-black text-on-surface">{(xp || 0).toLocaleString()}</span>
         </div>
       </div>
 
@@ -177,7 +177,7 @@ const WhimsicalVaultPage: React.FC = () => {
             {/* Cost Breakdown */}
             <div className="flex items-center justify-between pt-2 border-t border-lavender/30">
               <span className="text-[10px] font-bold text-on-surface/50 uppercase tracking-wider">XP COST</span>
-              <span className="text-lg font-black text-secondary drop-shadow-[0_0_8px_rgba(0,245,255,0.4)]">{cost.toLocaleString()} XP</span>
+              <span className="text-lg font-black text-secondary drop-shadow-[0_0_8px_rgba(0,245,255,0.4)]">{(cost || 0).toLocaleString()} XP</span>
             </div>
 
             {purchaseFeedback && (

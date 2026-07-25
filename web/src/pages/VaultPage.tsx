@@ -85,7 +85,7 @@ const VaultPage: React.FC = () => {
 
         <div className="border border-outline-variant bg-surface-container-lowest px-4 py-2 flex flex-col justify-center text-right">
           <span className="font-technical-prefix text-[8px] text-outline-variant">AVAILABLE_XP</span>
-          <span className="font-value-lg text-lg text-amber">{xp.toLocaleString()} XP</span>
+          <span className="font-value-lg text-lg text-amber">{(xp || 0).toLocaleString()} XP</span>
         </div>
       </div>
 
@@ -169,7 +169,7 @@ const VaultPage: React.FC = () => {
             {/* Cost Summary */}
             <div className="flex justify-between border-t border-dashed border-outline-variant/30 pt-4 mt-2">
               <span className="font-technical-prefix text-[10px] text-outline-variant uppercase">Required Energy</span>
-              <span className="font-value-lg text-lg text-amber">{cost.toLocaleString()} XP</span>
+              <span className="font-value-lg text-lg text-amber">{(cost || 0).toLocaleString()} XP</span>
             </div>
 
             {purchaseFeedback && (
