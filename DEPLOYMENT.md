@@ -36,12 +36,20 @@ npx wrangler d1 execute prodo-db --local --file=schema.sql
 npx wrangler d1 execute prodo-db --remote --file=schema.sql
 ```
 
-### B. Deploy Worker API
-Deploy the TypeScript Worker API (`api.prodo.live`) to Cloudflare Workers:
+### B. Deploy Worker API (FastAPI Python)
+Deploy the FastAPI Python Worker API (`api.prodo.live`) to Cloudflare Workers:
 
 ```bash
 cd server
 npx wrangler deploy
+```
+
+### C. Run Backend Automated Tests
+Execute the Python test suite:
+
+```bash
+cd server
+.venv/bin/pytest tests/test_api.py
 ```
 
 ---
