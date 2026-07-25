@@ -4,8 +4,8 @@ import type { LeaderboardEntry } from "../../api/prodoApi";
 import { useFocus } from "../../context/FocusContext";
 
 /**
- * WhimsicalLeaderboardPage - Cheerful, accessible rankings dashboard for beta.prodo.live.
- * Features numbered circle badges, clean user cards, tab pills, and XP pill metrics.
+ * WhimsicalLeaderboardPage - Immersive rankings dashboard for beta.prodo.live.
+ * Features numbered circle badges, clean user cards, tab pills, and XP pill metrics in dark mode.
  */
 const WhimsicalLeaderboardPage: React.FC = () => {
   const { username } = useFocus();
@@ -45,45 +45,45 @@ const WhimsicalLeaderboardPage: React.FC = () => {
   const activeList = tab === "global" ? globalData : friendsData;
 
   const getRankBadgeStyle = (rank: number) => {
-    if (rank === 1) return "bg-amber-400 text-amber-950 font-black shadow-sm";
-    if (rank === 2) return "bg-slate-300 text-slate-900 font-bold shadow-sm";
-    if (rank === 3) return "bg-amber-600/80 text-white font-bold shadow-sm";
-    return "bg-[#0047AB] text-white font-bold";
+    if (rank === 1) return "bg-amber-400 text-amber-950 font-black shadow-md shadow-amber-500/50";
+    if (rank === 2) return "bg-slate-300 text-slate-900 font-bold shadow-md shadow-slate-400/50";
+    if (rank === 3) return "bg-amber-600 text-white font-bold shadow-md shadow-amber-700/50";
+    return "bg-primary text-white font-bold";
   };
 
   return (
-    <div className="flex flex-col gap-6 pb-12">
+    <div className="flex flex-col gap-6 pb-12 mt-8">
       
       {/* Header Card & Tab Controls */}
-      <div className="bg-white border border-slate-200/80 rounded-3xl p-6 shadow-xs flex flex-wrap items-center justify-between gap-4">
+      <div className="bg-surface/80 backdrop-blur-xl border border-lavender rounded-[32px] p-6 kawaii-shadow flex flex-wrap items-center justify-between gap-4">
         <div>
-          <span className="text-xs font-extrabold text-slate-400 uppercase tracking-widest">
+          <span className="text-[10px] font-bold text-on-surface/50 uppercase tracking-widest">
             COMMUNITY & COMPETITION
           </span>
-          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight mt-1">
+          <h1 className="text-3xl font-display font-black text-on-surface tracking-tight mt-1">
             Leaderboard & Rankings
           </h1>
         </div>
 
         <div className="flex items-center gap-3">
           {/* Tab Switcher Pills */}
-          <div className="flex items-center gap-1.5 bg-slate-100 p-1.5 rounded-full border border-slate-200">
+          <div className="flex items-center gap-1.5 bg-background p-1.5 rounded-full border border-lavender/50">
             <button
               onClick={() => setTab("global")}
-              className={`px-5 py-2 rounded-full text-xs font-extrabold uppercase tracking-wider transition-all ${
+              className={`px-5 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all ${
                 tab === "global"
-                  ? "bg-[#0047AB] text-white shadow-xs"
-                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/60"
+                  ? "bg-primary text-white shadow-md shadow-primary/30"
+                  : "text-on-surface/60 hover:text-on-surface hover:bg-surface/60"
               }`}
             >
               Global
             </button>
             <button
               onClick={() => setTab("friends")}
-              className={`px-5 py-2 rounded-full text-xs font-extrabold uppercase tracking-wider transition-all ${
+              className={`px-5 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all ${
                 tab === "friends"
-                  ? "bg-[#0047AB] text-white shadow-xs"
-                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/60"
+                  ? "bg-primary text-white shadow-md shadow-primary/30"
+                  : "text-on-surface/60 hover:text-on-surface hover:bg-surface/60"
               }`}
             >
               Friends
@@ -93,7 +93,7 @@ const WhimsicalLeaderboardPage: React.FC = () => {
           {/* Refresh Button */}
           <button
             onClick={fetchData}
-            className="w-10 h-10 rounded-full bg-slate-100 border border-slate-200 text-slate-600 hover:text-[#0047AB] hover:bg-blue-50 flex items-center justify-center transition-all"
+            className="w-10 h-10 rounded-full bg-background border border-lavender/50 text-on-surface/60 hover:text-secondary hover:bg-surface flex items-center justify-center transition-all"
             title={lastRefreshed ? `Refreshed ${lastRefreshed}` : "Refresh"}
           >
             <span className="material-symbols-outlined text-lg">refresh</span>
@@ -102,21 +102,21 @@ const WhimsicalLeaderboardPage: React.FC = () => {
       </div>
 
       {/* Main Leaderboard List Container */}
-      <div className="bg-white border border-slate-200/80 rounded-3xl p-6 shadow-xs flex flex-col gap-4">
+      <div className="bg-surface/80 backdrop-blur-xl border border-lavender rounded-[32px] p-6 kawaii-shadow flex flex-col gap-4">
         
-        <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-          <span className="text-xs font-extrabold text-slate-700 uppercase tracking-wider">
+        <div className="flex items-center justify-between pb-4 border-b border-lavender/30">
+          <span className="text-[10px] font-bold text-on-surface/70 uppercase tracking-wider">
             {tab === "global" ? "GLOBAL LEADERBOARD POOL" : "FRIENDS LEADERBOARD POOL"}
           </span>
-          <span className="text-xs font-semibold text-slate-400">
+          <span className="text-[10px] font-bold text-on-surface/50 uppercase">
             {activeList.length} Ranked User{activeList.length !== 1 ? "s" : ""}
           </span>
         </div>
 
         {/* Loading State */}
         {loading && (
-          <div className="flex items-center justify-center py-16 gap-3 text-slate-400 font-bold text-sm">
-            <div className="w-5 h-5 border-2 border-slate-300 border-t-[#0047AB] rounded-full animate-spin"></div>
+          <div className="flex items-center justify-center py-16 gap-3 text-on-surface/50 font-bold text-sm">
+            <div className="w-5 h-5 border-2 border-on-surface/30 border-t-primary rounded-full animate-spin"></div>
             Loading community rankings...
           </div>
         )}
@@ -124,11 +124,11 @@ const WhimsicalLeaderboardPage: React.FC = () => {
         {/* Error State */}
         {!loading && error && (
           <div className="text-center py-12 flex flex-col items-center gap-3">
-            <span className="material-symbols-outlined text-rose-500 text-4xl">signal_disconnected</span>
-            <p className="text-rose-700 font-bold text-sm">{error}</p>
+            <span className="material-symbols-outlined text-heart-red text-4xl">signal_disconnected</span>
+            <p className="text-heart-red font-bold text-sm">{error}</p>
             <button
               onClick={fetchData}
-              className="mt-2 bg-[#0047AB] text-white text-xs font-bold px-5 py-2.5 rounded-full hover:bg-blue-700 transition-colors"
+              className="mt-2 bg-primary text-white text-xs font-bold px-5 py-2.5 rounded-full hover:bg-primary/80 transition-colors"
             >
               Retry Connection
             </button>
@@ -137,7 +137,7 @@ const WhimsicalLeaderboardPage: React.FC = () => {
 
         {/* Empty State */}
         {!loading && !error && activeList.length === 0 && (
-          <div className="text-center py-12 text-slate-400 font-medium text-sm italic">
+          <div className="text-center py-12 text-on-surface/40 font-medium text-sm italic">
             No ranked operators found in this pool yet.
           </div>
         )}
@@ -154,8 +154,8 @@ const WhimsicalLeaderboardPage: React.FC = () => {
                   key={entry.username}
                   className={`border rounded-2xl p-4 flex items-center justify-between gap-4 transition-all ${
                     isCurrent
-                      ? "bg-blue-50/70 border-blue-300 shadow-2xs"
-                      : "bg-slate-50/80 border-slate-200/80 hover:bg-white hover:shadow-xs"
+                      ? "bg-primary/20 border-primary shadow-lg shadow-primary/20 scale-[1.02]"
+                      : "bg-background/50 border-lavender hover:bg-surface hover:scale-[1.01]"
                   }`}
                 >
                   <div className="flex items-center gap-4">
@@ -169,35 +169,35 @@ const WhimsicalLeaderboardPage: React.FC = () => {
                     </div>
 
                     {/* Avatar Badge */}
-                    <div className="w-10 h-10 rounded-full bg-slate-200 text-slate-700 border border-slate-300 flex items-center justify-center font-bold text-sm uppercase">
+                    <div className="w-10 h-10 rounded-full bg-surface text-on-surface/80 border border-lavender flex items-center justify-center font-bold text-sm uppercase">
                       {entry.username[0]}
                     </div>
 
                     {/* Username & Badge */}
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-extrabold text-sm text-slate-900">
+                        <span className="font-extrabold text-sm text-on-surface">
                           {entry.username}
                         </span>
                         {isCurrent && (
-                          <span className="bg-[#0047AB] text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
+                          <span className="bg-primary text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
                             YOU
                           </span>
                         )}
                       </div>
-                      <span className="text-[11px] font-semibold text-slate-400">
+                      <span className="text-[11px] font-semibold text-on-surface/50">
                         Rank #{rank}
                       </span>
                     </div>
                   </div>
 
                   {/* Focus XP Metric Chip */}
-                  <div className="bg-white border border-slate-200 rounded-full px-4 py-2 flex items-center gap-2 shadow-2xs">
-                    <span className="material-symbols-outlined text-amber-500 text-lg">bolt</span>
-                    <span className="font-extrabold text-sm text-slate-900">
+                  <div className="bg-background border border-lavender/50 rounded-full px-4 py-2 flex items-center gap-2 shadow-sm">
+                    <span className="material-symbols-outlined text-secondary text-lg">bolt</span>
+                    <span className="font-extrabold text-sm text-on-surface">
                       {entry.points.toLocaleString()}
                     </span>
-                    <span className="text-[11px] font-bold text-slate-400">XP</span>
+                    <span className="text-[10px] font-bold text-on-surface/50">XP</span>
                   </div>
 
                 </div>

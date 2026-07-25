@@ -6,7 +6,7 @@ import LogsPage from "./pages/theREALwhimsy/LogsPage";
 import LeaderboardPage from "./pages/theREALwhimsy/LeaderboardPage";
 import VaultPage from "./pages/theREALwhimsy/VaultPage";
 import SettingsPage from "./pages/theREALwhimsy/SettingsPage";
-import HelpPage from "./pages/HelpPage";
+import HelpPage from "./pages/theREALwhimsy/HelpPage";
 import NotFoundPage from "./pages/NotFoundPage";
 import ForbiddenPage from "./pages/ForbiddenPage";
 import FriendsPage from "./pages/theREALwhimsy/FriendsPage";
@@ -83,7 +83,7 @@ function MainAppRoutes() {
       <Route path="/punishments" element={<PunishmentsPage />} />
 
       {/* Main Whimsical App Views */}
-      <Route path="/focus" element={<FocusPage />} />
+      <Route path="/focus" element={<WhimsicalLayout><FocusPage /></WhimsicalLayout>} />
       <Route path="/logs" element={<WhimsicalLayout><LogsPage /></WhimsicalLayout>} />
       <Route path="/leaderboard" element={<WhimsicalLayout><LeaderboardPage /></WhimsicalLayout>} />
       <Route path="/vault" element={<WhimsicalLayout><VaultPage /></WhimsicalLayout>} />

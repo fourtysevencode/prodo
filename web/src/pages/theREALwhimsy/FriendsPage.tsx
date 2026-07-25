@@ -12,8 +12,8 @@ import type { LeaderboardEntry } from "../../api/prodoApi";
 import { useFocus } from "../../context/FocusContext";
 
 /**
- * WhimsicalFriendsPage - Social study hubs and friend lobbies for beta.prodo.live.
- * Features soft rounded cards, active Co-Op multiplier chips, and instant room joining.
+ * WhimsicalFriendsPage - Immersive social study hubs and friend lobbies for beta.prodo.live.
+ * Features neon rounded cards, active Co-Op multiplier chips, and instant room joining in dark mode.
  */
 const WhimsicalFriendsPage: React.FC = () => {
   const { username, isCoopActive, setIsCoopActive } = useFocus();
@@ -117,31 +117,31 @@ const WhimsicalFriendsPage: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col gap-6 pb-12">
+    <div className="flex flex-col gap-6 pb-12 mt-8">
       
       {/* Header */}
-      <div className="bg-white border border-slate-200/80 rounded-3xl p-6 shadow-xs flex flex-wrap items-center justify-between gap-4">
+      <div className="bg-surface/80 backdrop-blur-xl border border-lavender rounded-[32px] p-6 kawaii-shadow flex flex-wrap items-center justify-between gap-4">
         <div>
-          <span className="text-xs font-extrabold text-slate-400 uppercase tracking-widest">
+          <span className="text-[10px] font-bold text-on-surface/50 uppercase tracking-widest">
             COMMUNITY STUDY HUBS
           </span>
-          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight mt-1">
+          <h1 className="text-3xl font-display font-black text-on-surface tracking-tight mt-1">
             Friends & Social Rooms
           </h1>
         </div>
 
         {/* Co-Op Status & Controls Chip */}
         <div className="flex items-center gap-3">
-          <div className="bg-blue-50 border border-blue-200 rounded-full px-5 py-2.5 flex items-center gap-3 shadow-2xs">
-            <span className={`w-3 h-3 rounded-full ${isCoopActive ? "bg-emerald-500 animate-pulse" : "bg-slate-300"}`}></span>
-            <span className="text-xs font-extrabold text-slate-700 uppercase">
-              CO-OP BOOST: {isCoopActive ? "5.0X ACTIVE" : "STANDBY"}
+          <div className="bg-background/50 border border-lavender/50 rounded-full px-5 py-2.5 flex items-center gap-3 shadow-sm">
+            <span className={`w-3 h-3 rounded-full ${isCoopActive ? "bg-secondary animate-pulse shadow-[0_0_8px_rgba(0,245,255,0.8)]" : "bg-on-surface/30"}`}></span>
+            <span className="text-[10px] font-black text-on-surface uppercase tracking-wider">
+              CO-OP BOOST: {isCoopActive ? <span className="text-secondary">5.0X ACTIVE</span> : <span className="text-on-surface/50">STANDBY</span>}
             </span>
           </div>
 
           <button
             onClick={handleJoinCoop}
-            className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold text-xs uppercase tracking-wider px-4 py-2.5 rounded-full border border-slate-200 transition-all"
+            className="bg-background hover:bg-surface text-on-surface font-extrabold text-[10px] uppercase tracking-wider px-4 py-2.5 rounded-full border border-lavender/50 transition-all shadow-sm"
           >
             Join Room ID
           </button>
@@ -154,7 +154,7 @@ const WhimsicalFriendsPage: React.FC = () => {
                 setActiveSessionId(null);
                 setMsg("Co-Op Session terminated.");
               }}
-              className="bg-rose-500 hover:bg-rose-600 text-white font-extrabold text-xs uppercase tracking-wider px-4 py-2.5 rounded-full shadow-xs transition-all"
+              className="bg-heart-red hover:bg-heart-red/80 text-white font-extrabold text-[10px] uppercase tracking-wider px-4 py-2.5 rounded-full shadow-md shadow-heart-red/20 transition-all"
             >
               End Room
             </button>
@@ -169,13 +169,13 @@ const WhimsicalFriendsPage: React.FC = () => {
         <div className="lg:col-span-2 flex flex-col gap-6">
           
           {/* Add Friend Form Card */}
-          <div className="bg-white border border-slate-200/80 rounded-3xl p-6 shadow-xs flex flex-col gap-4">
+          <div className="bg-surface/80 backdrop-blur-xl border border-lavender rounded-[32px] p-6 kawaii-shadow flex flex-col gap-4">
             <div>
-              <h3 className="font-extrabold text-base text-slate-900 uppercase tracking-wider">
+              <h3 className="font-extrabold text-base text-on-surface uppercase tracking-wider">
                 Add Friend by Username
               </h3>
-              <p className="text-xs font-semibold text-slate-400 mt-0.5">
-                Your Username: <strong className="text-[#0047AB]">{username || "Operator"}</strong>
+              <p className="text-xs font-semibold text-on-surface/50 mt-0.5">
+                Your Username: <strong className="text-primary">{username || "Operator"}</strong>
               </p>
             </div>
             
@@ -185,29 +185,29 @@ const WhimsicalFriendsPage: React.FC = () => {
                 placeholder="Enter friend username..."
                 value={friendUsername}
                 onChange={(e) => setFriendUsername(e.target.value)}
-                className="flex-1 bg-slate-100 border border-slate-200 rounded-full px-5 py-3 text-xs text-slate-800 focus:outline-none focus:bg-white focus:border-[#0047AB]"
+                className="flex-1 bg-background border border-lavender rounded-full px-5 py-3 text-xs text-on-surface focus:outline-none focus:bg-surface focus:border-primary"
               />
               <button
                 type="submit"
-                className="bg-[#0047AB] hover:bg-blue-700 text-white font-extrabold text-xs uppercase tracking-wider px-6 py-3 rounded-full shadow-md transition-all active:scale-95"
+                className="bg-primary hover:bg-primary/80 text-white font-black text-[10px] uppercase tracking-wider px-6 py-3 rounded-full shadow-md shadow-primary/20 transition-all active:scale-95"
               >
                 Send Request
               </button>
             </form>
 
-            {msg && <div className="text-xs font-bold text-emerald-700 bg-emerald-50 p-3 rounded-xl border border-emerald-200">{msg}</div>}
-            {err && <div className="text-xs font-bold text-rose-700 bg-rose-50 p-3 rounded-xl border border-rose-200">{err}</div>}
+            {msg && <div className="text-[10px] font-black text-secondary bg-secondary/10 p-3 rounded-xl border border-secondary/30 uppercase tracking-wider">{msg}</div>}
+            {err && <div className="text-[10px] font-black text-heart-red bg-heart-red/10 p-3 rounded-xl border border-heart-red/30 uppercase tracking-wider">{err}</div>}
           </div>
 
           {/* Active Co-Op Rooms Card */}
-          <div className="bg-white border border-slate-200/80 rounded-3xl p-6 shadow-xs flex flex-col gap-4">
+          <div className="bg-surface/80 backdrop-blur-xl border border-lavender rounded-[32px] p-6 kawaii-shadow flex flex-col gap-4">
             <div className="flex items-center justify-between">
-              <h3 className="font-extrabold text-base text-slate-900 uppercase tracking-wider">
+              <h3 className="font-extrabold text-base text-on-surface uppercase tracking-wider">
                 Discoverable Study Rooms ({activeRooms.length})
               </h3>
               <button
                 onClick={handleCreateGeneralCoop}
-                className="bg-blue-50 text-[#0047AB] hover:bg-blue-100 border border-blue-200 font-extrabold text-xs uppercase tracking-wider px-4 py-2 rounded-full transition-colors"
+                className="bg-primary/10 text-primary hover:bg-primary/20 border border-primary/30 font-black text-[10px] uppercase tracking-wider px-4 py-2 rounded-full transition-colors"
               >
                 + Create Room
               </button>
@@ -215,20 +215,20 @@ const WhimsicalFriendsPage: React.FC = () => {
 
             <div className="flex flex-col gap-3">
               {activeRooms.length === 0 ? (
-                <div className="text-slate-400 text-xs font-medium italic py-6 text-center">
+                <div className="text-on-surface/40 text-xs font-medium italic py-6 text-center">
                   No active friend rooms detected right now. Create one above!
                 </div>
               ) : (
                 activeRooms.map((room) => (
                   <div
                     key={room.session_id}
-                    className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex items-center justify-between gap-4"
+                    className="bg-background/50 border border-lavender rounded-2xl p-4 flex items-center justify-between gap-4 transition-all hover:bg-surface hover:scale-[1.01]"
                   >
                     <div>
-                      <h4 className="font-extrabold text-sm text-slate-900">
+                      <h4 className="font-extrabold text-sm text-on-surface">
                         Host: {room.host_username}
                       </h4>
-                      <p className="text-[11px] font-semibold text-slate-400">
+                      <p className="text-[10px] font-bold text-on-surface/50 uppercase tracking-wider">
                         Room ID: {room.session_id}
                       </p>
                     </div>
@@ -248,7 +248,7 @@ const WhimsicalFriendsPage: React.FC = () => {
                           setErr(`❌ Join failed: ${err.message}`);
                         }
                       }}
-                      className="bg-[#0047AB] hover:bg-blue-700 text-white font-extrabold text-xs uppercase tracking-wider px-5 py-2.5 rounded-full shadow-xs transition-all"
+                      className="bg-primary hover:bg-primary/80 text-white font-black text-[10px] uppercase tracking-wider px-5 py-2.5 rounded-full shadow-md shadow-primary/20 transition-all"
                     >
                       Join Room
                     </button>
@@ -259,31 +259,31 @@ const WhimsicalFriendsPage: React.FC = () => {
           </div>
 
           {/* Friends List Directory */}
-          <div className="bg-white border border-slate-200/80 rounded-3xl p-6 shadow-xs flex flex-col gap-4">
-            <h3 className="font-extrabold text-base text-slate-900 uppercase tracking-wider">
+          <div className="bg-surface/80 backdrop-blur-xl border border-lavender rounded-[32px] p-6 kawaii-shadow flex flex-col gap-4">
+            <h3 className="font-extrabold text-base text-on-surface uppercase tracking-wider">
               Friend Directory ({friendsList.length})
             </h3>
 
             <div className="flex flex-col gap-3">
               {friendsList.length === 0 ? (
-                <div className="text-slate-400 text-xs font-medium italic py-6 text-center">
+                <div className="text-on-surface/40 text-xs font-medium italic py-6 text-center">
                   No linked friends yet. Add your friends above!
                 </div>
               ) : (
                 friendsList.map((friend) => (
                   <div
                     key={friend.username}
-                    className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex items-center justify-between gap-4"
+                    className="bg-background/50 border border-lavender rounded-2xl p-4 flex items-center justify-between gap-4 transition-all hover:bg-surface hover:scale-[1.01]"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-[#0047AB] text-white flex items-center justify-center font-bold text-sm uppercase">
+                      <div className="w-10 h-10 rounded-full bg-primary/20 text-primary border border-primary/30 flex items-center justify-center font-black text-sm uppercase">
                         {friend.username[0]}
                       </div>
                       <div>
-                        <h4 className="font-extrabold text-sm text-slate-900">
+                        <h4 className="font-extrabold text-sm text-on-surface">
                           {friend.username}
                         </h4>
-                        <p className="text-xs font-semibold text-amber-600">
+                        <p className="text-[10px] font-black text-secondary uppercase tracking-wider">
                           {friend.points.toLocaleString()} XP
                         </p>
                       </div>
@@ -291,7 +291,7 @@ const WhimsicalFriendsPage: React.FC = () => {
 
                     <button
                       onClick={() => handleStartCoop(friend.username)}
-                      className="bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-900 font-extrabold text-xs uppercase tracking-wider px-4 py-2 rounded-full transition-colors"
+                      className="bg-tertiary/10 hover:bg-tertiary/20 border border-tertiary/30 text-tertiary font-black text-[10px] uppercase tracking-wider px-4 py-2 rounded-full transition-colors"
                     >
                       Invite to Co-Op
                     </button>
@@ -304,31 +304,31 @@ const WhimsicalFriendsPage: React.FC = () => {
         </div>
 
         {/* Right Column: Friends Leaderboard Preview */}
-        <div className="lg:col-span-1 bg-white border border-slate-200/80 rounded-3xl p-6 shadow-xs flex flex-col gap-4">
-          <h3 className="font-extrabold text-base text-slate-900 uppercase tracking-wider">
+        <div className="lg:col-span-1 bg-surface/80 backdrop-blur-xl border border-lavender rounded-[32px] p-6 kawaii-shadow flex flex-col gap-4">
+          <h3 className="font-extrabold text-base text-on-surface uppercase tracking-wider">
             Friends Leaderboard
           </h3>
 
           <div className="flex flex-col gap-3">
             {leaderboard.length === 0 ? (
-              <div className="text-slate-400 text-xs font-medium italic py-8 text-center">
+              <div className="text-on-surface/40 text-xs font-medium italic py-8 text-center">
                 Awaiting friends sync...
               </div>
             ) : (
               leaderboard.map((user, idx) => (
                 <div
                   key={user.username}
-                  className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 flex items-center justify-between gap-3"
+                  className="bg-background/50 border border-lavender rounded-2xl p-3.5 flex items-center justify-between gap-3"
                 >
                   <div className="flex items-center gap-3">
-                    <span className="w-7 h-7 rounded-full bg-[#0047AB] text-white font-bold text-xs flex items-center justify-center">
+                    <span className={`w-7 h-7 rounded-full text-white font-black text-xs flex items-center justify-center ${idx === 0 ? 'bg-amber-500' : idx === 1 ? 'bg-slate-300 text-slate-800' : idx === 2 ? 'bg-amber-700' : 'bg-primary'}`}>
                       #{idx + 1}
                     </span>
-                    <span className="font-extrabold text-xs text-slate-800">
+                    <span className="font-extrabold text-xs text-on-surface">
                       {user.username}
                     </span>
                   </div>
-                  <span className="text-xs font-black text-amber-600">
+                  <span className="text-[10px] font-black text-secondary">
                     {user.points} XP
                   </span>
                 </div>

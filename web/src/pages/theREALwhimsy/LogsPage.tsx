@@ -2,9 +2,9 @@ import React, { useState } from "react";
 import { useFocus } from "../../context/FocusContext";
 
 /**
- * WhimsicalLogsPage - Clean, cheerful log viewer for beta.prodo.live.
+ * WhimsicalLogsPage - Clean, immersive log viewer for beta.prodo.live.
  * Presents system telemetry and session logs in rounded cards with clear index badges,
- * filter pills, and bright status indicators.
+ * filter pills, and bright status indicators to match the dark aesthetic.
  */
 const WhimsicalLogsPage: React.FC = () => {
   const { systemLogs } = useFocus();
@@ -18,29 +18,29 @@ const WhimsicalLogsPage: React.FC = () => {
   });
 
   return (
-    <div className="flex flex-col gap-6 pb-12">
+    <div className="flex flex-col gap-6 pb-12 mt-8">
       
       {/* Header & Filter Controls */}
-      <div className="flex flex-wrap items-center justify-between gap-4 bg-white border border-slate-200/80 rounded-3xl p-6 shadow-xs">
+      <div className="bg-surface/80 backdrop-blur-xl border border-lavender rounded-[32px] p-6 kawaii-shadow flex flex-wrap items-center justify-between gap-4">
         <div>
-          <span className="text-xs font-extrabold text-slate-400 uppercase tracking-widest">
+          <span className="text-[10px] font-bold text-on-surface/50 uppercase tracking-widest">
             SESSION TELEMETRY & AUDIT
           </span>
-          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight mt-1">
+          <h1 className="text-3xl font-display font-black text-on-surface tracking-tight mt-1">
             System Logs
           </h1>
         </div>
 
         {/* Filter Pills */}
-        <div className="flex items-center gap-2 bg-slate-100 p-1.5 rounded-full border border-slate-200">
+        <div className="flex items-center gap-2 bg-background p-1.5 rounded-full border border-lavender/50">
           {["ALL", "SYSTEM", "ERRORS"].map((type) => (
             <button
               key={type}
               onClick={() => setFilter(type)}
-              className={`px-5 py-2 rounded-full text-xs font-extrabold tracking-wider transition-all uppercase ${
+              className={`px-5 py-2 rounded-full text-xs font-bold tracking-wider transition-all uppercase ${
                 filter === type
-                  ? "bg-[#0047AB] text-white shadow-xs"
-                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/60"
+                  ? "bg-primary text-white shadow-md shadow-primary/30"
+                  : "text-on-surface/60 hover:text-on-surface hover:bg-surface/60"
               }`}
             >
               {type}
@@ -50,16 +50,16 @@ const WhimsicalLogsPage: React.FC = () => {
       </div>
 
       {/* Logs List Container */}
-      <div className="bg-white border border-slate-200/80 rounded-3xl p-6 shadow-xs flex flex-col gap-4">
+      <div className="bg-surface/80 backdrop-blur-xl border border-lavender rounded-[32px] p-6 kawaii-shadow flex flex-col gap-4">
         
-        <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+        <div className="flex items-center justify-between pb-4 border-b border-lavender/30">
           <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span className="text-xs font-extrabold text-slate-700 uppercase tracking-wider">
+            <span className="w-2.5 h-2.5 rounded-full bg-secondary animate-pulse"></span>
+            <span className="text-[10px] font-bold text-on-surface/70 uppercase tracking-wider">
               REAL-TIME LOG STREAM
             </span>
           </div>
-          <span className="text-xs font-semibold text-slate-400">
+          <span className="text-[10px] font-bold text-on-surface/50 uppercase">
             Total Entries: {filteredLogs.length}
           </span>
         </div>
@@ -67,7 +67,7 @@ const WhimsicalLogsPage: React.FC = () => {
         {/* Log Entries Cards */}
         <div className="flex flex-col gap-3">
           {filteredLogs.length === 0 ? (
-            <div className="text-center py-12 text-slate-400 text-sm font-medium italic">
+            <div className="text-center py-12 text-on-surface/40 text-sm font-medium italic">
               No logs found matching filter guidelines.
             </div>
           ) : (
@@ -78,23 +78,23 @@ const WhimsicalLogsPage: React.FC = () => {
               return (
                 <div
                   key={idx}
-                  className={`bg-slate-50/80 border rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all hover:bg-white hover:shadow-xs ${
+                  className={`border rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all hover:bg-surface hover:scale-[1.01] ${
                     isError
-                      ? "border-rose-200 bg-rose-50/40 text-rose-900"
+                      ? "border-heart-red/40 bg-heart-red/10 text-heart-red"
                       : isSuccess
-                      ? "border-emerald-200 bg-emerald-50/40 text-emerald-900"
-                      : "border-slate-200/80 text-slate-800"
+                      ? "border-secondary/40 bg-secondary/10 text-secondary"
+                      : "border-lavender bg-background/50 text-on-surface"
                   }`}
                 >
                   <div className="flex items-center gap-3">
                     {/* Circle Index Badge */}
                     <div
-                      className={`w-8 h-8 rounded-full flex items-center justify-center font-extrabold text-xs flex-shrink-0 ${
+                      className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-xs flex-shrink-0 ${
                         isError
-                          ? "bg-rose-500 text-white"
+                          ? "bg-heart-red text-white"
                           : isSuccess
-                          ? "bg-emerald-500 text-white"
-                          : "bg-[#0047AB] text-white"
+                          ? "bg-secondary text-background"
+                          : "bg-primary text-white"
                       }`}
                     >
                       {idx + 1}
@@ -102,26 +102,26 @@ const WhimsicalLogsPage: React.FC = () => {
 
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="text-xs font-extrabold uppercase tracking-wider text-slate-900">
+                        <span className="text-[11px] font-black uppercase tracking-wider">
                           {log.code}
                         </span>
-                        <span className="text-[11px] font-semibold text-slate-400">
+                        <span className="text-[10px] font-bold opacity-50">
                           [{log.timestamp}]
                         </span>
                       </div>
-                      <p className="text-xs font-medium text-slate-600 mt-0.5">
+                      <p className="text-xs font-semibold opacity-80 mt-0.5">
                         {log.message}
                       </p>
                     </div>
                   </div>
 
                   <span
-                    className={`text-[10px] font-extrabold uppercase tracking-wider px-3 py-1 rounded-full border self-start sm:self-center ${
+                    className={`text-[9px] font-black uppercase tracking-wider px-3 py-1.5 rounded-full border self-start sm:self-center ${
                       isError
-                        ? "bg-rose-100 text-rose-700 border-rose-200"
+                        ? "bg-heart-red/20 border-heart-red/30 text-heart-red"
                         : isSuccess
-                        ? "bg-emerald-100 text-emerald-700 border-emerald-200"
-                        : "bg-blue-100 text-[#0047AB] border-blue-200"
+                        ? "bg-secondary/20 border-secondary/30 text-secondary"
+                        : "bg-primary/20 border-primary/30 text-primary"
                     }`}
                   >
                     {log.type}

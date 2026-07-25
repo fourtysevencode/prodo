@@ -4,8 +4,8 @@ import { apiGenerateAITask, apiVerifyAITask } from "../../api/prodoApi";
 import type { AITaskResponse } from "../../api/prodoApi";
 
 /**
- * WhimsicalVaultPage - Bright, cheerful vault and break-time shop for beta.prodo.live.
- * Uses soft rounded cards, duration slider, AI cognitive waiver challenges, and royal blue buttons.
+ * WhimsicalVaultPage - Immersive dark vault and break-time shop for beta.prodo.live.
+ * Uses neon rounded cards, duration slider, AI cognitive waiver challenges, and bright accents.
  */
 const WhimsicalVaultPage: React.FC = () => {
   const { xp, breakTimeRemaining, purchaseBreakTime } = useFocus();
@@ -75,24 +75,24 @@ const WhimsicalVaultPage: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col gap-6 pb-12 relative">
+    <div className="flex flex-col gap-6 pb-12 mt-8">
       
       {/* Header Card */}
-      <div className="bg-white border border-slate-200/80 rounded-3xl p-6 shadow-xs flex flex-wrap items-center justify-between gap-4">
+      <div className="bg-surface/80 backdrop-blur-xl border border-lavender rounded-[32px] p-6 kawaii-shadow flex flex-wrap items-center justify-between gap-4">
         <div>
-          <span className="text-xs font-extrabold text-slate-400 uppercase tracking-widest">
+          <span className="text-[10px] font-bold text-on-surface/50 uppercase tracking-widest">
             STORE & RECOVERY PROTOCOL
           </span>
-          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight mt-1">
+          <h1 className="text-3xl font-display font-black text-on-surface tracking-tight mt-1">
             Distraction Vault & Break Time
           </h1>
         </div>
 
         {/* XP Balance Badge */}
-        <div className="bg-blue-50 border border-blue-200 rounded-full px-5 py-2.5 flex items-center gap-2 shadow-2xs">
-          <span className="material-symbols-outlined text-amber-500 text-xl">bolt</span>
-          <span className="text-xs font-extrabold text-slate-500 uppercase">AVAILABLE XP</span>
-          <span className="text-lg font-black text-[#0047AB]">{xp.toLocaleString()}</span>
+        <div className="bg-background/80 border border-lavender/50 rounded-full px-5 py-2.5 flex items-center gap-2 shadow-sm">
+          <span className="material-symbols-outlined text-secondary text-xl">bolt</span>
+          <span className="text-[10px] font-black text-on-surface/50 uppercase">AVAILABLE XP</span>
+          <span className="text-lg font-black text-on-surface">{xp.toLocaleString()}</span>
         </div>
       </div>
 
@@ -100,16 +100,16 @@ const WhimsicalVaultPage: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* Left 2 Cols: Break Time Store */}
-        <div className="lg:col-span-2 bg-white border border-slate-200/80 rounded-3xl p-6 shadow-xs flex flex-col justify-between gap-6">
+        <div className="lg:col-span-2 bg-surface/80 backdrop-blur-xl border border-lavender rounded-[32px] p-6 kawaii-shadow flex flex-col justify-between gap-6">
           
           <div className="flex flex-col gap-6">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-blue-100 text-[#0047AB] flex items-center justify-center font-bold text-2xl shadow-xs">
+              <div className="w-12 h-12 rounded-2xl bg-secondary/20 text-secondary flex items-center justify-center font-bold text-2xl">
                 <span className="material-symbols-outlined text-2xl">coffee</span>
               </div>
               <div>
-                <h3 className="font-extrabold text-xl text-slate-900">Acquire Break Time Pass</h3>
-                <p className="text-xs text-slate-500 font-medium">
+                <h3 className="font-extrabold text-xl text-on-surface">Acquire Break Time Pass</h3>
+                <p className="text-xs text-on-surface/60 font-medium">
                   Temporarily pause AI gaze telemetry blocks to relax without streak penalties.
                 </p>
               </div>
@@ -117,23 +117,23 @@ const WhimsicalVaultPage: React.FC = () => {
 
             {/* Active Break Timer Display */}
             {breakTimeRemaining > 0 && (
-              <div className="bg-emerald-50 border-2 border-emerald-200 rounded-2xl p-4 flex items-center justify-between shadow-2xs">
+              <div className="bg-secondary/10 border-2 border-secondary/30 rounded-2xl p-4 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <span className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></span>
+                  <span className="w-3 h-3 rounded-full bg-secondary animate-pulse"></span>
                   <div>
-                    <span className="text-xs font-extrabold text-emerald-900 uppercase">BREAK PASS ACTIVE</span>
-                    <p className="text-xs text-emerald-700 font-medium">Telemetry monitoring paused.</p>
+                    <span className="text-[10px] font-black text-secondary uppercase tracking-wider">BREAK PASS ACTIVE</span>
+                    <p className="text-xs text-secondary/80 font-medium">Telemetry monitoring paused.</p>
                   </div>
                 </div>
-                <span className="text-2xl font-black text-emerald-700">{formatTime(breakTimeRemaining)}</span>
+                <span className="text-2xl font-black text-secondary">{formatTime(breakTimeRemaining)}</span>
               </div>
             )}
 
             {/* Duration Slider & Quick Selector */}
-            <div className="flex flex-col gap-4 bg-slate-50 border border-slate-200/80 rounded-2xl p-5">
+            <div className="flex flex-col gap-4 bg-background/50 border border-lavender/50 rounded-2xl p-5">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-extrabold text-slate-600 uppercase tracking-wider">SELECT DURATION</span>
-                <span className="text-lg font-black text-[#0047AB]">{formatTime(secondsToBuy)} ({secondsToBuy}s)</span>
+                <span className="text-[10px] font-black text-on-surface/50 uppercase tracking-wider">SELECT DURATION</span>
+                <span className="text-lg font-black text-primary">{formatTime(secondsToBuy)} ({secondsToBuy}s)</span>
               </div>
 
               <input
@@ -143,31 +143,31 @@ const WhimsicalVaultPage: React.FC = () => {
                 step="60"
                 value={secondsToBuy}
                 onChange={(e) => setSecondsToBuy(Number(e.target.value))}
-                className="w-full accent-[#0047AB] bg-slate-200 cursor-pointer h-2 rounded-lg"
+                className="w-full accent-primary bg-surface/50 cursor-pointer h-2 rounded-lg"
               />
 
               <div className="flex flex-wrap gap-2">
                 <button
                   onClick={() => setSecondsToBuy((prev) => Math.min(3600, prev + 60))}
-                  className="flex-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-full py-2 text-xs font-bold transition-colors"
+                  className="flex-1 bg-surface hover:bg-surface/80 text-on-surface border border-lavender/50 rounded-full py-2 text-xs font-bold transition-colors"
                 >
                   +1 Min
                 </button>
                 <button
                   onClick={() => setSecondsToBuy((prev) => Math.min(3600, prev + 300))}
-                  className="flex-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-full py-2 text-xs font-bold transition-colors"
+                  className="flex-1 bg-surface hover:bg-surface/80 text-on-surface border border-lavender/50 rounded-full py-2 text-xs font-bold transition-colors"
                 >
                   +5 Min
                 </button>
                 <button
                   onClick={() => setSecondsToBuy((prev) => Math.min(3600, prev + 900))}
-                  className="flex-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-full py-2 text-xs font-bold transition-colors"
+                  className="flex-1 bg-surface hover:bg-surface/80 text-on-surface border border-lavender/50 rounded-full py-2 text-xs font-bold transition-colors"
                 >
                   +15 Min
                 </button>
                 <button
                   onClick={() => setSecondsToBuy(300)}
-                  className="bg-white hover:bg-rose-50 text-rose-600 border border-slate-200 rounded-full px-4 py-2 text-xs font-bold transition-colors"
+                  className="bg-surface hover:bg-heart-red/10 text-heart-red border border-lavender/50 rounded-full px-4 py-2 text-xs font-bold transition-colors"
                 >
                   Reset
                 </button>
@@ -175,13 +175,13 @@ const WhimsicalVaultPage: React.FC = () => {
             </div>
 
             {/* Cost Breakdown */}
-            <div className="flex items-center justify-between pt-2 border-t border-slate-100">
-              <span className="text-xs font-extrabold text-slate-400 uppercase tracking-wider">XP COST</span>
-              <span className="text-lg font-black text-amber-600">{cost.toLocaleString()} XP</span>
+            <div className="flex items-center justify-between pt-2 border-t border-lavender/30">
+              <span className="text-[10px] font-bold text-on-surface/50 uppercase tracking-wider">XP COST</span>
+              <span className="text-lg font-black text-secondary drop-shadow-[0_0_8px_rgba(0,245,255,0.4)]">{cost.toLocaleString()} XP</span>
             </div>
 
             {purchaseFeedback && (
-              <div className="text-center font-bold text-xs p-3 rounded-xl bg-blue-50 text-[#0047AB] border border-blue-200">
+              <div className={`text-center font-bold text-xs p-3 rounded-xl border ${purchaseFeedback.includes('SUCCESS') ? 'bg-secondary/10 text-secondary border-secondary/30' : 'bg-heart-red/10 text-heart-red border-heart-red/30'}`}>
                 {purchaseFeedback}
               </div>
             )}
@@ -190,10 +190,10 @@ const WhimsicalVaultPage: React.FC = () => {
           <button
             onClick={handleBuy}
             disabled={!canAfford}
-            className={`w-full py-4 rounded-full font-extrabold text-xs uppercase tracking-wider transition-all ${
+            className={`w-full py-4 rounded-full font-extrabold text-[10px] uppercase tracking-widest transition-all ${
               canAfford
-                ? "bg-[#0047AB] hover:bg-blue-700 text-white shadow-md active:scale-95"
-                : "bg-slate-100 text-slate-300 border border-slate-200 cursor-not-allowed"
+                ? "bg-primary hover:bg-primary/80 text-white shadow-lg shadow-primary/30 active:scale-95 btn-bubbly border-none"
+                : "bg-surface/50 text-on-surface/30 border border-lavender/50 cursor-not-allowed"
             }`}
           >
             {canAfford ? "PURCHASE BREAK TIME PASS" : "INSUFFICIENT XP BALANCE"}
@@ -202,22 +202,22 @@ const WhimsicalVaultPage: React.FC = () => {
         </div>
 
         {/* Right 1 Col: AI Waiver Challenge */}
-        <div className="lg:col-span-1 bg-white border border-slate-200/80 rounded-3xl p-6 shadow-xs flex flex-col justify-between gap-6">
+        <div className="lg:col-span-1 bg-surface/80 backdrop-blur-xl border border-lavender rounded-[32px] p-6 kawaii-shadow flex flex-col justify-between gap-6">
           <div className="flex flex-col gap-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center font-bold text-xl">
+              <div className="w-10 h-10 rounded-2xl bg-tertiary/20 text-tertiary flex items-center justify-center font-bold text-xl">
                 <span className="material-symbols-outlined text-xl">psychology</span>
               </div>
               <div>
-                <h3 className="font-extrabold text-lg text-slate-900">Request AI Waiver</h3>
-                <p className="text-xs text-slate-400 font-medium">Earn +500 XP by solving AI cognitive challenges.</p>
+                <h3 className="font-extrabold text-lg text-on-surface">Request AI Waiver</h3>
+                <p className="text-[10px] text-on-surface/60 font-medium">Earn +500 XP by solving AI challenges.</p>
               </div>
             </div>
 
             <div className="flex flex-col gap-3 mt-2">
               <button
                 onClick={() => handleRequestWaiver("math")}
-                className="w-full bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-900 font-extrabold text-xs uppercase tracking-wider py-3.5 px-4 rounded-2xl transition-all shadow-xs flex items-center justify-center gap-2"
+                className="w-full bg-background/50 hover:bg-surface border border-tertiary/50 text-tertiary font-extrabold text-[10px] uppercase tracking-wider py-3.5 px-4 rounded-2xl transition-all shadow-sm flex items-center justify-center gap-2"
               >
                 <span className="material-symbols-outlined text-lg">functions</span>
                 <span>Cognitive Algebra (+500 XP)</span>
@@ -225,7 +225,7 @@ const WhimsicalVaultPage: React.FC = () => {
 
               <button
                 onClick={() => handleRequestWaiver("essay")}
-                className="w-full bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-900 font-extrabold text-xs uppercase tracking-wider py-3.5 px-4 rounded-2xl transition-all shadow-xs flex items-center justify-center gap-2"
+                className="w-full bg-background/50 hover:bg-surface border border-tertiary/50 text-tertiary font-extrabold text-[10px] uppercase tracking-wider py-3.5 px-4 rounded-2xl transition-all shadow-sm flex items-center justify-center gap-2"
               >
                 <span className="material-symbols-outlined text-lg">edit_note</span>
                 <span>Philosophical Concept (+500 XP)</span>
@@ -238,21 +238,21 @@ const WhimsicalVaultPage: React.FC = () => {
 
       {/* AI Waiver Modal Dialog */}
       {activeWaiverTask && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white border border-slate-200 rounded-3xl p-6 max-w-md w-full shadow-2xl flex flex-col gap-4">
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-surface border border-lavender rounded-[32px] p-6 max-w-md w-full shadow-2xl flex flex-col gap-4">
             <div className="flex items-center justify-between">
-              <h3 className="font-extrabold text-base text-slate-900 uppercase tracking-wider">
-                AI COGNITIVE CHALLENGE (+500 XP)
+              <h3 className="font-black text-xs text-on-surface uppercase tracking-wider">
+                AI COGNITIVE CHALLENGE <span className="text-tertiary">(+500 XP)</span>
               </h3>
               <button
                 onClick={() => setActiveWaiverTask(null)}
-                className="text-slate-400 hover:text-slate-600 text-xl font-bold"
+                className="text-on-surface/40 hover:text-on-surface text-xl font-bold"
               >
                 ✕
               </button>
             </div>
 
-            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-xs font-semibold text-slate-700 leading-relaxed">
+            <div className="bg-background/50 border border-lavender/50 rounded-2xl p-4 text-xs font-semibold text-on-surface/80 leading-relaxed">
               {activeWaiverTask.prompt}
             </div>
 
@@ -263,7 +263,7 @@ const WhimsicalVaultPage: React.FC = () => {
                   placeholder="Enter numeric answer..."
                   value={waiverAnswer}
                   onChange={(e) => setWaiverAnswer(e.target.value)}
-                  className="w-full bg-slate-100 border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:bg-white focus:border-[#0047AB]"
+                  className="w-full bg-background border border-lavender rounded-xl px-4 py-2.5 text-xs text-on-surface focus:outline-none focus:bg-surface focus:border-primary"
                 />
               ) : (
                 <textarea
@@ -271,12 +271,12 @@ const WhimsicalVaultPage: React.FC = () => {
                   placeholder="Explain concept in minimum 10 words..."
                   value={waiverAnswer}
                   onChange={(e) => setWaiverAnswer(e.target.value)}
-                  className="w-full bg-slate-100 border border-slate-200 rounded-xl p-3 text-xs text-slate-800 focus:outline-none focus:bg-white focus:border-[#0047AB]"
+                  className="w-full bg-background border border-lavender rounded-xl p-3 text-xs text-on-surface focus:outline-none focus:bg-surface focus:border-primary"
                 />
               )}
 
               {waiverMsg && (
-                <div className="text-xs font-bold p-3 rounded-xl bg-blue-50 text-[#0047AB] border border-blue-200">
+                <div className={`text-[10px] font-black p-3 rounded-xl border ${waiverMsg.includes('SUCCESS') ? 'bg-secondary/10 text-secondary border-secondary/30' : 'bg-heart-red/10 text-heart-red border-heart-red/30'}`}>
                   {waiverMsg}
                 </div>
               )}
@@ -285,16 +285,16 @@ const WhimsicalVaultPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setActiveWaiverTask(null)}
-                  className="px-5 py-2.5 rounded-full border border-slate-200 text-slate-600 text-xs font-bold hover:bg-slate-100 transition-colors"
+                  className="px-5 py-2.5 rounded-full border border-lavender text-on-surface/60 text-xs font-bold hover:bg-surface transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isVerifying}
-                  className="px-6 py-2.5 rounded-full bg-[#0047AB] text-white text-xs font-extrabold hover:bg-blue-700 shadow-md transition-colors"
+                  className="px-6 py-2.5 rounded-full bg-primary text-white text-[10px] font-black uppercase tracking-wider hover:bg-primary/80 shadow-md shadow-primary/20 transition-colors"
                 >
-                  {isVerifying ? "Verifying..." : "Submit Answer"}
+                  {isVerifying ? "VERIFYING..." : "SUBMIT ANSWER"}
                 </button>
               </div>
             </form>
