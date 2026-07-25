@@ -1,34 +1,47 @@
 import React, { useState } from "react";
 
+/**
+ * LandingPage - WHIMSY UPDATE
+ */
 const LandingPage: React.FC = () => {
   const [showDownloadModal, setShowDownloadModal] = useState(false);
 
   return (
-    <div className="w-screen min-h-screen bg-[#0A0A0A] text-on-surface font-log-body overflow-x-hidden selection:bg-primary selection:text-background relative">
-      
-      {/* Background Grid & Ambient Glows */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#141414_1px,transparent_1px),linear-gradient(to_bottom,#141414_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]"></div>
-      
-      <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] rounded-full bg-primary/5 blur-[120px] pointer-events-none"></div>
-      <div className="absolute bottom-[20%] right-[-10%] w-[600px] h-[600px] rounded-full bg-amber/5 blur-[150px] pointer-events-none"></div>
+    <div className="w-screen min-h-screen bg-[#0B0E23] text-[#E0E0FF] font-sans overflow-x-hidden select-none relative flex flex-col">
+
+      {/* Background Ambient Glows & Floating Decorative Elements */}
+      <div className="absolute inset-0 pointer-events-none opacity-25">
+        <div className="absolute top-[-10%] left-[15%] w-[500px] h-[500px] rounded-full bg-[#9D72FF] blur-[140px] float-anim"></div>
+        <div className="absolute bottom-[20%] right-[10%] w-[600px] h-[600px] rounded-full bg-[#00F5FF] blur-[160px] float-anim-delayed"></div>
+        <div className="absolute top-[40%] right-[25%] w-[400px] h-[400px] rounded-full bg-[#7B68EE] blur-[120px] float-anim"></div>
+      </div>
 
       {/* Header NavBar */}
-      <header className="relative w-full max-w-7xl mx-auto px-6 h-20 flex justify-between items-center z-50">
+      <header className="relative w-full max-w-7xl mx-auto px-6 h-24 flex justify-between items-center z-50">
         <div className="flex items-center gap-3">
-          <img src="/favicon.svg" alt="Prodo Logo" className="w-8 h-8" />
-          <div className="flex items-baseline gap-1">
-            <span className="font-value-lg text-2xl text-primary tracking-widest uppercase drop-shadow-[0_0_8px_rgba(229,226,225,0.2)]">
-              PRODO
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#9D72FF] to-[#00F5FF] text-white flex items-center justify-center font-black text-2xl shadow-lg kawaii-shadow">
+            P
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="font-display font-black text-2xl text-white tracking-tight">
+              prodo
             </span>
-            <span className="font-technical-prefix text-[9px] text-amber uppercase font-bold tracking-wider relative top-[2px]">
+            <span className="bg-[#9D72FF]/20 text-[#9D72FF] text-[10px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-full border border-[#9D72FF]/30">
               BETA
             </span>
           </div>
         </div>
-        <div className="flex items-center gap-6">
-          <a 
-            href="https://prodo.live/#/focus"
-            className="px-5 py-2 border border-outline-variant hover:border-primary text-xs font-technical-prefix font-bold uppercase transition-all duration-300"
+
+        <div className="flex items-center gap-4">
+          <a
+            href="https://prodo.live/#/login"
+            className="px-6 py-2.5 bg-white/10 hover:bg-white/20 text-white font-extrabold text-xs uppercase tracking-wider rounded-full border border-white/20 transition-all btn-bubbly"
+          >
+            Log In
+          </a>
+          <a
+            href="https://prodo.live/#/login"
+            className="px-6 py-2.5 bg-gradient-to-r from-[#9D72FF] to-[#00F5FF] text-white font-extrabold text-xs uppercase tracking-wider rounded-full shadow-lg shadow-[#9D72FF]/30 transition-all btn-bubbly"
           >
             Launch Dashboard
           </a>
@@ -36,80 +49,89 @@ const LandingPage: React.FC = () => {
       </header>
 
       {/* Hero Section */}
-      <main className="relative max-w-5xl mx-auto px-6 pt-20 pb-32 text-center z-10 flex flex-col items-center gap-8">
-        
-        <div className="inline-flex items-center gap-2 px-3 py-1 border border-primary/20 bg-primary/5 text-primary rounded-full text-[10px] font-technical-prefix uppercase tracking-wider mb-4 animate-pulse">
-          <span className="w-1.5 h-1.5 rounded-full bg-primary"></span>
+      <main className="relative max-w-5xl mx-auto px-6 pt-12 pb-24 text-center z-10 flex flex-col items-center gap-8">
+
+        {/* Version Pill */}
+        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#1A1C3D] border border-[#2D3261] text-[#00F5FF] text-xs font-bold uppercase tracking-wider shadow-md">
+          <span className="w-2 h-2 rounded-full bg-[#00F5FF] animate-pulse"></span>
           System Version 2.0.4 Online
         </div>
 
-        <h1 className="font-value-xl text-5xl md:text-7xl leading-tight uppercase tracking-tight max-w-4xl text-transparent bg-clip-text bg-gradient-to-b from-[#E5E2E1] to-[#737170]">
+        {/* Hero Title */}
+        <h1 className="font-display font-black text-5xl md:text-7xl leading-tight text-white tracking-tight max-w-4xl drop-shadow-[0_0_35px_rgba(157,114,255,0.4)]">
           Turn your willpower into an economic incentive
         </h1>
 
-        <p className="font-technical-prefix text-sm md:text-base text-outline-variant max-w-2xl leading-relaxed mt-2 uppercase tracking-wide">
-          Prodo is a gamified focus engine. Earn points for deep work, spend points to buy break time, and face immediate penalties for distraction.
+        {/* Hero Subtitle */}
+        <p className="font-sans font-semibold text-base md:text-lg text-slate-300 max-w-2xl leading-relaxed">
+          Prodo is a joyful gamified focus engine. Earn points for deep focus sessions, unlock break time, and stay accountable with instant AI feedback.
         </p>
 
         {/* CTA Actions */}
-        <div className="flex flex-col sm:flex-row gap-4 mt-8 w-full max-w-md justify-center">
-          <a 
+        <div className="flex flex-col sm:flex-row gap-4 mt-4 w-full max-w-md justify-center">
+          <a
             href="https://prodo.live/#/login"
-            className="flex-1 py-4 bg-primary text-background font-technical-prefix font-bold uppercase text-xs hover:bg-white transition-all duration-300 shadow-lg shadow-primary/20 text-center"
+            className="flex-1 py-4 px-8 bg-gradient-to-r from-[#9D72FF] to-[#00F5FF] text-white font-extrabold text-sm uppercase tracking-wider rounded-full shadow-xl shadow-[#9D72FF]/40 transition-all btn-bubbly text-center"
           >
             Sign Up & Launch
           </a>
-          <button 
+          <button
             onClick={() => setShowDownloadModal(true)}
-            className="flex-grow py-4 border border-outline-variant hover:border-amber hover:text-amber transition-all duration-300 font-technical-prefix font-bold uppercase text-xs bg-[#0E0E0E]/50"
+            className="flex-1 py-4 px-8 bg-[#1A1C3D] hover:bg-[#2E1A47] text-white font-extrabold text-sm uppercase tracking-wider rounded-full border border-[#2D3261] transition-all btn-bubbly"
           >
             Download Clients
           </button>
         </div>
 
-        {/* Client stats banner */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 w-full border-y border-outline-variant/30 py-10 mt-24">
+        {/* Client Stats Banner */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 w-full bg-[#1A1C3D]/80 backdrop-blur-xl border border-[#2D3261] rounded-[32px] p-8 mt-16 kawaii-shadow">
           <div className="flex flex-col items-center">
-            <span className="font-value-lg text-3xl text-primary">2.5X</span>
-            <span className="font-technical-prefix text-[9px] text-outline-variant uppercase mt-1">Co-op Focus Boost</span>
+            <span className="font-display font-black text-4xl text-[#00F5FF]">2.5X</span>
+            <span className="font-bold text-xs text-slate-300 uppercase tracking-wider mt-1">Co-op Focus Boost</span>
           </div>
           <div className="flex flex-col items-center">
-            <span className="font-value-lg text-3xl text-primary">15s</span>
-            <span className="font-technical-prefix text-[9px] text-outline-variant uppercase mt-1">Smart Grace Buffer</span>
+            <span className="font-display font-black text-4xl text-[#9D72FF]">15s</span>
+            <span className="font-bold text-xs text-slate-300 uppercase tracking-wider mt-1">Smart Grace Buffer</span>
           </div>
           <div className="flex flex-col items-center">
-            <span className="font-value-lg text-3xl text-primary">100%</span>
-            <span className="font-technical-prefix text-[9px] text-outline-variant uppercase mt-1">Privacy-first Local CV</span>
+            <span className="font-display font-black text-4xl text-[#00F5FF]">100%</span>
+            <span className="font-bold text-xs text-slate-300 uppercase tracking-wider mt-1">Privacy-first Local CV</span>
           </div>
           <div className="flex flex-col items-center">
-            <span className="font-value-lg text-3xl text-primary">0s</span>
-            <span className="font-technical-prefix text-[9px] text-outline-variant uppercase mt-1">Zero Rigid App Blocks</span>
+            <span className="font-display font-black text-4xl text-[#FF4D6D]">0s</span>
+            <span className="font-bold text-xs text-slate-300 uppercase tracking-wider mt-1">Zero Rigid App Blocks</span>
           </div>
         </div>
 
-        {/* Features grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-24 w-full text-left">
-          <div className="border border-outline-variant/30 p-6 bg-[#0E0E0E]/40 flex flex-col gap-3">
-            <span className="material-symbols-outlined text-primary text-3xl">radar</span>
-            <h3 className="font-technical-prefix text-xs font-bold text-primary uppercase">Neural Gaze Tracking</h3>
-            <p className="font-technical-prefix text-[11px] text-outline-variant leading-relaxed uppercase">
-              Webcam-based landmark mesh model captures gaze direction & eye state. Buffers looking away for stretches while flagging distractions.
+        {/* Features Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-12 w-full text-left">
+          <div className="bg-[#1A1C3D]/90 backdrop-blur-xl border border-[#2D3261] rounded-[32px] p-8 kawaii-shadow flex flex-col gap-4">
+            <div className="w-14 h-14 rounded-2xl bg-[#9D72FF]/20 border border-[#9D72FF]/40 text-[#9D72FF] flex items-center justify-center">
+              <span className="material-symbols-outlined text-3xl">radar</span>
+            </div>
+            <h3 className="font-display font-black text-lg text-white">Neural Gaze Tracking</h3>
+            <p className="font-sans font-semibold text-xs text-slate-300 leading-relaxed">
+              Webcam-based landmark mesh model captures gaze direction & eye state. Buffers looking away while flagging prolonged distraction.
             </p>
           </div>
 
-          <div className="border border-outline-variant/30 p-6 bg-[#0E0E0E]/40 flex flex-col gap-3">
-            <span className="material-symbols-outlined text-primary text-3xl">sports_esports</span>
-            <h3 className="font-technical-prefix text-xs font-bold text-primary uppercase">The Focus Economy</h3>
-            <p className="font-technical-prefix text-[11px] text-outline-variant leading-relaxed uppercase">
-              Accumulate points continuously. Spend them inside the distraction vault to buy break time to browse entertainment apps or gaming hubs.
+          <div className="bg-[#1A1C3D]/90 backdrop-blur-xl border border-[#2D3261] rounded-[32px] p-8 kawaii-shadow flex flex-col gap-4">
+            <div className="w-14 h-14 rounded-2xl bg-[#00F5FF]/20 border border-[#00F5FF]/40 text-[#00F5FF] flex items-center justify-center">
+              <span className="material-symbols-outlined text-3xl">auto_awesome</span>
+            </div>
+            <h3 className="font-display font-black text-lg text-white">AI Feedback</h3>
+            <p className="font-sans font-semibold text-xs text-slate-300 leading-relaxed">
+              AI-generated typing pledges, multiple choice check-ins, and friendly challenges when focus slips.
             </p>
           </div>
 
-          <div className="border border-outline-variant/30 p-6 bg-[#0E0E0E]/40 flex flex-col gap-3">
-            <span className="material-symbols-outlined text-primary text-3xl">shield_alert</span>
-            <h3 className="font-technical-prefix text-xs font-bold text-primary uppercase">Instant Penalties</h3>
-            <p className="font-technical-prefix text-[11px] text-outline-variant leading-relaxed uppercase">
-              Distracted behavior triggers negative point modifier pings, leading to core-temp overrides and severe interface punishments.
+          <div className="bg-[#1A1C3D]/90 backdrop-blur-xl border border-[#2D3261] rounded-[32px] p-8 kawaii-shadow flex flex-col gap-4">
+            <div className="w-14 h-14 rounded-2xl bg-[#FF4D6D]/20 border border-[#FF4D6D]/40 text-[#FF4D6D] flex items-center justify-center">
+              <span className="material-symbols-outlined text-3xl">group</span>
+            </div>
+            <h3 className="font-display font-black text-lg text-white">Co-op Focus Rooms</h3>
+            <p className="font-sans font-semibold text-xs text-slate-300 leading-relaxed">
+              Study together with friends. Earn multiplier bonuses when your group stays locked in deep work together.
             </p>
           </div>
         </div>
@@ -118,71 +140,34 @@ const LandingPage: React.FC = () => {
 
       {/* Download Modal */}
       {showDownloadModal && (
-        <div className="fixed inset-0 bg-background/80 backdrop-blur-md flex items-center justify-center p-6 z-[1000] select-none">
-          <div className="w-full max-w-md border-2 border-outline-variant bg-[#0A0A0A] p-8 flex flex-col gap-6 shadow-2xl shadow-black">
-            
-            <div className="flex justify-between items-start">
-              <div>
-                <div className="font-technical-prefix text-technical-prefix text-primary uppercase mb-1">
-                  SYSTEM_CLIENT_ACCESS
-                </div>
-                <h3 className="font-value-lg text-lg text-primary uppercase">
-                  Download Prodo Enforcers
-                </h3>
-              </div>
-              <button 
-                onClick={() => setShowDownloadModal(false)}
-                className="text-outline-variant hover:text-white transition-colors material-symbols-outlined"
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="bg-[#1A1C3D] border border-[#2D3261] rounded-[32px] p-8 max-w-md w-full kawaii-shadow text-center flex flex-col items-center gap-6">
+            <div className="w-16 h-16 rounded-2xl bg-[#9D72FF]/20 text-[#9D72FF] flex items-center justify-center">
+              <span className="material-symbols-outlined text-4xl">download</span>
+            </div>
+            <h3 className="font-display font-black text-2xl text-white">Download Prodo Clients</h3>
+            <p className="text-xs font-semibold text-slate-300">
+              Get the native desktop app (macOS / Windows / Linux) or Android client for full focus hardware integration.
+            </p>
+            <div className="flex flex-col gap-3 w-full">
+              <a
+                href="/app-debug.apk"
+                download
+                className="py-3.5 bg-gradient-to-r from-[#9D72FF] to-[#00F5FF] text-white font-extrabold text-xs uppercase tracking-wider rounded-2xl shadow-md btn-bubbly flex items-center justify-center gap-2"
               >
-                close
+                <span className="material-symbols-outlined text-lg">android</span>
+                Download Android APK
+              </a>
+              <button
+                onClick={() => setShowDownloadModal(false)}
+                className="py-3 bg-white/10 text-slate-300 font-extrabold text-xs uppercase tracking-wider rounded-2xl border border-white/20 hover:bg-white/20"
+              >
+                Close
               </button>
             </div>
-
-            <div className="flex flex-col gap-4">
-              
-              {/* Desktop link */}
-              <div className="border border-outline-variant p-4 bg-[#0E0E0E] flex justify-between items-center">
-                <div>
-                  <h4 className="font-technical-prefix text-xs font-bold text-primary">Desktop App ( T-1 )</h4>
-                  <p className="font-technical-prefix text-[8px] text-outline-variant uppercase mt-1">Windows x64 / macOS Apple Silicon</p>
-                </div>
-                <button 
-                  onClick={() => alert("✓ Desktop build release bundle compiling. Available for download soon!")}
-                  className="px-3 py-1.5 bg-primary text-background font-technical-prefix text-[9px] font-bold uppercase hover:bg-white transition-colors"
-                >
-                  Download
-                </button>
-              </div>
-
-              {/* Mobile link */}
-              <div className="border border-outline-variant p-4 bg-[#0E0E0E] flex justify-between items-center">
-                <div>
-                  <h4 className="font-technical-prefix text-xs font-bold text-primary">Android Client</h4>
-                  <p className="font-technical-prefix text-[8px] text-outline-variant uppercase mt-1">Install Companion APK v2.0</p>
-                </div>
-                <a 
-                  href="/app-debug.apk"
-                  download="app-debug.apk"
-                  className="px-3 py-1.5 bg-amber text-background font-technical-prefix text-[9px] font-bold uppercase hover:bg-amber-400 transition-colors text-center inline-block"
-                >
-                  Download APK
-                </a>
-              </div>
-
-            </div>
-
-            <div className="border-t border-outline-variant/30 pt-4 text-center font-technical-prefix text-[8px] text-outline-variant uppercase">
-              Direct secure downloads. Secure signature verified.
-            </div>
-
           </div>
         </div>
       )}
-
-      {/* Footer */}
-      <footer className="border-t border-outline-variant/30 py-8 text-center font-technical-prefix text-[9px] text-outline-variant uppercase tracking-wider">
-        © {new Date().getFullYear()} PRODO FOCUS CORE. SECURE GATEWAY NET PROTOCOL.
-      </footer>
 
     </div>
   );
