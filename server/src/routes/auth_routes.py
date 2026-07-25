@@ -2,26 +2,16 @@
 Authentication Router for Prodo FastAPI Backend.
 
 Handles user registration, login, Google OAuth, handle selection, tester mode,
-and seamless desktop device-code OAuth flow.
+and seamless desktop device-code OAuth flow using raw Request JSON parsing.
 """
 
 import time
 import uuid
 import secrets
 from typing import Optional
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, Request, Header
 from fastapi.responses import JSONResponse
 
-from ..models import (
-    RegisterRequest,
-    LoginRequest,
-    GoogleAuthRequest,
-    UsernameUpdateRequest,
-    TesterLoginRequest,
-    DeviceCodeRequest,
-    DeviceCodeApproveRequest,
-    DeviceCodePollRequest,
-)
 from ..database import query_one, execute_db
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -42,14 +32,30 @@ def extract_bearer_token(auth_header: Optional[str]) -> Optional[str]:
     return auth_header.strip()
 
 
+async def parse_json_body(request: Request) -> dict:
+    """Helper to safely parse JSON body from incoming HTTP request."""
+    try:
+        return await request.json()
+    except Exception:
+        return {}
+
+
 @router.post("/register")
-async def register(body: RegisterRequest):
+async def register(request: Request):
     """
     Registers a new user account with email, username, and password.
     Initializes starter XP (100) and balance (100).
     """
-    email_clean = body.email.strip().lower()
-    username_clean = body.username.strip().lower()
+    body = await parse_json_body(request)
+    email_raw = str(body.get("email") or "").strip()
+    username_raw = str(body.get("username") or "").strip()
+    password_raw = str(body.get("password") or "")
+
+    if not email_raw or not username_raw or not password_raw:
+        return JSONResponse(status_code=400, content={"success": False, "error": "Email, username, and password are required."})
+
+    email_clean = email_raw.lower()
+    username_clean = username_raw.lower()
 
     # Check if user with given email or username already exists
     existing = query_one(
@@ -71,7 +77,7 @@ async def register(body: RegisterRequest):
         INSERT INTO users (username, email, password_hash, xp, current_balance, auth_token, needs_handle)
         VALUES (?, ?, ?, 100, 100, ?, 0)
         """,
-        (username_clean, email_clean, body.password, auth_token)
+        (username_clean, email_clean, password_raw, auth_token)
     )
 
     return {
@@ -83,16 +89,21 @@ async def register(body: RegisterRequest):
 
 
 @router.post("/login")
-async def login(body: LoginRequest):
+async def login(request: Request):
     """
     Authenticates an existing user account using email and password.
     Returns user profile state and token.
     """
-    email_clean = body.email.strip().lower()
+    body = await parse_json_body(request)
+    email_clean = str(body.get("email") or "").strip().lower()
+    password_raw = str(body.get("password") or "")
+
+    if not email_clean or not password_raw:
+        return JSONResponse(status_code=400, content={"success": False, "error": "Email and password are required."})
 
     # Query database for user matching given email
     user = query_one("SELECT * FROM users WHERE lower(email) = ?", (email_clean,))
-    if not user or user.get("password_hash") != body.password:
+    if not user or user.get("password_hash") != password_raw:
         return JSONResponse(
             status_code=401,
             content={"success": False, "error": "Invalid email or password credentials."}
@@ -112,13 +123,13 @@ async def login(body: LoginRequest):
 
 
 @router.post("/google")
-async def google_auth(body: GoogleAuthRequest):
+async def google_auth(request: Request):
     """
     Google OAuth login handler. Accepts Google ID token credential,
     extracts claims, and either logs in or registers the user.
     """
-    # For demo/mock integration, parse mock or decode token payload
-    raw_cred = body.credential.strip()
+    body = await parse_json_body(request)
+    raw_cred = str(body.get("credential") or "").strip()
     if not raw_cred:
         return JSONResponse(status_code=400, content={"success": False, "error": "Invalid Google credential."})
 
@@ -144,7 +155,7 @@ async def google_auth(body: GoogleAuthRequest):
 
 
 @router.post("/username")
-async def update_username(body: UsernameUpdateRequest, authorization: Optional[str] = Header(None)):
+async def update_username(request: Request, authorization: Optional[str] = Header(None)):
     """
     Updates the user's handle/username. Requires valid Bearer authorization token.
     """
@@ -156,20 +167,24 @@ async def update_username(body: UsernameUpdateRequest, authorization: Optional[s
     if not user:
         return JSONResponse(status_code=401, content={"success": False, "error": "User session expired or invalid."})
 
-    new_handle = body.username.strip().lower()
+    body = await parse_json_body(request)
+    new_username = str(body.get("username") or "").strip().lower()
+
+    if not new_username or len(new_username) < 3:
+        return JSONResponse(status_code=400, content={"success": False, "error": "Username must be at least 3 characters."})
 
     # Check if handle is already taken by another account
-    existing = query_one("SELECT id FROM users WHERE lower(username) = ? AND id != ?", (new_handle, user["id"]))
+    existing = query_one("SELECT id FROM users WHERE lower(username) = ? AND id != ?", (new_username, user["id"]))
     if existing:
         return JSONResponse(status_code=400, content={"success": False, "error": "Username is already taken."})
 
-    execute_db("UPDATE users SET username = ?, needs_handle = 0 WHERE id = ?", (new_handle, user["id"]))
+    execute_db("UPDATE users SET username = ?, needs_handle = 0 WHERE id = ?", (new_username, user["id"]))
 
-    return {"success": True, "username": new_handle, "message": "Username handle updated successfully."}
+    return {"success": True, "username": new_username, "message": "Username handle updated successfully."}
 
 
 @router.post("/tester")
-async def tester_login(body: TesterLoginRequest):
+async def tester_login(request: Request):
     """
     Generates a temporary 24-hour guest/tester account.
     """
@@ -194,7 +209,7 @@ async def tester_login(body: TesterLoginRequest):
 
 
 @router.post("/device-code")
-async def request_device_code(body: DeviceCodeRequest):
+async def request_device_code(request: Request):
     """
     Desktop OAuth Flow Step 1: Generates a unique 6-character device code for Tauri desktop authentication.
     """
@@ -207,7 +222,7 @@ async def request_device_code(body: DeviceCodeRequest):
 
 
 @router.post("/device-approve")
-async def approve_device_code(body: DeviceCodeApproveRequest, authorization: Optional[str] = Header(None)):
+async def approve_device_code(request: Request, authorization: Optional[str] = Header(None)):
     """
     Desktop OAuth Flow Step 2: Approves a pending device code from the logged-in web app session.
     """
@@ -216,23 +231,29 @@ async def approve_device_code(body: DeviceCodeApproveRequest, authorization: Opt
     if not user:
         return JSONResponse(status_code=401, content={"success": False, "error": "Unauthorized user session."})
 
-    device_auth = query_one("SELECT * FROM device_auths WHERE device_code = ?", (body.device_code.upper(),))
+    body = await parse_json_body(request)
+    device_code = str(body.get("device_code") or "").upper()
+
+    device_auth = query_one("SELECT * FROM device_auths WHERE device_code = ?", (device_code,))
     if not device_auth:
         return JSONResponse(status_code=404, content={"success": False, "error": "Invalid device code."})
 
     execute_db(
         "UPDATE device_auths SET status = 'APPROVED', user_id = ?, auth_token = ? WHERE device_code = ?",
-        (user["id"], user["auth_token"], body.device_code.upper())
+        (user["id"], user["auth_token"], device_code)
     )
     return {"success": True, "message": "Device authorization granted."}
 
 
 @router.post("/device-poll")
-async def poll_device_code(body: DeviceCodePollRequest):
+async def poll_device_code(request: Request):
     """
     Desktop OAuth Flow Step 3: Desktop app polls endpoint to retrieve auth token once user approves in browser.
     """
-    device_auth = query_one("SELECT * FROM device_auths WHERE device_code = ?", (body.device_code.upper(),))
+    body = await parse_json_body(request)
+    device_code = str(body.get("device_code") or "").upper()
+
+    device_auth = query_one("SELECT * FROM device_auths WHERE device_code = ?", (device_code,))
     if not device_auth:
         return JSONResponse(status_code=404, content={"success": False, "error": "Invalid or expired device code."})
 
