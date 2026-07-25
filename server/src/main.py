@@ -24,6 +24,7 @@ from routes.telemetry_routes import handle_log_telemetry, handle_get_telemetry_l
 from routes.dev_routes import handle_dev_login, handle_get_dev_stats, handle_get_dev_telemetry
 
 # Conditionally instantiate FastAPI app if available in environment
+app = None
 try:
     from fastapi import FastAPI
     from fastapi.middleware.cors import CORSMiddleware
@@ -62,7 +63,7 @@ try:
     app.include_router(ai_router)
     app.include_router(telemetry_router)
     app.include_router(dev_router)
-except ImportError:
+except Exception:
     app = None
 
 
