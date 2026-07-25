@@ -27,6 +27,7 @@ async def handle_get_global_leaderboard():
     sql = """
     SELECT username, xp AS points, total_lifetime_points
     FROM users
+    WHERE (is_tester IS NULL OR is_tester = 0) AND username NOT LIKE 'tester_%'
     ORDER BY xp DESC
     LIMIT 50
     """
@@ -51,7 +52,8 @@ async def handle_get_friends_leaderboard(request=None, authorization: Optional[s
     sql = """
     SELECT u.username, u.xp AS points
     FROM users u
-    WHERE u.id = ? OR u.id IN (SELECT friend_id FROM friends WHERE user_id = ?)
+    WHERE (u.id = ? OR u.id IN (SELECT friend_id FROM friends WHERE user_id = ?))
+      AND (u.is_tester IS NULL OR u.is_tester = 0) AND u.username NOT LIKE 'tester_%'
     ORDER BY u.xp DESC
     """
     entries = await query_all(sql, (user["id"], user["id"]))

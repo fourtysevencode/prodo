@@ -227,26 +227,33 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             const dataUrl = canvas.toDataURL("image/jpeg", 0.5);
             setLatestFrame(dataUrl);
 
-            // Dispatch frame to CV Inference Engine
-            fetch(`${getCvBaseUrl()}/predict_frame`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ image_base64: dataUrl })
-            })
-              .then(res => res.json())
-              .then(res => {
-                if (res.status === "DISTRACTED") {
-                  setTrackingStatus("DISTRACTED");
-                  setThreatSeconds(prev => Math.max(0, prev - 1));
-                } else if (res.status === "PHONE_DETECTED") {
-                  setTrackingStatus("DISTRACTED");
-                  setPhoneWarning(true);
-                } else {
-                  setTrackingStatus("FOCUSED");
-                  setThreatSeconds(15);
-                }
+            // Dispatch frame to CV Inference Engine via FormData
+            canvas.toBlob((blob) => {
+              if (!blob) return;
+              const formData = new FormData();
+              formData.append("frame", blob, "frame.jpg");
+              formData.append("sessionId", "default");
+              formData.append("includeDebug", "false");
+
+              fetch(`${getCvBaseUrl()}/check-focus`, {
+                method: "POST",
+                body: formData
               })
-              .catch(err => console.error("CV Server Error:", err));
+                .then(res => res.json())
+                .then(res => {
+                  if (res.status === "DISTRACTED") {
+                    setTrackingStatus("DISTRACTED");
+                    setThreatSeconds(prev => Math.max(0, prev - 1));
+                  } else if (res.status === "PHONE_DETECTED") {
+                    setTrackingStatus("DISTRACTED");
+                    setPhoneWarning(true);
+                  } else {
+                    setTrackingStatus("FOCUSED");
+                    setThreatSeconds(15);
+                  }
+                })
+                .catch(err => console.error("CV Server Error:", err));
+            }, "image/jpeg", 0.5);
 
             lastSent = now;
           }
