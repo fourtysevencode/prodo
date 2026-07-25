@@ -23,21 +23,10 @@ except ImportError:
 
 def create_json_response(content: Dict[str, Any], status_code: int = 200) -> Any:
     """
-    Creates a JSON HTTP response that works seamlessly in FastAPI TestClient
-    as well as Cloudflare Workers Pyodide runtime.
+    Creates a JSON HTTP response that works seamlessly in FastAPI TestClient.
+    For Cloudflare Workers, this returns a compat dict or FastAPI response
+    that is later converted into a Workers SDK Response by _wrap in main.py.
     """
-    # Prioritize Cloudflare Pyodide JS Response if running in Cloudflare Worker environment
-    try:
-        from js import Response, Headers
-        headers = Headers.new()
-        headers.set("Content-Type", "application/json")
-        headers.set("Access-Control-Allow-Origin", "*")
-        headers.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, DELETE")
-        headers.set("Access-Control-Allow-Headers", "*")
-        return Response.new(json.dumps(content), status=status_code, headers=headers)
-    except (ImportError, Exception):
-        pass
-
     if HAS_FASTAPI and FastAPIJSONResponse is not None:
         return FastAPIJSONResponse(status_code=status_code, content=content)
 

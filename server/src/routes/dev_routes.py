@@ -30,7 +30,7 @@ async def handle_dev_login(request, authorization: Optional[str] = None):
     if not token:
         return create_error_response("User authentication required.", 401)
 
-    user = query_one("SELECT * FROM users WHERE auth_token = ?", (token,))
+    user = await query_one("SELECT * FROM users WHERE auth_token = ?", (token,))
     if not user:
         return create_error_response("Invalid session token.", 401)
 
@@ -40,7 +40,7 @@ async def handle_dev_login(request, authorization: Optional[str] = None):
     if secret_key != DEV_SECRET:
         return create_error_response("Incorrect developer authorization key.", 403)
 
-    execute_db("UPDATE users SET is_dev = 1 WHERE id = ?", (user["id"],))
+    await execute_db("UPDATE users SET is_dev = 1 WHERE id = ?", (user["id"],))
 
     return create_json_response({"success": True, "message": "Developer privileges granted successfully!"})
 
@@ -50,14 +50,14 @@ async def handle_get_dev_stats(request=None, authorization: Optional[str] = None
     Returns platform health & telemetry metrics for dev.prodo.live portal.
     """
     token = extract_bearer_token(authorization or (request.headers.get("authorization") if hasattr(request, "headers") else None))
-    user = query_one("SELECT * FROM users WHERE auth_token = ?", (token,)) if token else None
+    user = await query_one("SELECT * FROM users WHERE auth_token = ?", (token,)) if token else None
 
     if not user or not user.get("is_dev"):
         return create_error_response("Access requires a developer account.", 403)
 
-    user_count = query_one("SELECT COUNT(*) AS count FROM users")
-    coop_count = query_one("SELECT COUNT(*) AS count FROM coop_sessions WHERE is_active = 1")
-    telemetry_count = query_one("SELECT COUNT(*) AS count FROM telemetry_logs")
+    user_count = await query_one("SELECT COUNT(*) AS count FROM users")
+    coop_count = await query_one("SELECT COUNT(*) AS count FROM coop_sessions WHERE is_active = 1")
+    telemetry_count = await query_one("SELECT COUNT(*) AS count FROM telemetry_logs")
 
     return create_json_response({
         "success": True,
@@ -75,12 +75,12 @@ async def handle_get_dev_telemetry(request=None, authorization: Optional[str] = 
     Fetches raw telemetry log feed for dev portal inspection.
     """
     token = extract_bearer_token(authorization or (request.headers.get("authorization") if hasattr(request, "headers") else None))
-    user = query_one("SELECT * FROM users WHERE auth_token = ?", (token,)) if token else None
+    user = await query_one("SELECT * FROM users WHERE auth_token = ?", (token,)) if token else None
 
     if not user or not user.get("is_dev"):
         return create_error_response("Access requires a developer account.", 403)
 
-    logs = query_all("SELECT * FROM telemetry_logs ORDER BY created_at DESC LIMIT 100")
+    logs = await query_all("SELECT * FROM telemetry_logs ORDER BY created_at DESC LIMIT 100")
     return create_json_response({"success": True, "logs": logs})
 
 

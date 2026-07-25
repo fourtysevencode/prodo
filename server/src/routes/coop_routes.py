@@ -30,13 +30,13 @@ async def handle_create_coop_room(request, authorization: Optional[str] = None):
     if not token:
         return create_error_response("Unauthorized.", 401)
 
-    user = query_one("SELECT * FROM users WHERE auth_token = ?", (token,))
+    user = await query_one("SELECT * FROM users WHERE auth_token = ?", (token,))
     if not user:
         return create_error_response("User session invalid.", 401)
 
     session_id = secrets.token_hex(3).upper()
 
-    execute_db(
+    await execute_db(
         """
         INSERT INTO coop_sessions (session_id, host_user_id, is_active, started_at)
         VALUES (?, ?, 1, ?)
@@ -59,7 +59,7 @@ async def handle_get_active_coop_rooms():
     ORDER BY c.started_at DESC
     LIMIT 20
     """
-    rooms = query_all(sql)
+    rooms = await query_all(sql)
     return create_json_response({"success": True, "rooms": rooms})
 
 
@@ -71,7 +71,7 @@ async def handle_join_coop_room(request, authorization: Optional[str] = None):
     if not token:
         return create_error_response("Unauthorized.", 401)
 
-    user = query_one("SELECT * FROM users WHERE auth_token = ?", (token,))
+    user = await query_one("SELECT * FROM users WHERE auth_token = ?", (token,))
     if not user:
         return create_error_response("User session invalid.", 401)
 
@@ -81,11 +81,11 @@ async def handle_join_coop_room(request, authorization: Optional[str] = None):
     if not session_id:
         return create_error_response("Session ID is required.", 400)
 
-    session = query_one("SELECT * FROM coop_sessions WHERE session_id = ? AND is_active = 1", (session_id,))
+    session = await query_one("SELECT * FROM coop_sessions WHERE session_id = ? AND is_active = 1", (session_id,))
     if not session:
         return create_error_response("Co-Op room not found or inactive.", 404)
 
-    execute_db(
+    await execute_db(
         "UPDATE coop_sessions SET friend_user_id = ? WHERE session_id = ?",
         (user["id"], session_id)
     )
@@ -100,7 +100,7 @@ async def handle_end_coop_room(request, authorization: Optional[str] = None):
     body = await parse_json_body(request)
     session_id = str(body.get("session_id") or "").upper()
     if session_id:
-        execute_db("UPDATE coop_sessions SET is_active = 0 WHERE session_id = ?", (session_id,))
+        await execute_db("UPDATE coop_sessions SET is_active = 0 WHERE session_id = ?", (session_id,))
     return create_json_response({"success": True, "message": "Co-Op session terminated."})
 
 

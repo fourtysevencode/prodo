@@ -27,7 +27,7 @@ async def handle_get_friends_list(request=None, authorization: Optional[str] = N
     if not token:
         return create_error_response("Missing token.", 401)
 
-    user = query_one("SELECT * FROM users WHERE auth_token = ?", (token,))
+    user = await query_one("SELECT * FROM users WHERE auth_token = ?", (token,))
     if not user:
         return create_error_response("Invalid token session.", 401)
 
@@ -38,7 +38,7 @@ async def handle_get_friends_list(request=None, authorization: Optional[str] = N
     JOIN users u ON f.friend_id = u.id
     WHERE f.user_id = ?
     """
-    friends = query_all(sql, (user["id"],))
+    friends = await query_all(sql, (user["id"],))
 
     return create_json_response({"success": True, "friends": friends})
 
@@ -52,7 +52,7 @@ async def handle_add_friend(request, authorization: Optional[str] = None):
     if not token:
         return create_error_response("Unauthorized.", 401)
 
-    user = query_one("SELECT * FROM users WHERE auth_token = ?", (token,))
+    user = await query_one("SELECT * FROM users WHERE auth_token = ?", (token,))
     if not user:
         return create_error_response("Invalid user.", 401)
 
@@ -62,7 +62,7 @@ async def handle_add_friend(request, authorization: Optional[str] = None):
     if not target_handle:
         return create_error_response("Friend username is required.", 400)
 
-    target_user = query_one("SELECT * FROM users WHERE lower(username) = ?", (target_handle,))
+    target_user = await query_one("SELECT * FROM users WHERE lower(username) = ?", (target_handle,))
     if not target_user:
         return create_error_response(f"User '{target_handle}' not found.", 404)
 
@@ -71,8 +71,8 @@ async def handle_add_friend(request, authorization: Optional[str] = None):
 
     # Insert reciprocal friendship entries
     try:
-        execute_db("INSERT OR IGNORE INTO friends (user_id, friend_id) VALUES (?, ?)", (user["id"], target_user["id"]))
-        execute_db("INSERT OR IGNORE INTO friends (user_id, friend_id) VALUES (?, ?)", (target_user["id"], user["id"]))
+        await execute_db("INSERT OR IGNORE INTO friends (user_id, friend_id) VALUES (?, ?)", (user["id"], target_user["id"]))
+        await execute_db("INSERT OR IGNORE INTO friends (user_id, friend_id) VALUES (?, ?)", (target_user["id"], user["id"]))
     except Exception as e:
         print("Friend add error:", e)
 

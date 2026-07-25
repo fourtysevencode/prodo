@@ -30,7 +30,7 @@ async def handle_get_global_leaderboard():
     ORDER BY xp DESC
     LIMIT 50
     """
-    entries = query_all(sql)
+    entries = await query_all(sql)
     return create_json_response({"success": True, "leaderboard": entries})
 
 
@@ -43,7 +43,7 @@ async def handle_get_friends_leaderboard(request=None, authorization: Optional[s
         # Fallback to global if no token provided
         return await handle_get_global_leaderboard()
 
-    user = query_one("SELECT * FROM users WHERE auth_token = ?", (token,))
+    user = await query_one("SELECT * FROM users WHERE auth_token = ?", (token,))
     if not user:
         return await handle_get_global_leaderboard()
 
@@ -54,7 +54,7 @@ async def handle_get_friends_leaderboard(request=None, authorization: Optional[s
     WHERE u.id = ? OR u.id IN (SELECT friend_id FROM friends WHERE user_id = ?)
     ORDER BY u.xp DESC
     """
-    entries = query_all(sql, (user["id"], user["id"]))
+    entries = await query_all(sql, (user["id"], user["id"]))
     return create_json_response({"success": True, "leaderboard": entries})
 
 

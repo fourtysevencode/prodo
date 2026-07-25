@@ -7,7 +7,7 @@ Main entry point for the Prodo API server. Uses the Cloudflare Workers Python SD
 
 import json
 import urllib.parse
-from database import init_db
+import database
 from compat import create_json_response, create_error_response
 from routes.auth_routes import (
     handle_google_auth, handle_register, handle_login,
@@ -23,9 +23,6 @@ from routes.telemetry_routes import handle_log_telemetry, handle_get_telemetry_l
 from routes.dev_routes import handle_dev_login, handle_get_dev_stats, handle_get_dev_telemetry
 
 # ── Cloudflare Workers Python SDK Entry Point ─────────────────────────────────
-# The `workers` module is provided by the Cloudflare Pyodide runtime at deploy time.
-# Locally (pytest), it's not available, so we provide stub classes that are never called.
-
 try:
     from workers import WorkerEntrypoint, Response as WorkersResponse
     _HAS_WORKERS_SDK = True
@@ -52,7 +49,8 @@ class Default(WorkerEntrypoint):
 
     async def fetch(self, request):
         """Route incoming HTTP requests to the correct handler."""
-        init_db()
+        # Attach Cloudflare environment to database layer for D1 access
+        database.WORKER_ENV = getattr(self, "env", None)
 
         url_str = str(request.url)
         method = str(request.method).upper()
@@ -156,7 +154,13 @@ async def _wrap(handler, *args):
     Route handlers return either a dict-like compat response or a FastAPI JSONResponse.
     This wrapper normalises both into a Workers SDK Response.
     """
-    result = await handler(*args) if args else await handler()
+    try:
+        result = await handler(*args) if args else await handler()
+    except Exception as e:
+        import traceback
+        err_msg = "".join(traceback.format_exception(type(e), e, e.__traceback__))
+        print(f"Error in handler {handler.__name__}: {err_msg}")
+        return _json_response({"success": False, "error": "Internal Server Error", "details": str(e)}, 500)
 
     # If the handler already returned a Workers Response, pass through
     if isinstance(result, WorkersResponse):
@@ -210,7 +214,7 @@ try:
 
     @app.on_event("startup")
     def startup_event():
-        init_db()
+        database.init_db()
 
     @app.get("/")
     @app.get("/health")

@@ -28,7 +28,7 @@ async def handle_log_telemetry(request):
     session_id = str(body.get("session_id") or "default")
     details = str(body.get("details") or "")
 
-    execute_db(
+    await execute_db(
         """
         INSERT INTO telemetry_logs (event, session_id, details, created_at)
         VALUES (?, ?, ?, ?)
@@ -42,7 +42,7 @@ async def handle_get_telemetry_logs():
     """
     Fetches recent telemetry log records for dev portal monitoring.
     """
-    logs = query_all("SELECT * FROM telemetry_logs ORDER BY created_at DESC LIMIT 50")
+    logs = await query_all("SELECT * FROM telemetry_logs ORDER BY created_at DESC LIMIT 50")
     return create_json_response({"success": True, "telemetry": logs})
 
 

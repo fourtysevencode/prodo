@@ -9,6 +9,9 @@ import os
 import sqlite3
 from typing import Any, Dict, List, Optional
 
+# Global variable set by main.py in Cloudflare Workers to access D1 bindings
+WORKER_ENV = None
+
 # Path to local SQLite database file in the server directory
 DB_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "database.db")
 
@@ -65,11 +68,20 @@ def init_db() -> None:
         conn.close()
 
 
-def query_one(sql: str, params: tuple = ()) -> Optional[Dict[str, Any]]:
+async def query_one(sql: str, params: tuple = ()) -> Optional[Dict[str, Any]]:
     """
     Executes a SELECT query expecting a single record.
     Returns a dictionary representation of the row or None if no match.
     """
+    if WORKER_ENV is not None and hasattr(WORKER_ENV, "DB"):
+        stmt = WORKER_ENV.DB.prepare(sql)
+        if params:
+            stmt = stmt.bind(*params)
+        row = await stmt.first()
+        if not row:
+            return None
+        return row.to_py() if hasattr(row, "to_py") else dict(row)
+
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute(sql, params)
@@ -80,11 +92,19 @@ def query_one(sql: str, params: tuple = ()) -> Optional[Dict[str, Any]]:
     return None
 
 
-def query_all(sql: str, params: tuple = ()) -> List[Dict[str, Any]]:
+async def query_all(sql: str, params: tuple = ()) -> List[Dict[str, Any]]:
     """
     Executes a SELECT query expecting multiple records.
     Returns a list of dictionaries.
     """
+    if WORKER_ENV is not None and hasattr(WORKER_ENV, "DB"):
+        stmt = WORKER_ENV.DB.prepare(sql)
+        if params:
+            stmt = stmt.bind(*params)
+        res = await stmt.all()
+        results = res.results.to_py() if hasattr(res.results, "to_py") else list(res.results)
+        return [dict(r) for r in results]
+
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute(sql, params)
@@ -93,11 +113,19 @@ def query_all(sql: str, params: tuple = ()) -> List[Dict[str, Any]]:
     return [dict(r) for r in rows]
 
 
-def execute_db(sql: str, params: tuple = ()) -> int:
+async def execute_db(sql: str, params: tuple = ()) -> int:
     """
     Executes an INSERT, UPDATE, or DELETE query.
     Returns the last inserted row ID.
     """
+    if WORKER_ENV is not None and hasattr(WORKER_ENV, "DB"):
+        stmt = WORKER_ENV.DB.prepare(sql)
+        if params:
+            stmt = stmt.bind(*params)
+        res = await stmt.run()
+        meta = res.meta.to_py() if hasattr(res.meta, "to_py") else dict(res.meta)
+        return meta.get("last_row_id", 0)
+
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute(sql, params)

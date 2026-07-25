@@ -29,7 +29,7 @@ async def handle_get_me(request=None, authorization: Optional[str] = None):
         return create_error_response("Missing authorization token.", 401)
 
     # Retrieve user matching the token
-    user = query_one("SELECT * FROM users WHERE auth_token = ?", (token,))
+    user = await query_one("SELECT * FROM users WHERE auth_token = ?", (token,))
     if not user:
         return create_error_response("Invalid or expired session token.", 401)
 
@@ -59,7 +59,7 @@ async def handle_sync_user_data(request, authorization: Optional[str] = None):
     if not token:
         return create_error_response("Authorization token missing.", 401)
 
-    user = query_one("SELECT * FROM users WHERE auth_token = ?", (token,))
+    user = await query_one("SELECT * FROM users WHERE auth_token = ?", (token,))
     if not user:
         return create_error_response("Session token invalid.", 401)
 
@@ -73,7 +73,7 @@ async def handle_sync_user_data(request, authorization: Optional[str] = None):
     new_multiplier = float(body.get("current_multiplier") or 1.0)
 
     # Update database record
-    execute_db(
+    await execute_db(
         """
         UPDATE users
         SET xp = ?, total_lifetime_points = ?, current_balance = ?, current_multiplier = ?

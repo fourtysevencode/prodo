@@ -67,7 +67,7 @@ async def handle_register(request):
     username_clean = username_raw.lower()
 
     # Check if user with given email or username already exists
-    existing = query_one(
+    existing = await query_one(
         "SELECT id FROM users WHERE lower(email) = ? OR lower(username) = ?",
         (email_clean, username_clean)
     )
@@ -78,7 +78,7 @@ async def handle_register(request):
     auth_token = generate_token("token_")
 
     # Insert new user record into database
-    execute_db(
+    await execute_db(
         """
         INSERT INTO users (username, email, password_hash, xp, current_balance, auth_token, needs_handle)
         VALUES (?, ?, ?, 100, 100, ?, 0)
@@ -107,14 +107,14 @@ async def handle_login(request):
         return create_error_response("Email and password are required.", 400)
 
     # Query database for user matching given email
-    user = query_one("SELECT * FROM users WHERE lower(email) = ?", (email_clean,))
+    user = await query_one("SELECT * FROM users WHERE lower(email) = ?", (email_clean,))
     if not user or user.get("password_hash") != password_raw:
         return create_error_response("Invalid email or password credentials.", 401)
 
     # Ensure user has a valid auth token
     auth_token = user.get("auth_token") or generate_token("token_")
     if not user.get("auth_token"):
-        execute_db("UPDATE users SET auth_token = ? WHERE id = ?", (auth_token, user["id"]))
+        await execute_db("UPDATE users SET auth_token = ? WHERE id = ?", (auth_token, user["id"]))
 
     return create_json_response({
         "success": True,
@@ -136,16 +136,16 @@ async def handle_google_auth(request):
 
     # Generate synthetic email for credential string
     synth_email = f"google_user_{raw_cred[:8].lower()}@prodo.live"
-    user = query_one("SELECT * FROM users WHERE email = ?", (synth_email,))
+    user = await query_one("SELECT * FROM users WHERE email = ?", (synth_email,))
 
     if not user:
         auth_token = generate_token("token_")
         synth_username = f"user_{secrets.token_hex(4)}"
-        execute_db(
+        await execute_db(
             "INSERT INTO users (username, email, xp, current_balance, auth_token, needs_handle) VALUES (?, ?, 100, 100, ?, 1)",
             (synth_username, synth_email, auth_token)
         )
-        user = query_one("SELECT * FROM users WHERE email = ?", (synth_email,))
+        user = await query_one("SELECT * FROM users WHERE email = ?", (synth_email,))
 
     return create_json_response({
         "success": True,
@@ -163,7 +163,7 @@ async def handle_update_username(request, authorization: Optional[str] = None):
     if not token:
         return create_error_response("Authorization header missing.", 401)
 
-    user = query_one("SELECT * FROM users WHERE auth_token = ?", (token,))
+    user = await query_one("SELECT * FROM users WHERE auth_token = ?", (token,))
     if not user:
         return create_error_response("User session expired or invalid.", 401)
 
@@ -174,11 +174,11 @@ async def handle_update_username(request, authorization: Optional[str] = None):
         return create_error_response("Username must be at least 3 characters.", 400)
 
     # Check if handle is already taken by another account
-    existing = query_one("SELECT id FROM users WHERE lower(username) = ? AND id != ?", (new_username, user["id"]))
+    existing = await query_one("SELECT id FROM users WHERE lower(username) = ? AND id != ?", (new_username, user["id"]))
     if existing:
         return create_error_response("Username is already taken.", 400)
 
-    execute_db("UPDATE users SET username = ?, needs_handle = 0 WHERE id = ?", (new_username, user["id"]))
+    await execute_db("UPDATE users SET username = ?, needs_handle = 0 WHERE id = ?", (new_username, user["id"]))
 
     return create_json_response({"success": True, "username": new_username, "message": "Username handle updated successfully."})
 
@@ -192,7 +192,7 @@ async def handle_tester_login(request=None):
     tester_email = f"tester_{tester_id}@prodo.live"
     auth_token = generate_token("tester_token_")
 
-    execute_db(
+    await execute_db(
         """
         INSERT INTO users (username, email, xp, current_balance, auth_token, is_tester, tester_expires_at, needs_handle)
         VALUES (?, ?, 500, 500, ?, 1, ?, 0)
@@ -212,7 +212,7 @@ async def handle_request_device_code(request=None):
     Desktop OAuth Flow Step 1: Generates a unique 6-character device code for Tauri desktop authentication.
     """
     device_code = secrets.token_hex(3).upper()
-    execute_db(
+    await execute_db(
         "INSERT INTO device_auths (device_code, status, created_at) VALUES (?, 'PENDING', ?)",
         (device_code, time.time())
     )
@@ -224,18 +224,18 @@ async def handle_approve_device_code(request, authorization: Optional[str] = Non
     Desktop OAuth Flow Step 2: Approves a pending device code from the logged-in web app session.
     """
     token = extract_bearer_token(authorization or (request.headers.get("authorization") if hasattr(request, "headers") else None))
-    user = query_one("SELECT * FROM users WHERE auth_token = ?", (token,))
+    user = await query_one("SELECT * FROM users WHERE auth_token = ?", (token,))
     if not user:
         return create_error_response("Unauthorized user session.", 401)
 
     body = await parse_json_body(request)
     device_code = str(body.get("device_code") or "").upper()
 
-    device_auth = query_one("SELECT * FROM device_auths WHERE device_code = ?", (device_code,))
+    device_auth = await query_one("SELECT * FROM device_auths WHERE device_code = ?", (device_code,))
     if not device_auth:
         return create_error_response("Invalid device code.", 404)
 
-    execute_db(
+    await execute_db(
         "UPDATE device_auths SET status = 'APPROVED', user_id = ?, auth_token = ? WHERE device_code = ?",
         (user["id"], user["auth_token"], device_code)
     )
@@ -249,7 +249,7 @@ async def handle_poll_device_code(request):
     body = await parse_json_body(request)
     device_code = str(body.get("device_code") or "").upper()
 
-    device_auth = query_one("SELECT * FROM device_auths WHERE device_code = ?", (device_code,))
+    device_auth = await query_one("SELECT * FROM device_auths WHERE device_code = ?", (device_code,))
     if not device_auth:
         return create_error_response("Invalid or expired device code.", 404)
 
