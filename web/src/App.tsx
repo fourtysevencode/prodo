@@ -1,16 +1,16 @@
 import { HashRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { FocusProvider, useFocus } from "./context/FocusContext";
 import WhimsicalLayout from "./components/WhimsicalLayout";
-import FocusPage from "./pages/FocusPage";
-import LogsPage from "./pages/LogsPage";
-import LeaderboardPage from "./pages/LeaderboardPage";
-import VaultPage from "./pages/VaultPage";
-import SettingsPage from "./pages/SettingsPage";
-import LoginPage from "./pages/LoginPage";
+import FocusPage from "./pages/theREALwhimsy/FocusPage";
+import LogsPage from "./pages/theREALwhimsy/LogsPage";
+import LeaderboardPage from "./pages/theREALwhimsy/LeaderboardPage";
+import VaultPage from "./pages/theREALwhimsy/VaultPage";
+import SettingsPage from "./pages/theREALwhimsy/SettingsPage";
 import HelpPage from "./pages/HelpPage";
 import NotFoundPage from "./pages/NotFoundPage";
 import ForbiddenPage from "./pages/ForbiddenPage";
-import FriendsPage from "./pages/FriendsPage";
+import FriendsPage from "./pages/theREALwhimsy/FriendsPage";
+import LoginPage from "./pages/LoginPage";
 import PunishmentsPage from "./pages/PunishmentsPage";
 import LandingPage from "./pages/LandingPage";
 import AuthorizeDesktopPage from "./pages/AuthorizeDesktopPage";
@@ -25,7 +25,7 @@ function MainAppRoutes() {
   const isDevDomain = hostname === "dev.prodo.live" || hostname === "dev.localhost";
   const isBetaDomain = hostname === "beta.prodo.live" || hostname === "beta.localhost";
 
-  // beta.prodo.live renders ONLY 403 Forbidden Page.
+  // beta.prodo.live renders ONLY 403 Forbidden Page now cause beta is useless (will be useful later on)
   if (isBetaDomain) {
     return (
       <Routes>
