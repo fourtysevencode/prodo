@@ -10,12 +10,14 @@ import os
 import pytest
 from fastapi.testclient import TestClient
 
+# Ensure server/src path is on sys.path
 server_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if server_dir not in sys.path:
-    sys.path.insert(0, server_dir)
+src_dir = os.path.join(server_dir, "src")
+if src_dir not in sys.path:
+    sys.path.insert(0, src_dir)
 
-from src.main import app
-from src.database import init_db, query_one
+from main import app
+from database import init_db, query_one
 
 init_db()
 client = TestClient(app)

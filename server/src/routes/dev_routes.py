@@ -6,9 +6,9 @@ Handles dev authentication (`/dev/login`), dev stats (`/dev/stats`), and telemet
 
 from typing import Optional
 
-from ..compat import create_json_response, create_error_response
-from ..database import query_one, query_all, execute_db
-from .auth_routes import extract_bearer_token, parse_json_body
+from compat import create_json_response, create_error_response
+from database import query_one, query_all, execute_db
+from routes.auth_routes import extract_bearer_token, parse_json_body
 
 try:
     from fastapi import APIRouter, Request, Header

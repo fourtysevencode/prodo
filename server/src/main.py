@@ -8,33 +8,33 @@ for Cloudflare Workers deployment.
 
 import json
 import urllib.parse
-from .database import init_db
-from .compat import create_json_response, create_error_response
-from .routes.auth_routes import (
+from database import init_db
+from compat import create_json_response, create_error_response
+from routes.auth_routes import (
     handle_google_auth, handle_register, handle_login,
     handle_update_username, handle_tester_login,
     handle_request_device_code, handle_approve_device_code, handle_poll_device_code
 )
-from .routes.user_routes import handle_get_me, handle_sync_user_data
-from .routes.friend_routes import handle_get_friends_list, handle_add_friend
-from .routes.leaderboard_routes import handle_get_global_leaderboard, handle_get_friends_leaderboard
-from .routes.coop_routes import handle_create_coop_room, handle_get_active_coop_rooms, handle_join_coop_room, handle_end_coop_room
-from .routes.ai_routes import handle_generate_punishment_task, handle_verify_punishment_task
-from .routes.telemetry_routes import handle_log_telemetry, handle_get_telemetry_logs
-from .routes.dev_routes import handle_dev_login, handle_get_dev_stats, handle_get_dev_telemetry
+from routes.user_routes import handle_get_me, handle_sync_user_data
+from routes.friend_routes import handle_get_friends_list, handle_add_friend
+from routes.leaderboard_routes import handle_get_global_leaderboard, handle_get_friends_leaderboard
+from routes.coop_routes import handle_create_coop_room, handle_get_active_coop_rooms, handle_join_coop_room, handle_end_coop_room
+from routes.ai_routes import handle_generate_punishment_task, handle_verify_punishment_task
+from routes.telemetry_routes import handle_log_telemetry, handle_get_telemetry_logs
+from routes.dev_routes import handle_dev_login, handle_get_dev_stats, handle_get_dev_telemetry
 
 # Conditionally instantiate FastAPI app if available in environment
 try:
     from fastapi import FastAPI
     from fastapi.middleware.cors import CORSMiddleware
-    from .routes.auth_routes import router as auth_router
-    from .routes.user_routes import router as user_router
-    from .routes.friend_routes import router as friend_router
-    from .routes.leaderboard_routes import router as leaderboard_router
-    from .routes.coop_routes import router as coop_router
-    from .routes.ai_routes import router as ai_router
-    from .routes.telemetry_routes import router as telemetry_router
-    from .routes.dev_routes import router as dev_router
+    from routes.auth_routes import router as auth_router
+    from routes.user_routes import router as user_router
+    from routes.friend_routes import router as friend_router
+    from routes.leaderboard_routes import router as leaderboard_router
+    from routes.coop_routes import router as coop_router
+    from routes.ai_routes import router as ai_router
+    from routes.telemetry_routes import router as telemetry_router
+    from routes.dev_routes import router as dev_router
 
     app = FastAPI(title="Prodo API Backend", version="1.0.0")
     app.add_middleware(

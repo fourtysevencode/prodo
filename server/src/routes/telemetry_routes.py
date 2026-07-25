@@ -7,9 +7,9 @@ Stores high-frequency gaze telemetry event logs and system metrics using raw Req
 import time
 from typing import Optional
 
-from ..compat import create_json_response
-from ..database import execute_db, query_all
-from .auth_routes import parse_json_body
+from compat import create_json_response
+from database import execute_db, query_all
+from routes.auth_routes import parse_json_body
 
 try:
     from fastapi import APIRouter, Request

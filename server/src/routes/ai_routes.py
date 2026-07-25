@@ -9,8 +9,8 @@ import os
 import secrets
 from typing import Optional, Dict, Any
 
-from ..compat import create_json_response, create_error_response
-from .auth_routes import parse_json_body
+from compat import create_json_response, create_error_response
+from routes.auth_routes import parse_json_body
 
 try:
     from fastapi import APIRouter, Request

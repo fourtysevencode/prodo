@@ -7,9 +7,9 @@ and friends-only focus rankings (`/leaderboard/friends`).
 
 from typing import Optional
 
-from ..compat import create_json_response
-from ..database import query_all, query_one
-from .auth_routes import extract_bearer_token
+from compat import create_json_response
+from database import query_all, query_one
+from routes.auth_routes import extract_bearer_token
 
 try:
     from fastapi import APIRouter, Request, Header

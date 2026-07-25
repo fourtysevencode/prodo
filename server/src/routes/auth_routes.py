@@ -10,8 +10,8 @@ import uuid
 import secrets
 from typing import Optional
 
-from ..compat import create_json_response, create_error_response
-from ..database import query_one, execute_db
+from compat import create_json_response, create_error_response
+from database import query_one, execute_db
 
 try:
     from fastapi import APIRouter, Request, Header
