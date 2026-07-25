@@ -5,12 +5,11 @@ Provides endpoints to list linked friends (`/friends/list`) and send friend invi
 """
 
 from typing import Optional
-from fastapi import APIRouter, Header
+from fastapi import APIRouter, Request, Header
 from fastapi.responses import JSONResponse
 
-from ..models import AddFriendRequest
 from ..database import query_one, query_all, execute_db
-from .auth_routes import extract_bearer_token
+from .auth_routes import extract_bearer_token, parse_json_body
 
 router = APIRouter(prefix="/friends", tags=["Friends"])
 
@@ -41,7 +40,7 @@ async def get_friends_list(authorization: Optional[str] = Header(None)):
 
 
 @router.post("/add")
-async def add_friend(body: AddFriendRequest, authorization: Optional[str] = Header(None)):
+async def add_friend(request: Request, authorization: Optional[str] = Header(None)):
     """
     Adds a target friend user handle to the authenticated user's friend directory.
     Creates reciprocal entries in the friends table.
@@ -54,9 +53,13 @@ async def add_friend(body: AddFriendRequest, authorization: Optional[str] = Head
     if not user:
         return JSONResponse(status_code=401, content={"success": False, "error": "Invalid user."})
 
-    target_handle = body.friend_username.strip().lower()
-    target_user = query_one("SELECT * FROM users WHERE lower(username) = ?", (target_handle,))
+    body = await parse_json_body(request)
+    target_handle = str(body.get("friend_username") or "").strip().lower()
 
+    if not target_handle:
+        return JSONResponse(status_code=400, content={"success": False, "error": "Friend username is required."})
+
+    target_user = query_one("SELECT * FROM users WHERE lower(username) = ?", (target_handle,))
     if not target_user:
         return JSONResponse(status_code=404, content={"success": False, "error": f"User '{target_handle}' not found."})
 
