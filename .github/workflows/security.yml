@@ -48,13 +48,16 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install Security Tools
+      - name: Install Dependencies & Security Tools
         run: |
           python -m pip install --upgrade pip
-          pip install bandit pip-audit
+          pip install bandit pip-audit -r server/requirements.txt
+
+      - name: Run Pytest Security & API Test Suite
+        run: pytest server/tests/
 
       - name: Run Bandit Static Security Analysis
-        run: bandit -r server/ -x server/.venv/ || true
+        run: bandit -r server/src/ -x server/.venv/ || true
 
       - name: Audit Python Package Dependencies
         run: pip-audit || true

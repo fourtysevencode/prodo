@@ -1,0 +1,3 @@
+"""
+Prodo FastAPI Routes Package.
+"""

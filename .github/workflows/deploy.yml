@@ -39,7 +39,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
   deploy-worker:
-    name: Deploy Cloudflare Workers
+    name: Deploy Cloudflare Workers (FastAPI)
     runs-on: ubuntu-latest
     environment:
       name: Cloudflare Workers (API)
@@ -48,10 +48,22 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
+
+      - name: Install Python Dependencies & Run Tests
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pytest tests/
+        working-directory: server
 
       - name: Deploy Cloudflare Worker
         run: npx wrangler deploy
