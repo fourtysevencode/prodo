@@ -5,12 +5,11 @@ Handles dev authentication (`/dev/login`), dev stats (`/dev/stats`), and telemet
 """
 
 from typing import Optional
-from fastapi import APIRouter, Header
+from fastapi import APIRouter, Request, Header
 from fastapi.responses import JSONResponse
 
-from ..models import DevLoginRequest
 from ..database import query_one, query_all, execute_db
-from .auth_routes import extract_bearer_token
+from .auth_routes import extract_bearer_token, parse_json_body
 
 router = APIRouter(prefix="/dev", tags=["Developer Tools"])
 
@@ -18,7 +17,7 @@ DEV_SECRET = "prodo_dev_master_key_2026"
 
 
 @router.post("/login")
-async def dev_login(body: DevLoginRequest, authorization: Optional[str] = Header(None)):
+async def dev_login(request: Request, authorization: Optional[str] = Header(None)):
     """
     Authenticates account for developer portal access (dev.prodo.live).
     Sets the `is_dev = 1` flag on the user record.
@@ -31,7 +30,10 @@ async def dev_login(body: DevLoginRequest, authorization: Optional[str] = Header
     if not user:
         return JSONResponse(status_code=401, content={"success": False, "error": "Invalid session token."})
 
-    if body.secret_key != DEV_SECRET:
+    body = await parse_json_body(request)
+    secret_key = str(body.get("secret_key") or "")
+
+    if secret_key != DEV_SECRET:
         return JSONResponse(status_code=403, content={"success": False, "error": "Incorrect developer authorization key."})
 
     execute_db("UPDATE users SET is_dev = 1 WHERE id = ?", (user["id"],))
