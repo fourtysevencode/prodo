@@ -94,7 +94,7 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [threatSeconds, setThreatSeconds] = useState(15);
   const [isTracking, setIsTracking] = useState(false);
   const [trackingStatus, setTrackingStatus] = useState<"FOCUSED" | "DISTRACTED" | "UNCERTAIN">("UNCERTAIN");
-  
+
   // Configuration Variables
   const [gazeTolerance, setGazeTolerance] = useState(15);
   const [graceDuration, setGraceDuration] = useState(15);
@@ -150,7 +150,7 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setEmail("");
     }
   }, [isAuthenticated]);
-  
+
   // Break Time variables
   const [breakTimeRemaining, setBreakTimeRemaining] = useState(0);
 
@@ -161,172 +161,167 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [camErr, setCamErr] = useState<string | null>(null);
   const [camLoading, setCamLoading] = useState(false);
 
-  // Phone detection state
+  // Phone Detection Warning Modal
   const [phoneWarning, setPhoneWarning] = useState(false);
+  const dismissPhoneWarning = () => setPhoneWarning(false);
 
-  const [infractions] = useState<Infraction[]>([]);
+  // Mock Infractions Log
+  const [infractions, setInfractions] = useState<Infraction[]>([]);
 
-  const [vaultItems, setVaultItems] = useState<AppVaultItem[]>([
-    { id: "break_5m", name: "5 MIN BREAK", cost: 500, unlocked: false, icon: "coffee" },
-    { id: "break_15m", name: "15 MIN BREAK", cost: 1200, unlocked: false, icon: "free_breakfast" },
-  ]);
-
-  const [systemLogs] = useState<SystemLog[]>([
-    { timestamp: new Date().toLocaleTimeString(), type: "SYSTEM", code: "SYS_INIT", message: "Prodo Core Engine Initialized." },
-  ]);
-
-  // Webcam Video Stream Ref
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-
-  // Initialize camera devices & stream
-  useEffect(() => {
-    if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
-      navigator.mediaDevices.enumerateDevices().then(devices => {
-        const videoInputs = devices.filter(d => d.kind === "videoinput");
-        setAvailableDevices(videoInputs);
-        if (videoInputs.length > 0 && !cameraDevice) {
-          setCameraDevice(videoInputs[0].deviceId);
-        }
-      });
+  // System Logs Feed
+  const [systemLogs, setSystemLogs] = useState<SystemLog[]>([
+    {
+      timestamp: new Date().toLocaleTimeString(),
+      type: "SYSTEM",
+      code: "SYS_INIT_001",
+      message: "Prodo Focus Engine initialized successfully."
     }
+  ]);
+
+  // App Vault Store Items
+  const [vaultItems, setVaultItems] = useState<AppVaultItem[]>([
+    { id: "app-youtube", name: "YouTube Premium", cost: 150, unlocked: false, icon: "smart_display" },
+    { id: "app-steam", name: "Steam Gaming Pass", cost: 300, unlocked: false, icon: "sports_esports" },
+    { id: "app-discord", name: "Discord Lounge", cost: 100, unlocked: false, icon: "forum" },
+    { id: "app-[#0047AB]", name: "Netflix Stream", cost: 200, unlocked: false, icon: "movie" },
+  ]);
+
+  // Enumerate Webcams
+  useEffect(() => {
+    navigator.mediaDevices?.enumerateDevices().then(devices => {
+      const videoInputs = devices.filter(d => d.kind === "videoinput");
+      setAvailableDevices(videoInputs);
+      if (videoInputs.length > 0 && !cameraDevice) {
+        setCameraDevice(videoInputs[0].deviceId);
+      }
+    }).catch(err => console.error("Error enumerating devices:", err));
   }, []);
 
-
-
-  const startTracking = async () => {
-    setCamErr(null);
-    setCamLoading(true);
-    try {
-      const constraints = {
-        video: cameraDevice ? { deviceId: { exact: cameraDevice } } : true,
-      };
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      streamRef.current = stream;
-
-      const video = document.createElement("video");
-      video.srcObject = stream;
-      video.play();
-      videoRef.current = video;
-
-      setIsTracking(true);
-      setNetLink(98);
-      setCamLoading(false);
-      setTrackingStatus("FOCUSED");
-    } catch (err: any) {
-      setCamErr(err.message || "Failed to access webcam.");
-      setCamLoading(false);
-      setIsTracking(false);
-    }
-  };
-
-  const stopTracking = () => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-      streamRef.current = null;
-    }
-    videoRef.current = null;
-    setIsTracking(false);
-    setNetLink(0);
-    setTrackingStatus("UNCERTAIN");
-  };
-
-  // Timer & Session interval
+  // WebRTC / Vision Inference Loop
   useEffect(() => {
-    let timer: any = null;
-    if (isTracking) {
-      timer = setInterval(() => {
-        setSessionTime(prev => prev + 1);
+    let stream: MediaStream | null = null;
+    let animFrame: number;
+    const canvas = document.createElement("canvas");
+    canvas.width = 320;
+    canvas.height = 240;
+    const ctx = canvas.getContext("2d");
 
-        // Periodically capture frame
-        if (videoRef.current && videoRef.current.videoWidth > 0) {
-          const canvas = document.createElement("canvas");
-          canvas.width = videoRef.current.videoWidth;
-          canvas.height = videoRef.current.videoHeight;
-          const ctx = canvas.getContext("2d");
-          if (ctx) {
-            ctx.drawImage(videoRef.current, 0, 0);
-            const dataUrl = canvas.toDataURL("image/jpeg", 0.6);
+    if (isTracking) {
+      setCamLoading(true);
+      setCamErr(null);
+
+      navigator.mediaDevices.getUserMedia({
+        video: cameraDevice ? { deviceId: { exact: cameraDevice } } : true
+      }).then(s => {
+        stream = s;
+        setCamLoading(false);
+        const video = document.createElement("video");
+        video.srcObject = stream;
+        video.play();
+
+        let lastSent = 0;
+        const processFrame = () => {
+          const now = Date.now();
+          if (now - lastSent > 800 && ctx && video.readyState === video.HAVE_ENOUGH_DATA) {
+            ctx.drawImage(video, 0, 0, 320, 240);
+            const dataUrl = canvas.toDataURL("image/jpeg", 0.5);
             setLatestFrame(dataUrl);
 
-            // Frame blob POST to CV server
-            canvas.toBlob(blob => {
-              if (blob && isAuthenticated) {
-                const formData = new FormData();
-                formData.append("frame", blob, "frame.jpg");
-                formData.append("session_id", username || "default");
-                const cvUrl = getCvBaseUrl();
-                fetch(`${cvUrl}/check-focus`, {
-                  method: "POST",
-                  body: formData,
-                })
-                  .then(res => res.json())
-                  .then((data: any) => {
-                    if (data.status) {
-                      setTrackingStatus(data.status);
-                      if (data.status === "DISTRACTED") {
-                        setThreatSeconds(prev => Math.max(0, prev - 1));
-                        apiSendTelemetry("DISTRACTED_SIGNAL", { score: data.focus_score, signals: data.signals });
-                      } else {
-                        setThreatSeconds(15);
-                      }
-                      if (data.phone) {
-                        setPhoneWarning(true);
-                      }
-                    }
-                  })
-                  .catch(e => console.error("CV Check error:", e));
-              }
-            }, "image/jpeg", 0.6);
+            // Dispatch frame to CV Inference Engine
+            fetch(`${getCvBaseUrl()}/predict_frame`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ image_base64: dataUrl })
+            })
+              .then(res => res.json())
+              .then(res => {
+                if (res.status === "DISTRACTED") {
+                  setTrackingStatus("DISTRACTED");
+                  setThreatSeconds(prev => Math.max(0, prev - 1));
+                } else if (res.status === "PHONE_DETECTED") {
+                  setTrackingStatus("DISTRACTED");
+                  setPhoneWarning(true);
+                } else {
+                  setTrackingStatus("FOCUSED");
+                  setThreatSeconds(15);
+                }
+              })
+              .catch(err => console.error("CV Server Error:", err));
+
+            lastSent = now;
           }
-        }
-
-        // Sync points
-        apiSync(1, multiplier, true)
-          .then(res => {
-            if (res.success) {
-              setXp(prev => prev + res.points_added);
-              if (res.multiplier) setMultiplier(res.multiplier);
-            }
-          })
-          .catch(err => console.error("Sync error:", err));
-
-      }, 2000);
+          animFrame = requestAnimationFrame(processFrame);
+        };
+        processFrame();
+      }).catch(err => {
+        setCamLoading(false);
+        setCamErr(err.message || "Failed to access webcam device.");
+      });
     }
+
     return () => {
-      if (timer) clearInterval(timer);
+      if (stream) stream.getTracks().forEach(t => t.stop());
+      if (animFrame) cancelAnimationFrame(animFrame);
     };
-  }, [isTracking, multiplier, isAuthenticated, username]);
+  }, [isTracking, cameraDevice]);
+
+  // Session Timer
+  useEffect(() => {
+    let timer: ReturnType<typeof setInterval>;
+    if (isTracking) {
+      timer = setInterval(() => setSessionTime(t => t + 1), 1000);
+    }
+    return () => clearInterval(timer);
+  }, [isTracking]);
+
+  // XP Accumulation
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval>;
+    if (isTracking && trackingStatus === "FOCUSED") {
+      interval = setInterval(() => setXp(x => x + 1), 3000);
+    }
+    return () => clearInterval(interval);
+  }, [isTracking, trackingStatus]);
+
+  // Backend Sync
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const interval = setInterval(() => {
+      apiSync(1, multiplier, isTracking).catch(err => console.error("Sync failed:", err));
+    }, 15000);
+    return () => clearInterval(interval);
+  }, [isAuthenticated, multiplier, isTracking]);
+
+
+  const startTracking = () => setIsTracking(true);
+  const stopTracking = () => setIsTracking(false);
 
   const purchaseApp = (id: string) => {
     const item = vaultItems.find(i => i.id === id);
     if (!item || xp < item.cost) return;
-    setXp(prev => prev - item.cost);
-    setVaultItems(prev => prev.map(i => i.id === id ? { ...i, unlocked: true } : i));
+    setXp(x => x - item.cost);
+    setVaultItems(items => items.map(i => i.id === id ? { ...i, unlocked: true } : i));
   };
 
-  const purchaseBreakTime = (seconds: number): boolean => {
-    if (xp < 100) return false;
-    setXp(prev => prev - 100);
-    setBreakTimeRemaining(seconds);
+  const purchaseBreakTime = (seconds: number) => {
+    const cost = Math.ceil(seconds / 60) * 10;
+    if (xp < cost) return false;
+    setXp(x => x - cost);
+    setBreakTimeRemaining(prev => prev + seconds);
     return true;
   };
 
-  const dismissPhoneWarning = () => setPhoneWarning(false);
-
   const executeCommand = (cmd: string): string => {
-    const clean = cmd.trim().toLowerCase();
-    if (clean === "clear") return "SYSTEM_SHELL_CLEAR";
-    if (clean === "status") return `TRACKING: ${isTracking ? "ACTIVE" : "INACTIVE"} | USER: ${username || "ANONYMOUS"}`;
-    if (clean === "help") return "Commands: status, clear, telemetry, help";
-    if (clean === "telemetry") {
-      apiSendTelemetry("MANUAL_TELEMETRY_TRIGGER", { username });
-      return "Telemetry logs dispatched to telemetry@prodo.live";
+    const trimmed = cmd.trim().toLowerCase();
+    if (trimmed === "help") return "Available commands: help, status, clear, reset";
+    if (trimmed === "status") return `Tracking: ${isTracking ? "ACTIVE" : "IDLE"} | XP: ${xp}`;
+    if (trimmed === "clear") {
+      setSystemLogs([]);
+      return "Logs cleared.";
     }
-    return `Unknown command: '${cmd}'. Type 'help' for options.`;
+    return `Unknown command '${cmd}'. Type 'help' for options.`;
   };
 
-  // Tester mode status
   const isTester = Boolean(
     username.toLowerCase().startsWith("tester_") ||
     localStorage.getItem("prodo_token")?.startsWith("tester_token_")
@@ -378,6 +373,11 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setIsCalibrating,
         phoneWarning,
         dismissPhoneWarning,
+        theme,
+        toggleTheme,
+        setTheme,
+        isDev,
+        setIsDev,
         isTester,
         adjustXp,
       }}

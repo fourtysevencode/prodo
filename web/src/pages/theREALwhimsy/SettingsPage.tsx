@@ -1,16 +1,12 @@
-import React, { useState } from "react";
+import React from "react";
 import { useFocus } from "../../context/FocusContext";
 
 /**
  * WhimsicalSettingsPage - Preferences and device configuration.
- * Includes Light & Dark mode theme buttons, account card, and privacy controls.
+ * Includes Light & Dark mode theme buttons, account card, and webcam selection.
  */
 const WhimsicalSettingsPage: React.FC = () => {
-  const { email, username, availableDevices, cameraDevice, setCameraDevice, theme, toggleTheme, setTheme } = useFocus();
-  const [allowTelemetry, setAllowTelemetry] = useState(true);
-  const [offlineMode, setOfflineMode] = useState(false);
-  const [raidNotify, setRaidNotify] = useState(true);
-  const [soundEnabled, setSoundEnabled] = useState(true);
+  const { email, username, availableDevices, cameraDevice, setCameraDevice, theme, setTheme } = useFocus();
 
   return (
     <div className="flex flex-col gap-6 pb-12">
