@@ -2,24 +2,23 @@
 Co-Op Focus Session Router for Prodo FastAPI Backend.
 
 Handles cooperative multiplayer focus rooms, allowlisting partners, active multipliers,
-and room lifecycle management.
+and room lifecycle management using raw Request JSON parsing.
 """
 
 import time
 import secrets
 from typing import Optional
-from fastapi import APIRouter, Header
+from fastapi import APIRouter, Request, Header
 from fastapi.responses import JSONResponse
 
-from ..models import CreateCoopRequest, JoinCoopRequest, EndCoopRequest
 from ..database import query_one, query_all, execute_db
-from .auth_routes import extract_bearer_token
+from .auth_routes import extract_bearer_token, parse_json_body
 
 router = APIRouter(prefix="/coop", tags=["Co-Op Rooms"])
 
 
 @router.post("/create")
-async def create_coop_room(body: CreateCoopRequest, authorization: Optional[str] = Header(None)):
+async def create_coop_room(request: Request, authorization: Optional[str] = Header(None)):
     """
     Creates a new Co-Op Focus Session room and returns a unique 6-character room code.
     """
@@ -62,7 +61,7 @@ async def get_active_coop_rooms():
 
 
 @router.post("/join")
-async def join_coop_room(body: JoinCoopRequest, authorization: Optional[str] = Header(None)):
+async def join_coop_room(request: Request, authorization: Optional[str] = Header(None)):
     """
     Joins an existing active Co-Op focus session using the session ID.
     """
@@ -74,22 +73,31 @@ async def join_coop_room(body: JoinCoopRequest, authorization: Optional[str] = H
     if not user:
         return JSONResponse(status_code=401, content={"success": False, "error": "User session invalid."})
 
-    session = query_one("SELECT * FROM coop_sessions WHERE session_id = ? AND is_active = 1", (body.session_id.upper(),))
+    body = await parse_json_body(request)
+    session_id = str(body.get("session_id") or "").upper()
+
+    if not session_id:
+        return JSONResponse(status_code=400, content={"success": False, "error": "Session ID is required."})
+
+    session = query_one("SELECT * FROM coop_sessions WHERE session_id = ? AND is_active = 1", (session_id,))
     if not session:
         return JSONResponse(status_code=404, content={"success": False, "error": "Co-Op room not found or inactive."})
 
     execute_db(
         "UPDATE coop_sessions SET friend_user_id = ? WHERE session_id = ?",
-        (user["id"], body.session_id.upper())
+        (user["id"], session_id)
     )
 
-    return {"success": True, "session_id": body.session_id.upper(), "message": "Joined Co-Op session!"}
+    return {"success": True, "session_id": session_id, "message": "Joined Co-Op session!"}
 
 
 @router.post("/end")
-async def end_coop_room(body: EndCoopRequest, authorization: Optional[str] = Header(None)):
+async def end_coop_room(request: Request, authorization: Optional[str] = Header(None)):
     """
     Terminates an active Co-Op focus session room.
     """
-    execute_db("UPDATE coop_sessions SET is_active = 0 WHERE session_id = ?", (body.session_id.upper(),))
+    body = await parse_json_body(request)
+    session_id = str(body.get("session_id") or "").upper()
+    if session_id:
+        execute_db("UPDATE coop_sessions SET is_active = 0 WHERE session_id = ?", (session_id,))
     return {"success": True, "message": "Co-Op session terminated."}
