@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useState, useEffect, useRef } from "react";
-import { apiSync, apiGetMe, apiSendTelemetry, getCvBaseUrl } from "../api/prodoApi";
+import React, { createContext, useContext, useState, useEffect } from "react";
+import { apiSync, apiGetMe, getCvBaseUrl } from "../api/prodoApi";
 import { TesterWidget } from "../components/TesterWidget";
 
 export interface Infraction {
@@ -89,8 +89,8 @@ export const useFocus = () => {
 export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [xp, setXp] = useState(0);
   const [coreTemp] = useState(36);
-  const [multiplier, setMultiplier] = useState(1.0);
-  const [netLink, setNetLink] = useState(0);
+  const [multiplier] = useState(1.0);
+  const [netLink] = useState(0);
   const [threatSeconds, setThreatSeconds] = useState(15);
   const [isTracking, setIsTracking] = useState(false);
   const [trackingStatus, setTrackingStatus] = useState<"FOCUSED" | "DISTRACTED" | "UNCERTAIN">("UNCERTAIN");
@@ -166,7 +166,7 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const dismissPhoneWarning = () => setPhoneWarning(false);
 
   // Mock Infractions Log
-  const [infractions, setInfractions] = useState<Infraction[]>([]);
+  const [infractions] = useState<Infraction[]>([]);
 
   // System Logs Feed
   const [systemLogs, setSystemLogs] = useState<SystemLog[]>([
