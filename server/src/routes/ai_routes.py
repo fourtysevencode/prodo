@@ -2,16 +2,16 @@
 AI Whimsical Punishment Enforcer Router for Prodo FastAPI Backend.
 
 Generates and verifies AI-powered cognitive challenges and whimsical math/essay tasks
-to earn XP allowances or clear infractions.
+to earn XP allowances or clear infractions using raw Request JSON parsing.
 """
 
 import os
 import secrets
 from typing import Optional, Dict, Any
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
-from ..models import VerifyAITaskRequest
+from .auth_routes import parse_json_body
 
 router = APIRouter(prefix="/ai", tags=["AI Whimsical Tasks"])
 
@@ -55,30 +55,34 @@ async def generate_punishment_task(task_type: Optional[str] = "math"):
 
 @router.post("/verify-punishment")
 @router.post("/task/verify")
-async def verify_punishment_task(body: VerifyAITaskRequest):
+async def verify_punishment_task(request: Request):
     """
     Verifies user's submitted answer for an active AI challenge.
     Grants +500 XP on successful validation.
     """
-    task = ACTIVE_TASKS.get(body.task_id)
+    body = await parse_json_body(request)
+    task_id = str(body.get("task_id") or "")
+    user_answer = str(body.get("user_answer") or body.get("answer") or "").strip()
+
+    task = ACTIVE_TASKS.get(task_id)
     if not task:
         # Generic validation for demonstration
-        if len(body.user_answer.strip()) >= 2:
+        if len(user_answer) >= 2:
             return {"success": True, "message": "Challenge verified! +500 XP granted."}
         return JSONResponse(status_code=400, content={"success": False, "message": "Incorrect or incomplete answer."})
 
-    user_ans = body.user_answer.strip().lower()
+    user_ans = user_answer.lower()
     expected_ans = str(task["correct_answer"]).strip().lower()
 
     if task["type"] == "math":
         if user_ans == expected_ans:
-            ACTIVE_TASKS.pop(body.task_id, None)
+            ACTIVE_TASKS.pop(task_id, None)
             return {"success": True, "message": "Math puzzle solved! +500 XP awarded."}
         return JSONResponse(status_code=400, content={"success": False, "message": f"Incorrect math answer. Expected {expected_ans}"})
     else:
-        # Essay validation: minimum 10 words
+        # Essay validation: minimum 5 words
         word_count = len(user_ans.split())
         if word_count >= 5:
-            ACTIVE_TASKS.pop(body.task_id, None)
+            ACTIVE_TASKS.pop(task_id, None)
             return {"success": True, "message": "Cognitive essay accepted! +500 XP awarded."}
         return JSONResponse(status_code=400, content={"success": False, "message": "Essay answer too short. Minimum 5 words required."})
