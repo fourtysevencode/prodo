@@ -18,7 +18,7 @@ const WhimsicalVaultPage: React.FC = () => {
   const [waiverMsg, setWaiverMsg] = useState<string | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
 
-  const cost = secondsToBuy * 5;
+  const cost = Math.ceil(secondsToBuy / 60) * 10;
   const canAfford = xp >= cost;
 
   const handleBuy = () => {
