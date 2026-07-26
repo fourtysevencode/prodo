@@ -41,6 +41,7 @@ interface FocusContextType {
   basePenalty: number;
   cameraDevice: string;
   sessionTime: number; // in seconds
+  focusedDuration: number; // continuous focused seconds
   username: string;
   email: string;
   isCoopActive: boolean;
@@ -89,7 +90,8 @@ export const useFocus = () => {
 export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [xp, setXp] = useState(0);
   const [coreTemp] = useState(36);
-  const [multiplier] = useState(1.0);
+  const [multiplier, setMultiplier] = useState(1.0);
+  const [focusedDuration, setFocusedDuration] = useState(0);
   const [netLink] = useState(0);
   const [threatSeconds, setThreatSeconds] = useState(15);
   const [isTracking, setIsTracking] = useState(false);
@@ -165,8 +167,8 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [phoneWarning, setPhoneWarning] = useState(false);
   const dismissPhoneWarning = () => setPhoneWarning(false);
 
-  // Mock Infractions Log
-  const [infractions] = useState<Infraction[]>([]);
+  // Infractions Log
+  const [infractions, setInfractions] = useState<Infraction[]>([]);
 
   // System Logs Feed
   const [systemLogs, setSystemLogs] = useState<SystemLog[]>([
@@ -243,13 +245,12 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 .then(res => {
                   if (res.status === "DISTRACTED") {
                     setTrackingStatus("DISTRACTED");
-                    setThreatSeconds(prev => Math.max(0, prev - 1));
                   } else if (res.status === "PHONE_DETECTED") {
                     setTrackingStatus("DISTRACTED");
                     setPhoneWarning(true);
                   } else {
                     setTrackingStatus("FOCUSED");
-                    setThreatSeconds(15);
+                    setThreatSeconds(graceDuration);
                   }
                 })
                 .catch(err => console.error("CV Server Error:", err));
@@ -270,7 +271,7 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (stream) stream.getTracks().forEach(t => t.stop());
       if (animFrame) cancelAnimationFrame(animFrame);
     };
-  }, [isTracking, cameraDevice]);
+  }, [isTracking, cameraDevice, graceDuration]);
 
   // Session Timer
   useEffect(() => {
@@ -281,14 +282,56 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return () => clearInterval(timer);
   }, [isTracking]);
 
-  // XP Accumulation
+  // Dynamic Multiplier Scaling & XP Accumulation
   useEffect(() => {
     let interval: ReturnType<typeof setInterval>;
     if (isTracking && trackingStatus === "FOCUSED") {
-      interval = setInterval(() => setXp(x => x + 1), 3000);
+      interval = setInterval(() => {
+        setFocusedDuration(prev => {
+          const next = prev + 1;
+          // Scale multiplier by +0.1x every 15 seconds up to max 4.5x
+          if (next % 15 === 0) {
+            setMultiplier(m => Math.min(4.5, parseFloat((m + 0.1).toFixed(1))));
+          }
+          return next;
+        });
+        setXp(x => x + Math.round(1 * multiplier));
+      }, 1000);
+    } else if (trackingStatus === "DISTRACTED") {
+      setFocusedDuration(0);
     }
     return () => clearInterval(interval);
-  }, [isTracking, trackingStatus]);
+  }, [isTracking, trackingStatus, multiplier]);
+
+  // Threat Meter Countdown & Penalty Trigger
+  useEffect(() => {
+    let timer: ReturnType<typeof setInterval>;
+    if (isTracking && trackingStatus === "DISTRACTED") {
+      timer = setInterval(() => {
+        setThreatSeconds(prev => {
+          if (prev <= 1) {
+            // Apply XP penalty & reset multiplier
+            setXp(currentXp => currentXp - basePenalty);
+            setMultiplier(1.0);
+            setFocusedDuration(0);
+
+            // Log infraction
+            const newInfraction: Infraction = {
+              timestamp: new Date().toLocaleTimeString(),
+              code: "INF_GAZE_BREAK",
+              name: "GAZE DISTRACTION BREAK",
+              details: `Gaze tolerance exceeded. Applied -${basePenalty} XP penalty.`
+            };
+            setInfractions(prevList => [newInfraction, ...prevList].slice(0, 50));
+
+            return graceDuration; // Reset threat buffer
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [isTracking, trackingStatus, basePenalty, graceDuration]);
 
   // Backend Sync
   useEffect(() => {
@@ -298,6 +341,7 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }, 15000);
     return () => clearInterval(interval);
   }, [isAuthenticated, multiplier, isTracking]);
+
 
 
   const startTracking = () => setIsTracking(true);
@@ -356,6 +400,7 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         basePenalty,
         cameraDevice,
         sessionTime,
+        focusedDuration,
         username,
         email,
         isCoopActive,
