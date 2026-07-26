@@ -103,15 +103,35 @@ Ensure the following repository secrets are configured in GitHub (`Settings -> S
 
 ## 6. Cross-Platform Desktop & Mobile Artifact Builds
 
+### A. Local Desktop Build (Tauri + Rust)
+To build and check the desktop application locally:
+
+```bash
+cd desktop
+npm run build              # Builds Vite React distribution assets
+cd src-tauri
+cargo check                # Type-checks Rust backend
+# Build release app package:
+npx tauri build
+```
+
+### B. Local Android Build (Kotlin Gradle)
+To build the native Android application locally:
+
+```bash
+cd mobile
+./gradlew assembleDebug    # Generates debug APK at mobile/app/build/outputs/apk/debug/app-debug.apk
+```
+
+### C. Automated CI/CD Build Artifacts (GitHub Actions)
 Automated builds for **Windows, macOS, Linux, and Native Kotlin Android** are configured in `.github/workflows/build-desktop.yml`.
 
-### A. Supported Build Artifacts
 - **Windows**: `.msi` installer & `.exe` executable (`windows-latest`)
 - **macOS**: `.dmg` disk image & `.app` bundle (`macos-latest`)
 - **Linux**: `.AppImage` & `.deb` package (`ubuntu-22.04`)
 - **Android**: `.apk` native Kotlin application package (`ubuntu-22.04`)
 
-### B. Triggering Artifact Builds
+### D. Triggering Artifact Builds
 - Manual trigger available via GitHub Actions UI (**Workflow Dispatch**).
 - Automatic release build on tag push (e.g., `git push origin v0.1.0`).
 - Artifacts are downloadable directly from the GitHub Actions run details or drafted release tags.
