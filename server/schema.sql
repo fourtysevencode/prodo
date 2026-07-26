@@ -58,3 +58,12 @@ CREATE TABLE IF NOT EXISTS telemetry_logs (
     details TEXT,
     created_at REAL NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS punishment_tasks (
+    task_id TEXT PRIMARY KEY,
+    task_type TEXT NOT NULL,
+    prompt TEXT NOT NULL,
+    correct_answer TEXT NOT NULL,
+    created_at REAL NOT NULL
+);
+
