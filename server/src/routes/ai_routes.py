@@ -6,10 +6,12 @@ to earn XP allowances or clear infractions using raw Request JSON parsing.
 """
 
 import os
+import time
 import secrets
 from typing import Optional, Dict, Any
 
 from compat import create_json_response, create_error_response
+from database import query_one, execute_db
 from routes.auth_routes import parse_json_body
 
 try:
@@ -19,18 +21,14 @@ except ImportError:
     router = None
     Request = None
 
-# In-memory store for generated active tasks awaiting verification
-ACTIVE_TASKS: Dict[str, Dict[str, Any]] = {}
-
 
 async def handle_generate_punishment_task(task_type: Optional[str] = "math"):
     """
     Generates an AI challenge task (math problem or essay prompt) for the user.
+    Persists task in punishment_tasks table.
     """
     task_id = f"task_{secrets.token_hex(8)}"
     resolved_type = "essay" if task_type in ["essay", "focus", "philosophy"] else "math"
-
-    # TODO: allow AI to handle ts part, maybe handle over to AI Studio: Gemma 4 26B, 31B, Gemini 3.1 Flash Lite
 
     if resolved_type == "math":
         prompt = "Compute the cognitive focus integral: What is (14 * 7) - 18?"
@@ -39,15 +37,13 @@ async def handle_generate_punishment_task(task_type: Optional[str] = "math"):
         prompt = "Explain in minimum 10 words why multi-tasking degrades deep work state retention."
         correct_answer = "context switching creates attention residue which severely reduces focus throughput"
 
-    task_data = {
-        "task_id": task_id,
-        "type": resolved_type,
-        "prompt": prompt,
-        "correct_answer": correct_answer,
-    }
-
-    # Cache task in active tasks dictionary
-    ACTIVE_TASKS[task_id] = task_data
+    await execute_db(
+        """
+        INSERT INTO punishment_tasks (task_id, task_type, prompt, correct_answer, created_at)
+        VALUES (?, ?, ?, ?, ?)
+        """,
+        (task_id, resolved_type, prompt, correct_answer, time.time())
+    )
 
     return create_json_response({
         "success": True,
@@ -59,35 +55,36 @@ async def handle_generate_punishment_task(task_type: Optional[str] = "math"):
 
 async def handle_verify_punishment_task(request):
     """
-    Verifies user's submitted answer for an active AI challenge.
-    Grants +500 XP on successful validation.
+    Verifies user's submitted answer for an active AI challenge via D1 database lookup.
+    Grants +500 XP on successful validation and removes completed task.
     """
     body = await parse_json_body(request)
     task_id = str(body.get("task_id") or "")
     user_answer = str(body.get("user_answer") or body.get("answer") or "").strip()
 
-    task = ACTIVE_TASKS.get(task_id)
+    if not task_id:
+        return create_error_response("Task ID is required.", 400)
+
+    task = await query_one("SELECT * FROM punishment_tasks WHERE task_id = ?", (task_id,))
     if not task:
-        # Generic validation for demonstration
-        if len(user_answer) >= 2:
-            return create_json_response({"success": True, "message": "Challenge verified! +500 XP granted."})
-        return create_error_response("Incorrect or incomplete answer.", 400)
+        return create_error_response("Invalid or expired punishment task ID.", 404)
 
     user_ans = user_answer.lower()
     expected_ans = str(task["correct_answer"]).strip().lower()
 
-    if task["type"] == "math":
+    if task["task_type"] == "math":
         if user_ans == expected_ans:
-            ACTIVE_TASKS.pop(task_id, None)
+            await execute_db("DELETE FROM punishment_tasks WHERE task_id = ?", (task_id,))
             return create_json_response({"success": True, "message": "Math puzzle solved! +500 XP awarded."})
         return create_error_response(f"Incorrect math answer. Expected {expected_ans}", 400)
     else:
         # Essay validation: minimum 5 words
         word_count = len(user_ans.split())
         if word_count >= 5:
-            ACTIVE_TASKS.pop(task_id, None)
+            await execute_db("DELETE FROM punishment_tasks WHERE task_id = ?", (task_id,))
             return create_json_response({"success": True, "message": "Cognitive essay accepted! +500 XP awarded."})
         return create_error_response("Essay answer too short. Minimum 5 words required.", 400)
+
 
 
 if router is not None:
