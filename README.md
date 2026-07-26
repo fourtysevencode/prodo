@@ -135,25 +135,6 @@ Co-op raids synchronize focus sprints across multiple friends:
 
 ---
 
-## 6. Judge Presentation & Live Demo Guide
+## 6. Deployment Guide
 
-### The Pitch
-- **Problem**: Website blockers are rigid and context-blind—users just disable them when they need a tutorial.
-- **Solution**: Prodo turns attention into an economy, rewarding deep work and allowing users to spend earned points on breaks.
-
-### Live Demo Script (5 Minutes)
-1. **Start Session**: Launch `FocusPage` and click **START NEURAL LINK**.
-2. **Demonstrate Focus Multiplier**: Maintain screen gaze and observe the multiplier scaling up in real-time.
-3. **Trigger Grace Period**: Look away from the camera—observe the 15-second grace period warning buffer count down.
-4. **Recover Streak**: Look back at the screen before zero to show focus streak restoration.
-5. **Distraction Vault**: Spend earned XP to purchase a 5-minute break pass or solve an AI Cognitive Waiver challenge.
-
----
-
-## 7. Deployment Guide
-
-Full step-by-step instructions for deploying Cloudflare Pages, Cloudflare Workers, and Modal runners are documented in:
-👉 [**DEPLOYMENT.md**](./DEPLOYMENT.md)
-
----
-*Built to redefine productivity by turning willpower into an economic incentive.*
+Full step-by-step instructions for deploying Cloudflare Pages, Cloudflare Workers, and Modal runners are documented in [**DEPLOYMENT.md**](./DEPLOYMENT.md)

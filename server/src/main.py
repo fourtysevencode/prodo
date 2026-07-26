@@ -70,24 +70,16 @@ class Default(WorkerEntrypoint):
             return _json_response({"status": "ok", "service": "prodo-api-worker-python"})
 
         # ── Authentication Endpoints ─────────────────────────────────────────
-        if path == "/auth/google" and method == "POST":
-            return await _wrap(handle_google_auth, request)
-        if path == "/auth/register" and method == "POST":
-            return await _wrap(handle_register, request)
-        if path == "/auth/login" and method == "POST":
-            return await _wrap(handle_login, request)
-        if path == "/auth/username" and method == "POST":
-            return await _wrap(handle_update_username, request)
-        if path == "/auth/tester" and method == "POST":
-            return await _wrap(handle_tester_login, request)
-        if path == "/auth/device-code" and method == "POST":
-            return await _wrap(handle_request_device_code, request)
-        if path == "/auth/device-approve" and method == "POST":
-            return await _wrap(handle_approve_device_code, request)
-        if path == "/auth/device-poll" and method == "POST":
-            return await _wrap(handle_poll_device_code, request)
+        if path == "/auth/google" and method == "POST": return await _wrap(handle_google_auth, request)
+        if path == "/auth/register" and method == "POST": return await _wrap(handle_register, request)
+        if path == "/auth/login" and method == "POST": return await _wrap(handle_login, request)
+        if path == "/auth/username" and method == "POST": return await _wrap(handle_update_username, request)
+        if path == "/auth/tester" and method == "POST":return await _wrap(handle_tester_login, request)
+        if path == "/auth/device-code" and method == "POST": return await _wrap(handle_request_device_code, request)
+        if path == "/auth/device-approve" and method == "POST": return await _wrap(handle_approve_device_code, request)
+        if path == "/auth/device-poll" and method == "POST": return await _wrap(handle_poll_device_code, request)
 
-        # ── AI Whimsical Punishment Endpoints ────────────────────────────────
+        # ── AI Punishment Endpoints ────────────────────────────────
         if path in ["/ai/generate-punishment", "/ai/task/generate"]:
             return await _wrap(handle_generate_punishment_task, "math")
         if path in ["/ai/verify-punishment", "/ai/task/verify"] and method == "POST":
