@@ -2,7 +2,6 @@ import { HashRouter as Router, Routes, Route, Navigate } from "react-router-dom"
 import { FocusProvider, useFocus } from "./context/FocusContext";
 import WhimsicalLayout from "./components/WhimsicalLayout";
 import FocusPage from "./pages/theREALwhimsy/FocusPage";
-import LogsPage from "./pages/theREALwhimsy/LogsPage";
 import LeaderboardPage from "./pages/theREALwhimsy/LeaderboardPage";
 import VaultPage from "./pages/theREALwhimsy/VaultPage";
 import SettingsPage from "./pages/theREALwhimsy/SettingsPage";
@@ -94,7 +93,6 @@ function MainAppRoutes() {
 
       {/* Main Whimsical App Views */}
       <Route path="/focus" element={<WhimsicalLayout><FocusPage /></WhimsicalLayout>} />
-      <Route path="/logs" element={<WhimsicalLayout><LogsPage /></WhimsicalLayout>} />
       <Route path="/leaderboard" element={<WhimsicalLayout><LeaderboardPage /></WhimsicalLayout>} />
       <Route path="/vault" element={<WhimsicalLayout><VaultPage /></WhimsicalLayout>} />
       <Route path="/friends" element={<WhimsicalLayout><FriendsPage /></WhimsicalLayout>} />
