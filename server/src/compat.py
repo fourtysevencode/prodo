@@ -5,8 +5,7 @@ Provides unified response and request handling for both FastAPI (local testing &
 and Cloudflare Workers Pyodide Python environment (zero external dependency deployment).
 """
 
-import json
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 # Attempt to import FastAPI/Starlette components if available in environment
 try:

@@ -4,9 +4,8 @@ Pydantic data models for the Prodo FastAPI Backend.
 Provides strict request and response body validation schemas for all endpoints.
 """
 
-from typing import Optional, List
-from pydantic import BaseModel, EmailStr, Field
-
+from typing import Optional
+from pydantic import BaseModel, Field
 
 # ── Authentication Models ───────────────────────────────────────────────────
 

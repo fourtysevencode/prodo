@@ -6,7 +6,6 @@ and seamless desktop device-code OAuth flow using raw Request JSON parsing.
 """
 
 import time
-import uuid
 import secrets
 from typing import Optional
 
@@ -21,6 +20,21 @@ except ImportError:
     Request = None
     Header = None
 
+# FIX: HASH PASSWORDS BEFORE STORING, VERIFY HASH DURING LOGIN
+# DON'T WE ALL LOVE AI SLOP ❤️
+
+import hashlib
+
+def hash_password(password: str, salt: str=None) -> str:
+    if not salt: salt = secrets.token_hex(16)
+    key = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt.encode("utf-8"), 100000)
+    return f"{salt}${key.hex()}"
+
+def verify_password(password: str, stored_hash: str) -> bool:
+    if not stored_hash or "$" not in stored_hash: return False
+    salt, key_hex = stored_hash.split("$", 1)
+    recalculated = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt.encode("utf-8"), 100000)
+    return recalculated.hex() == key_hex
 
 def generate_token(prefix: str = "token_") -> str:
     """Generates a cryptographically secure random token string."""
@@ -77,13 +91,13 @@ async def handle_register(request):
     # Generate persistent auth token for auto-login
     auth_token = generate_token("token_")
 
-    # Insert new user record into database
+    # Insert new user record into database (and use real password hash)
     await execute_db(
         """
         INSERT INTO users (username, email, password_hash, xp, current_balance, auth_token, needs_handle)
         VALUES (?, ?, ?, 100, 100, ?, 0)
         """,
-        (username_clean, email_clean, password_raw, auth_token)
+        (username_clean, email_clean, hash_password(password_raw), auth_token)
     )
 
     return create_json_response({
@@ -108,7 +122,7 @@ async def handle_login(request):
 
     # Query database for user matching given email
     user = await query_one("SELECT * FROM users WHERE lower(email) = ?", (email_clean,))
-    if not user or user.get("password_hash") != password_raw:
+    if not user or not verify_password(password_raw, user.get("password_hash") or ""):
         return create_error_response("Invalid email or password credentials.", 401)
 
     # Ensure user has a valid auth token

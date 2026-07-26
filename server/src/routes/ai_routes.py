@@ -1,7 +1,7 @@
 """
-AI Whimsical Punishment Enforcer Router for Prodo FastAPI Backend.
+AI Punishment Enforcer Router for Prodo FastAPI Backend.
 
-Generates and verifies AI-powered cognitive challenges and whimsical math/essay tasks
+Generates and verifies AI-powered cognitive challenges and math/essay tasks
 to earn XP allowances or clear infractions using raw Request JSON parsing.
 """
 
@@ -14,7 +14,7 @@ from routes.auth_routes import parse_json_body
 
 try:
     from fastapi import APIRouter, Request
-    router = APIRouter(prefix="/ai", tags=["AI Whimsical Tasks"])
+    router = APIRouter(prefix="/ai", tags=["AI Tasks"])
 except ImportError:
     router = None
     Request = None
@@ -25,10 +25,12 @@ ACTIVE_TASKS: Dict[str, Dict[str, Any]] = {}
 
 async def handle_generate_punishment_task(task_type: Optional[str] = "math"):
     """
-    Generates a whimsical AI challenge task (math problem or essay prompt) for the user.
+    Generates an AI challenge task (math problem or essay prompt) for the user.
     """
     task_id = f"task_{secrets.token_hex(8)}"
     resolved_type = "essay" if task_type in ["essay", "focus", "philosophy"] else "math"
+
+    # TODO: allow AI to handle ts part, maybe handle over to AI Studio: Gemma 4 26B, 31B, Gemini 3.1 Flash Lite
 
     if resolved_type == "math":
         prompt = "Compute the cognitive focus integral: What is (14 * 7) - 18?"

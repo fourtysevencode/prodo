@@ -8,7 +8,6 @@ Main entry point for the Prodo API server. Uses the Cloudflare Workers Python SD
 import json
 import urllib.parse
 import database
-from compat import create_json_response, create_error_response
 from routes.auth_routes import (
     handle_google_auth, handle_register, handle_login,
     handle_update_username, handle_tester_login,
@@ -19,7 +18,7 @@ from routes.friend_routes import handle_get_friends_list, handle_add_friend
 from routes.leaderboard_routes import handle_get_global_leaderboard, handle_get_friends_leaderboard
 from routes.coop_routes import handle_create_coop_room, handle_get_active_coop_rooms, handle_join_coop_room, handle_end_coop_room
 from routes.ai_routes import handle_generate_punishment_task, handle_verify_punishment_task
-from routes.telemetry_routes import handle_log_telemetry, handle_get_telemetry_logs
+from routes.telemetry_routes import handle_log_telemetry
 from routes.dev_routes import handle_dev_login, handle_get_dev_stats, handle_get_dev_telemetry
 
 # ── Cloudflare Workers Python SDK Entry Point ─────────────────────────────────
