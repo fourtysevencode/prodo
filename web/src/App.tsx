@@ -18,7 +18,7 @@ import DevPage from "./pages/DevPage";
 import TesterReviewPage from "./pages/TesterReviewPage";
 
 function MainAppRoutes() {
-  const { isAuthenticated, isDev } = useFocus();
+  const { isAuthenticated, isDev, xp } = useFocus();
 
   const hostname = typeof window !== "undefined" ? window.location.hostname : "";
   const isWwwDomain = hostname === "www.prodo.live" || hostname === "www.localhost";
@@ -71,7 +71,17 @@ function MainAppRoutes() {
     );
   }
 
+  // System Lockdown: If authenticated user has negative XP, force route to PunishmentsPage
+  if (xp < 0) {
+    return (
+      <Routes>
+        <Route path="*" element={<PunishmentsPage />} />
+      </Routes>
+    );
+  }
+
   // Authenticated user app routes
+
   return (
     <Routes>
       <Route path="/" element={<Navigate to="/focus" replace />} />
