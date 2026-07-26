@@ -3,53 +3,10 @@ import { apiGetGlobalLeaderboard, apiGetFriendsLeaderboard } from "../api/prodoA
 import type { LeaderboardEntry } from "../api/prodoApi";
 import { useFocus } from "../context/FocusContext";
 
-const MEDALS = ["🥇", "🥈", "🥉"];
-
-const RankRow: React.FC<{ entry: LeaderboardEntry; rank: number; highlight?: boolean }> = ({
-  entry,
-  rank,
-  highlight,
-}) => {
-  const medal = MEDALS[rank - 1] ?? null;
-  const isTop3 = rank <= 3;
-
-  return (
-    <div
-      className={`flex items-center gap-4 px-4 py-3 border-b border-surface-variant transition-all hover:bg-surface-container-low ${
-        highlight ? "bg-amber/5 border-l-2 border-l-amber" : "border-l-2 border-l-transparent"
-      }`}
-    >
-      {/* Rank */}
-      <div className={`w-10 text-center font-technical-prefix text-xs flex-shrink-0 ${isTop3 ? "text-amber font-bold text-base" : "text-outline-variant"}`}>
-        {medal ?? `#${rank}`}
-      </div>
-
-      {/* Avatar placeholder */}
-      <div className="w-8 h-8 bg-surface-container-high border border-outline-variant flex items-center justify-center flex-shrink-0">
-        <span className="font-technical-prefix text-[10px] text-outline-variant uppercase">
-          {entry.username[0]}
-        </span>
-      </div>
-
-      {/* Username */}
-      <div className="flex-grow">
-        <div className={`font-log-body font-bold text-sm uppercase ${highlight ? "text-amber" : "text-primary"}`}>
-          {entry.username}
-          {highlight && <span className="ml-2 font-technical-prefix text-[8px] text-amber/70">[YOU]</span>}
-        </div>
-      </div>
-
-      {/* Points */}
-      <div className="text-right flex-shrink-0">
-        <div className="font-technical-prefix text-[8px] text-outline-variant">TOTAL_XP</div>
-        <div className={`font-value-lg text-base ${isTop3 ? "text-amber" : "text-primary"}`}>
-          {entry.points.toLocaleString()}
-        </div>
-      </div>
-    </div>
-  );
-};
-
+/**
+ * WhimsicalLeaderboardPage - Immersive rankings dashboard.
+ * Features numbered circle badges, clean user cards, tab pills, and XP pill metrics in dark mode.
+ */
 const LeaderboardPage: React.FC = () => {
   const { username } = useFocus();
   const [tab, setTab] = useState<"global" | "friends">("global");
@@ -73,7 +30,7 @@ const LeaderboardPage: React.FC = () => {
       setFriendsData(friends.leaderboard);
       setLastRefreshed(new Date().toTimeString().split(" ")[0]);
     } catch (e: any) {
-      setError("ERR_NET: Cannot reach Prodo API server. Ensure the backend is running on port 8000.");
+      setError("Cannot reach Prodo API server. Ensure the backend worker is online.");
     } finally {
       setLoading(false);
     }
@@ -81,118 +38,176 @@ const LeaderboardPage: React.FC = () => {
 
   useEffect(() => {
     fetchData();
-    // Auto-refresh every 60 seconds
     const interval = setInterval(fetchData, 60_000);
     return () => clearInterval(interval);
   }, []);
 
   const activeList = tab === "global" ? globalData : friendsData;
 
+  const getRankBadgeStyle = (rank: number) => {
+    if (rank === 1) return "bg-amber-400 text-amber-950 font-black shadow-md shadow-amber-500/50";
+    if (rank === 2) return "bg-slate-300 text-slate-900 font-bold shadow-md shadow-slate-400/50";
+    if (rank === 3) return "bg-amber-600 text-white font-bold shadow-md shadow-amber-700/50";
+    return "bg-primary text-white font-bold";
+  };
+
   return (
-    <div className="flex-grow flex flex-col p-6 h-full overflow-hidden select-none">
-      {/* Header */}
-      <div className="flex justify-between items-start mb-6 flex-shrink-0">
+    <div className="flex flex-col gap-6 pb-12 mt-8">
+      
+      {/* Header Card & Tab Controls */}
+      <div className="bg-surface/80 backdrop-blur-xl border border-lavender rounded-[32px] p-6 kawaii-shadow flex flex-wrap items-center justify-between gap-4">
         <div>
-          <div className="font-technical-prefix text-technical-prefix text-outline-variant">PRODO_GLOBAL_RANKINGS</div>
-          <h1 className="font-value-lg text-[32px] text-primary">LEADERBOARD</h1>
+          <span className="text-[10px] font-bold text-on-surface/50 uppercase tracking-widest">
+            COMMUNITY & COMPETITION
+          </span>
+          <h1 className="text-3xl font-display font-black text-on-surface tracking-tight mt-1">
+            Leaderboard & Rankings
+          </h1>
         </div>
 
-        <div className="flex flex-col items-end gap-2">
-          {/* Tab switcher */}
-          <div className="flex border border-outline-variant">
+        <div className="flex items-center gap-3">
+          {/* Tab Switcher Pills */}
+          <div className="flex items-center gap-1.5 bg-background p-1.5 rounded-full border border-lavender/50">
             <button
               onClick={() => setTab("global")}
-              className={`px-4 py-2 font-technical-prefix text-[10px] uppercase border-r border-outline-variant transition-colors ${
-                tab === "global" ? "bg-primary text-background font-bold" : "text-on-surface-variant hover:bg-surface-container-high"
+              className={`px-5 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all ${
+                tab === "global"
+                  ? "bg-primary text-white shadow-md shadow-primary/30"
+                  : "text-on-surface/60 hover:text-on-surface hover:bg-surface/60"
               }`}
             >
               Global
             </button>
             <button
               onClick={() => setTab("friends")}
-              className={`px-4 py-2 font-technical-prefix text-[10px] uppercase transition-colors ${
-                tab === "friends" ? "bg-primary text-background font-bold" : "text-on-surface-variant hover:bg-surface-container-high"
+              className={`px-5 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all ${
+                tab === "friends"
+                  ? "bg-primary text-white shadow-md shadow-primary/30"
+                  : "text-on-surface/60 hover:text-on-surface hover:bg-surface/60"
               }`}
             >
               Friends
             </button>
           </div>
 
-          {/* Refresh */}
+          {/* Refresh Button */}
           <button
             onClick={fetchData}
-            className="flex items-center gap-1.5 px-3 py-1.5 border border-outline-variant font-technical-prefix text-[9px] text-outline-variant hover:border-primary hover:text-primary transition-all"
+            className="w-10 h-10 rounded-full bg-background border border-lavender/50 text-on-surface/60 hover:text-secondary hover:bg-surface flex items-center justify-center transition-all"
+            title={lastRefreshed ? `Refreshed ${lastRefreshed}` : "Refresh"}
           >
-            <span className="material-symbols-outlined text-[12px]">refresh</span>
-            {lastRefreshed ? `Refreshed ${lastRefreshed}` : "Refresh"}
+            <span className="material-symbols-outlined text-lg">refresh</span>
           </button>
         </div>
       </div>
 
-      {/* Main Panel */}
-      <div className="flex-grow bg-surface-container-lowest border border-outline-variant overflow-hidden flex flex-col">
-        {/* Panel header row */}
-        <div className="flex items-center gap-4 px-4 py-2 bg-surface-container-high border-b border-outline-variant flex-shrink-0">
-          <span className="w-10 font-technical-prefix text-[8px] text-outline-variant uppercase">Rank</span>
-          <span className="w-8 font-technical-prefix text-[8px] text-outline-variant uppercase">Op</span>
-          <span className="flex-grow font-technical-prefix text-[8px] text-outline-variant uppercase">Username</span>
-          <span className="font-technical-prefix text-[8px] text-outline-variant uppercase text-right">Focus XP</span>
+      {/* Main Leaderboard List Container */}
+      <div className="bg-surface/80 backdrop-blur-xl border border-lavender rounded-[32px] p-6 kawaii-shadow flex flex-col gap-4">
+        
+        <div className="flex items-center justify-between pb-4 border-b border-lavender/30">
+          <span className="text-[10px] font-bold text-on-surface/70 uppercase tracking-wider">
+            {tab === "global" ? "GLOBAL LEADERBOARD POOL" : "FRIENDS LEADERBOARD POOL"}
+          </span>
+          <span className="text-[10px] font-bold text-on-surface/50 uppercase">
+            {activeList.length} Ranked User{activeList.length !== 1 ? "s" : ""}
+          </span>
         </div>
 
-        {/* Body */}
-        <div className="flex-grow overflow-y-auto">
-          {loading && (
-            <div className="flex items-center justify-center h-full gap-3 text-outline-variant font-technical-prefix text-xs">
-              <span className="w-3 h-3 border-2 border-outline-variant border-t-primary animate-spin rounded-full"></span>
-              SYNCING RANKINGS FROM SERVER...
-            </div>
-          )}
-
-          {!loading && error && (
-            <div className="flex flex-col items-center justify-center h-full gap-3 p-6 text-center">
-              <span className="material-symbols-outlined text-[40px] text-crimson">signal_disconnected</span>
-              <div className="font-technical-prefix text-xs text-crimson uppercase">{error}</div>
-              <div className="font-technical-prefix text-[9px] text-outline-variant">
-                Unable to reach Cloudflare Worker API (<code className="text-primary bg-background px-1">https://api.prodo.live</code>)
-              </div>
-              <button
-                onClick={fetchData}
-                className="mt-2 px-4 py-2 border border-outline-variant text-primary font-technical-prefix text-[10px] uppercase hover:bg-surface-container-high transition-all"
-              >
-                Retry Connection
-              </button>
-            </div>
-          )}
-
-          {!loading && !error && activeList.length === 0 && (
-            <div className="flex items-center justify-center h-full text-outline-variant font-technical-prefix text-xs">
-              NO RANKED OPERATORS FOUND IN THIS POOL.
-            </div>
-          )}
-
-          {!loading && !error && activeList.map((entry, idx) => (
-            <RankRow
-              key={entry.username}
-              entry={entry}
-              rank={idx + 1}
-              highlight={entry.username.toLowerCase() === currentUser.toLowerCase()}
-            />
-          ))}
-        </div>
-
-        {/* Footer status */}
-        {!loading && !error && (
-          <div className="border-t border-surface-variant px-4 py-2 flex justify-between items-center flex-shrink-0">
-            <span className="font-technical-prefix text-[8px] text-outline-variant uppercase">
-              {activeList.length} OPERATOR{activeList.length !== 1 ? "S" : ""} RANKED
-            </span>
-            <div className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald"></span>
-              <span className="font-technical-prefix text-[8px] text-emerald uppercase">LIVE_SYNC</span>
-            </div>
+        {/* Loading State */}
+        {loading && (
+          <div className="flex items-center justify-center py-16 gap-3 text-on-surface/50 font-bold text-sm">
+            <div className="w-5 h-5 border-2 border-on-surface/30 border-t-primary rounded-full animate-spin"></div>
+            Loading community rankings...
           </div>
         )}
+
+        {/* Error State */}
+        {!loading && error && (
+          <div className="text-center py-12 flex flex-col items-center gap-3">
+            <span className="material-symbols-outlined text-heart-red text-4xl">signal_disconnected</span>
+            <p className="text-heart-red font-bold text-sm">{error}</p>
+            <button
+              onClick={fetchData}
+              className="mt-2 bg-primary text-white text-xs font-bold px-5 py-2.5 rounded-full hover:bg-primary/80 transition-colors"
+            >
+              Retry Connection
+            </button>
+          </div>
+        )}
+
+        {/* Empty State */}
+        {!loading && !error && activeList.length === 0 && (
+          <div className="text-center py-12 text-on-surface/40 font-medium text-sm italic">
+            No ranked operators found in this pool yet.
+          </div>
+        )}
+
+        {/* Ranked Operators Cards */}
+        {!loading && !error && activeList.length > 0 && (
+          <div className="flex flex-col gap-3">
+            {activeList.map((entry, idx) => {
+              const rank = idx + 1;
+              const isCurrent = (entry.username || "").toLowerCase() === currentUser.toLowerCase();
+
+              return (
+                <div
+                  key={entry.username}
+                  className={`border rounded-2xl p-4 flex items-center justify-between gap-4 transition-all ${
+                    isCurrent
+                      ? "bg-primary/20 border-primary shadow-lg shadow-primary/20 scale-[1.02]"
+                      : "bg-background/50 border-lavender hover:bg-surface hover:scale-[1.01]"
+                  }`}
+                >
+                  <div className="flex items-center gap-4">
+                    {/* Circle Number Rank Badge */}
+                    <div
+                      className={`w-10 h-10 rounded-full flex items-center justify-center text-sm ${getRankBadgeStyle(
+                        rank
+                      )}`}
+                    >
+                      {rank === 1 ? "🥇" : rank === 2 ? "🥈" : rank === 3 ? "🥉" : `#${rank}`}
+                    </div>
+
+                    {/* Avatar Badge */}
+                    <div className="w-10 h-10 rounded-full bg-surface text-on-surface/80 border border-lavender flex items-center justify-center font-bold text-sm uppercase">
+                      {entry.username[0]}
+                    </div>
+
+                    {/* Username & Badge */}
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-extrabold text-sm text-on-surface">
+                          {entry.username}
+                        </span>
+                        {isCurrent && (
+                          <span className="bg-primary text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
+                            YOU
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[11px] font-semibold text-on-surface/50">
+                        Rank #{rank}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Focus XP Metric Chip */}
+                  <div className="bg-background border border-lavender/50 rounded-full px-4 py-2 flex items-center gap-2 shadow-sm">
+                    <span className="material-symbols-outlined text-secondary text-lg">bolt</span>
+                    <span className="font-extrabold text-sm text-on-surface">
+                      {(entry.points || 0).toLocaleString()}
+                    </span>
+                    <span className="text-[10px] font-bold text-on-surface/50">XP</span>
+                  </div>
+
+                </div>
+              );
+            })}
+          </div>
+        )}
+
       </div>
+
     </div>
   );
 };

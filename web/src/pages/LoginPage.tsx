@@ -284,7 +284,7 @@ const LoginPage: React.FC = () => {
                 required
                 value={customHandle}
                 onChange={(e) => setCustomHandle(e.target.value)}
-                placeholder="e.g. ivan_samuel"
+                placeholder="e.g. operator_alpha"
                 className="bg-surface-container-high border border-outline-variant px-3 py-2 font-log-body text-xs text-primary outline-none focus:border-amber text-center"
               />
               <button

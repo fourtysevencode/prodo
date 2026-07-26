@@ -1,131 +1,95 @@
-import React, { useState } from "react";
+import React from "react";
 import { useFocus } from "../context/FocusContext";
 
+/**
+ * SettingsPage - Preferences and device configuration.
+ * Includes account card and webcam selection styled for the immersive dark mode.
+ */
 const SettingsPage: React.FC = () => {
-  const { email, username } = useFocus();
-  const [allowTelemetry, setAllowTelemetry] = useState(true);
-  const [offlineMode, setOfflineMode] = useState(false);
-  const [raidNotify, setRaidNotify] = useState(true);
-  const [soundEnabled, setSoundEnabled] = useState(true);
+  const { email, username, availableDevices, cameraDevice, setCameraDevice } = useFocus();
 
   return (
-    <div className="flex-grow flex flex-col p-6 h-full overflow-y-auto select-none">
-      {/* Page Header */}
-      <div className="mb-6 flex-shrink-0">
-        <h1 className="font-value-lg text-[32px] text-primary">PREFERENCES</h1>
-      </div>
+    <div className="flex flex-col gap-6 pb-12 mt-8">
 
-      <div className="bg-surface-container-lowest border border-outline-variant p-6 flex flex-col gap-6 max-w-2xl">
-        {/* Section 1: Account Info */}
-        <div className="border-b border-surface-variant pb-6">
-          <h3 className="font-log-body font-bold text-sm text-primary uppercase mb-4">Account Profile</h3>
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-surface-variant flex items-center justify-center border border-outline-variant flex-shrink-0">
-              <span className="material-symbols-outlined text-outline text-[24px]">account_circle</span>
-            </div>
-            <div className="flex-grow">
-              <div className="font-log-body text-primary font-bold text-base">{username || "OPERATOR"}</div>
-              <div className="font-technical-prefix text-[11px] text-outline-variant">{email || "user@prodo.live"}</div>
-            </div>
-          </div>
-        </div>
-
-        {/* Section 2: Privacy Guards */}
-        <div className="border-b border-surface-variant pb-6">
-          <h3 className="font-log-body font-bold text-sm text-primary uppercase mb-4">Telemetry & Privacy</h3>
-          <div className="flex flex-col gap-4">
-            
-            {/* Toggle 1: Telemetry */}
-            <div className="flex items-center justify-between">
-              <div className="flex flex-col gap-1 pr-6">
-                <div className="font-log-body font-bold text-sm text-on-surface">Telemetry Logging</div>
-                <div className="font-technical-prefix text-[10px] text-outline-variant">
-                  Dispatches focus telemetry reports to telemetry@prodo.live and support@prodo.live.
-                </div>
-              </div>
-              <button 
-                onClick={() => setAllowTelemetry(!allowTelemetry)}
-                className={`w-14 h-6 border flex items-center px-1 transition-all ${
-                  allowTelemetry ? "border-emerald bg-emerald/10 justify-end" : "border-outline-variant bg-[#0A0A0A] justify-start"
-                }`}
-              >
-                <span className={`font-technical-prefix text-[8px] uppercase font-bold mr-2 ${allowTelemetry ? "text-emerald block" : "hidden"}`}>ON</span>
-                <div className={`w-4 h-4 ${allowTelemetry ? "bg-emerald" : "bg-outline-variant"}`}></div>
-                <span className={`font-technical-prefix text-[8px] uppercase font-bold ml-2 ${!allowTelemetry ? "text-outline-variant block" : "hidden"}`}>OFF</span>
-              </button>
-            </div>
-
-            {/* Toggle 2: Local Offline Mode */}
-            <div className="flex items-center justify-between">
-              <div className="flex flex-col gap-1 pr-6">
-                <div className="font-log-body font-bold text-sm text-on-surface">Local Fallback Inference</div>
-                <div className="font-technical-prefix text-[10px] text-outline-variant">
-                  Runs local computer vision fallback using OpenCV Haar cascades if cloud server is unavailable.
-                </div>
-              </div>
-              <button 
-                onClick={() => setOfflineMode(!offlineMode)}
-                className={`w-14 h-6 border flex items-center px-1 transition-all ${
-                  offlineMode ? "border-emerald bg-emerald/10 justify-end" : "border-outline-variant bg-[#0A0A0A] justify-start"
-                }`}
-              >
-                <span className={`font-technical-prefix text-[8px] uppercase font-bold mr-2 ${offlineMode ? "text-emerald block" : "hidden"}`}>ON</span>
-                <div className={`w-4 h-4 ${offlineMode ? "bg-emerald" : "bg-outline-variant"}`}></div>
-                <span className={`font-technical-prefix text-[8px] uppercase font-bold ml-2 ${!offlineMode ? "text-outline-variant block" : "hidden"}`}>OFF</span>
-              </button>
-            </div>
-
-          </div>
-        </div>
-
-        {/* Section 3: Notification HUD */}
+      {/* Header */}
+      <div className="bg-surface/80 backdrop-blur-xl border border-lavender rounded-[32px] p-6 kawaii-shadow flex items-center justify-between">
         <div>
-          <h3 className="font-log-body font-bold text-sm text-primary uppercase mb-4">Sound & Notifications</h3>
-          <div className="flex flex-col gap-4">
-
-            {/* Toggle 3: Raid Notify */}
-            <div className="flex items-center justify-between">
-              <div className="flex flex-col gap-1 pr-6">
-                <div className="font-log-body font-bold text-sm text-on-surface">Co-Op Break Notifications</div>
-                <div className="font-technical-prefix text-[10px] text-outline-variant">
-                  Notify when a teammate in an active Co-Op room breaks focus.
-                </div>
-              </div>
-              <button 
-                onClick={() => setRaidNotify(!raidNotify)}
-                className={`w-14 h-6 border flex items-center px-1 transition-all ${
-                  raidNotify ? "border-emerald bg-emerald/10 justify-end" : "border-outline-variant bg-[#0A0A0A] justify-start"
-                }`}
-              >
-                <span className={`font-technical-prefix text-[8px] uppercase font-bold mr-2 ${raidNotify ? "text-emerald block" : "hidden"}`}>ON</span>
-                <div className={`w-4 h-4 ${raidNotify ? "bg-emerald" : "bg-outline-variant"}`}></div>
-                <span className={`font-technical-prefix text-[8px] uppercase font-bold ml-2 ${!raidNotify ? "text-outline-variant block" : "hidden"}`}>OFF</span>
-              </button>
-            </div>
-
-            {/* Toggle 4: Sound FX */}
-            <div className="flex items-center justify-between">
-              <div className="flex flex-col gap-1 pr-6">
-                <div className="font-log-body font-bold text-sm text-on-surface">Audio Alert Sounds</div>
-                <div className="font-technical-prefix text-[10px] text-outline-variant">
-                  Play audio alerts during distraction warnings.
-                </div>
-              </div>
-              <button 
-                onClick={() => setSoundEnabled(!soundEnabled)}
-                className={`w-14 h-6 border flex items-center px-1 transition-all ${
-                  soundEnabled ? "border-emerald bg-emerald/10 justify-end" : "border-outline-variant bg-[#0A0A0A] justify-start"
-                }`}
-              >
-                <span className={`font-technical-prefix text-[8px] uppercase font-bold mr-2 ${soundEnabled ? "text-emerald block" : "hidden"}`}>ON</span>
-                <div className={`w-4 h-4 ${soundEnabled ? "bg-emerald" : "bg-outline-variant"}`}></div>
-                <span className={`font-technical-prefix text-[8px] uppercase font-bold ml-2 ${!soundEnabled ? "text-outline-variant block" : "hidden"}`}>OFF</span>
-              </button>
-            </div>
-
-          </div>
+          <span className="text-[10px] font-bold text-on-surface/50 uppercase tracking-widest">
+            SYSTEM PREFERENCES
+          </span>
+          <h1 className="text-3xl font-display font-black text-on-surface tracking-tight mt-1">
+            Settings & Hardware
+          </h1>
         </div>
       </div>
+
+      {/* Main Settings Panel */}
+      <div className="bg-surface/80 backdrop-blur-xl border border-lavender rounded-[32px] p-6 md:p-8 kawaii-shadow flex flex-col gap-8 max-w-3xl">
+
+        {/* Visual Theme Status */}
+        <div className="flex flex-col gap-4 pb-6 border-b border-lavender/30">
+          <h3 className="font-extrabold text-sm text-on-surface uppercase tracking-wider">
+            Appearance & Visual Theme
+          </h3>
+          <div className="p-4 rounded-2xl border-2 border-primary bg-primary/20 text-on-surface flex items-center gap-3 max-w-sm">
+            <div className="w-10 h-10 rounded-xl bg-primary text-white flex items-center justify-center text-lg">
+              🌙
+            </div>
+            <div className="text-left">
+              <div className="font-extrabold text-sm text-on-surface">Midnight Dark Theme</div>
+              <div className="text-[10px] font-semibold opacity-60 uppercase tracking-wider">Active System Theme</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Account Profile Card */}
+        <div className="flex flex-col gap-4 pb-6 border-b border-lavender/30">
+          <h3 className="font-extrabold text-sm text-on-surface uppercase tracking-wider">
+            Account Profile
+          </h3>
+          <div className="flex items-center gap-4 bg-background/50 border border-lavender rounded-2xl p-4">
+            <div className="w-10 h-10 rounded-full bg-secondary/20 text-secondary border border-secondary/40 flex items-center justify-center">
+              <span className="material-symbols-outlined text-xl">person</span>
+            </div>
+            <div>
+              <h4 className="font-extrabold text-base text-on-surface">
+                {username || "User Account"}
+              </h4>
+              <p className="text-[10px] font-bold text-on-surface/50 tracking-wider">
+                {email || "user@prodo.live"}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Camera Selection */}
+        <div className="flex flex-col gap-4 pb-6 border-b border-lavender/30">
+          <h3 className="font-extrabold text-sm text-on-surface uppercase tracking-wider">
+            Camera & Vision Sensor
+          </h3>
+
+          <div className="flex flex-col gap-2">
+            <label className="text-[10px] font-black text-on-surface/70 uppercase tracking-wider">Webcam Selection</label>
+            <select
+              value={cameraDevice}
+              onChange={(e) => setCameraDevice(e.target.value)}
+              className="bg-background border border-lavender rounded-xl px-4 py-3 text-xs font-semibold text-on-surface focus:outline-none focus:border-primary focus:bg-surface"
+            >
+              {availableDevices.length === 0 ? (
+                <option value="">Default System Webcam</option>
+              ) : (
+                availableDevices.map((dev, idx) => (
+                  <option key={dev.deviceId || idx} value={dev.deviceId}>
+                    {dev.label || `Webcam Device ${idx + 1}`}
+                  </option>
+                ))
+              )}
+            </select>
+          </div>
+        </div>
+
+      </div>
+
     </div>
   );
 };

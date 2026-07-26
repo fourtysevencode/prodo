@@ -6,16 +6,19 @@ import {
   apiLogin, 
   apiRegister, 
   apiTesterLogin, 
-  apiUpdateUsername 
+  apiUpdateUsername,
+  apiDeviceCodeRequest,
+  apiDeviceCodePoll
 } from "../api/prodoApi";
 
 const LoginPage: React.FC = () => {
-  const [authMode, setAuthMode] = useState<"google" | "login" | "register">("google");
+  const [authMode, setAuthMode] = useState<"login" | "google" | "register">("login");
   const [emailInput, setEmailInput] = useState("");
   const [usernameInput, setUsernameInput] = useState("");
   const [passwordInput, setPasswordInput] = useState("");
 
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [infoMsg, setInfoMsg] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showHandleModal, setShowHandleModal] = useState(false);
   const [customHandle, setCustomHandle] = useState("");
@@ -32,6 +35,41 @@ const LoginPage: React.FC = () => {
     } else {
       startTracking();
       navigate("/focus");
+    }
+  };
+
+  const handleDeviceAuth = async () => {
+    setIsSubmitting(true);
+    setErrorMsg(null);
+    setInfoMsg("Launching web browser for OAuth authentication...");
+    try {
+      const res = await apiDeviceCodeRequest();
+      if (res.success && res.user_code_url) {
+        window.open(res.user_code_url, "_blank");
+        setInfoMsg("Please approve the login request in your web browser. Waiting...");
+        
+        const pollInterval = setInterval(async () => {
+          try {
+            const pollRes = await apiDeviceCodePoll(res.device_code);
+            if (pollRes.status === "APPROVED" && pollRes.token) {
+              clearInterval(pollInterval);
+              setInfoMsg("✓ Authorization received! Logging in...");
+              handleAuthSuccess(pollRes.token, false);
+            }
+          } catch (e) {
+            // Keep polling
+          }
+        }, 2000);
+
+        // Cancel polling after 3 minutes
+        setTimeout(() => clearInterval(pollInterval), 180000);
+      } else {
+        setErrorMsg("Failed to initiate device authentication.");
+      }
+    } catch (e: any) {
+      setErrorMsg(`❌ Device authentication error: ${e.message}`);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -153,7 +191,7 @@ const LoginPage: React.FC = () => {
     <div className="w-screen h-screen bg-[#0A0A0A] text-on-surface flex items-center justify-center p-6 select-none relative">
       <div className="w-full max-w-md flex flex-col items-center gap-6">
         
-        {/* Simple Brand */}
+        {/* Brand Header */}
         <div className="flex items-center gap-3">
           <img src="/favicon.svg" alt="Prodo Logo" className="w-10 h-10" />
           <div className="flex items-baseline gap-1">
@@ -169,20 +207,20 @@ const LoginPage: React.FC = () => {
         {/* Mode Switcher Tabs */}
         <div className="flex w-full border border-outline-variant bg-surface-container-lowest">
           <button
-            onClick={() => setAuthMode("google")}
-            className={`flex-1 py-2 font-technical-prefix text-[10px] uppercase font-bold transition-colors ${
-              authMode === "google" ? "bg-surface-container-highest text-primary" : "text-outline-variant hover:text-primary"
-            }`}
-          >
-            Google Sign-In
-          </button>
-          <button
             onClick={() => setAuthMode("login")}
             className={`flex-1 py-2 font-technical-prefix text-[10px] uppercase font-bold transition-colors ${
               authMode === "login" ? "bg-surface-container-highest text-primary" : "text-outline-variant hover:text-primary"
             }`}
           >
             Email Login
+          </button>
+          <button
+            onClick={() => setAuthMode("google")}
+            className={`flex-1 py-2 font-technical-prefix text-[10px] uppercase font-bold transition-colors ${
+              authMode === "google" ? "bg-surface-container-highest text-primary" : "text-outline-variant hover:text-primary"
+            }`}
+          >
+            Google OAuth
           </button>
           <button
             onClick={() => setAuthMode("register")}
@@ -202,9 +240,32 @@ const LoginPage: React.FC = () => {
             </div>
           )}
 
+          {infoMsg && (
+            <div className="w-full bg-[#001C1C] border border-primary p-3 text-xs text-primary font-technical-prefix uppercase text-center">
+              {infoMsg}
+            </div>
+          )}
+
           {authMode === "google" ? (
-            <div className="flex flex-col items-center gap-4 py-4">
+            <div className="flex flex-col items-center gap-4 py-2">
               <div id="google-signin-button" className="w-full flex justify-center min-h-[40px]"></div>
+              
+              <div className="w-full flex items-center gap-2 my-1">
+                <div className="flex-1 h-px bg-outline-variant/40"></div>
+                <span className="text-[9px] font-technical-prefix text-outline-variant uppercase">OR DESKTOP HANDOFF</span>
+                <div className="flex-1 h-px bg-outline-variant/40"></div>
+              </div>
+
+              <button
+                onClick={handleDeviceAuth}
+                disabled={isSubmitting}
+                className="w-full py-3 bg-surface-container-high border border-outline-variant hover:border-primary text-primary font-technical-prefix text-xs font-bold uppercase transition-colors flex items-center justify-center gap-2"
+              >
+                <span>🌐 Sign In via System Web Browser</span>
+              </button>
+              <div className="font-technical-prefix text-[8px] text-outline-variant text-center">
+                Opens your default desktop browser (Chrome/Safari) to authorize Google OAuth safely.
+              </div>
             </div>
           ) : (
             <form onSubmit={handleEmailSubmit} className="flex flex-col gap-4">
@@ -254,7 +315,7 @@ const LoginPage: React.FC = () => {
           )}
 
           {/* Tester Mode Link */}
-          <div className="border-t border-surface-variant pt-4 mt-2 text-center">
+          <div className="border-t border-surface-variant pt-4 mt-2 text-center flex flex-col gap-2">
             <button
               onClick={handleTesterAccess}
               disabled={isSubmitting}
@@ -262,7 +323,7 @@ const LoginPage: React.FC = () => {
             >
               ⚡ Are you a Tester? Click Here!
             </button>
-            <div className="font-technical-prefix text-[8px] text-outline-variant mt-1">
+            <div className="font-technical-prefix text-[8px] text-outline-variant">
               Provides temporary 30-minute anonymous tester access
             </div>
           </div>
@@ -284,7 +345,7 @@ const LoginPage: React.FC = () => {
                 required
                 value={customHandle}
                 onChange={(e) => setCustomHandle(e.target.value)}
-                placeholder="e.g. ivan_samuel"
+                placeholder="e.g. operator_alpha"
                 className="bg-surface-container-high border border-outline-variant px-3 py-2 font-log-body text-xs text-primary outline-none focus:border-amber text-center"
               />
               <button
