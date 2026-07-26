@@ -303,10 +303,22 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return () => clearInterval(interval);
   }, [isTracking, trackingStatus, multiplier]);
 
+  // Break Pass Real-Time Countdown Timer (Decrements by 1 second every second)
+  useEffect(() => {
+    let timer: ReturnType<typeof setInterval>;
+    if (breakTimeRemaining > 0) {
+      timer = setInterval(() => {
+        setBreakTimeRemaining(prev => Math.max(0, prev - 1));
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [breakTimeRemaining]);
+
   // Threat Meter Countdown & Penalty Trigger
   useEffect(() => {
     let timer: ReturnType<typeof setInterval>;
-    if (isTracking && trackingStatus === "DISTRACTED") {
+    // Telemetry and distraction penalties are suspended while a Break Pass is active
+    if (isTracking && trackingStatus === "DISTRACTED" && breakTimeRemaining <= 0) {
       timer = setInterval(() => {
         setThreatSeconds(prev => {
           if (prev <= 1) {
@@ -329,9 +341,12 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           return prev - 1;
         });
       }, 1000);
+    } else if (breakTimeRemaining > 0) {
+      // Keep threat buffer full while break pass is active
+      setThreatSeconds(graceDuration);
     }
     return () => clearInterval(timer);
-  }, [isTracking, trackingStatus, basePenalty, graceDuration]);
+  }, [isTracking, trackingStatus, basePenalty, graceDuration, breakTimeRemaining]);
 
   // Backend Sync
   useEffect(() => {
@@ -354,10 +369,10 @@ export const FocusProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setVaultItems(items => items.map(i => i.id === id ? { ...i, unlocked: true } : i));
   };
 
-  const purchaseBreakTime = (seconds: number) => {
+  const purchaseBreakTime = (seconds: number): boolean => {
     const cost = Math.ceil(seconds / 60) * 10;
     if (xp < cost) return false;
-    setXp(x => x - cost);
+    setXp(prevXp => prevXp - cost);
     setBreakTimeRemaining(prev => prev + seconds);
     return true;
   };
