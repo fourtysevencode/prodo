@@ -15,7 +15,6 @@ const WhimsicalLayout: React.FC<{ children?: React.ReactNode }> = ({ children })
     startTracking,
     stopTracking,
     setIsAuthenticated,
-    username,
   } = useFocus();
 
   const location = useLocation();
@@ -35,12 +34,18 @@ const WhimsicalLayout: React.FC<{ children?: React.ReactNode }> = ({ children })
 
   const navItems = [
     { path: "/focus", label: "Focus", icon: "radar" },
-    { path: "/logs", label: "Logs", icon: "menu_book" },
     { path: "/leaderboard", label: "Rankings", icon: "leaderboard" },
     { path: "/vault", label: "Vault", icon: "lock" },
     { path: "/friends", label: "Friends", icon: "group" },
     { path: "/settings", label: "Settings", icon: "settings" },
   ];
+
+  const getHeaderStatusColor = () => {
+    if (!isTracking) return "text-primary";
+    if (trackingStatus === "FOCUSED") return "text-emerald-400 font-extrabold";
+    if (trackingStatus === "DISTRACTED") return "text-rose-500 font-extrabold animate-pulse";
+    return "text-primary";
+  };
 
   return (
     <div className="bg-background text-on-surface min-h-screen w-screen overflow-x-hidden font-sans relative flex flex-col select-none">
@@ -56,14 +61,14 @@ const WhimsicalLayout: React.FC<{ children?: React.ReactNode }> = ({ children })
       <header className="flex justify-between items-center px-8 py-4 w-full bg-transparent z-50 flex-shrink-0">
         <div className="flex items-center gap-4">
           <Link to="/focus" className="flex items-center gap-2.5 hover:scale-105 transition-transform">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-primary to-secondary text-white flex items-center justify-center font-black text-xl shadow-lg kawaii-shadow">
-              P
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-primary via-secondary to-accent text-white flex items-center justify-center shadow-lg kawaii-shadow">
+              <span className="material-symbols-outlined text-2xl">center_focus_strong</span>
             </div>
             <span className="font-display font-black text-on-surface text-2xl tracking-tight">Prodo Focus</span>
           </Link>
           <div className="hidden md:flex items-center ml-8 gap-6 text-sm font-semibold text-on-surface/70">
-            <span className="flex items-center gap-1.5">
-              <span className="material-symbols-outlined text-secondary text-[18px]">radar</span>
+            <span className={`flex items-center gap-1.5 ${getHeaderStatusColor()}`}>
+              <span className="material-symbols-outlined text-[18px]">radar</span>
               Status: {isTracking ? trackingStatus : "Ready"}
             </span>
             <span className="flex items-center gap-1.5">
@@ -93,13 +98,6 @@ const WhimsicalLayout: React.FC<{ children?: React.ReactNode }> = ({ children })
 
       {/* Left Floating Nav Bubble Sidebar */}
       <aside className="fixed left-6 top-1/2 -translate-y-1/2 flex flex-col gap-3.5 z-40">
-        {/* User Profile Avatar Bubble */}
-        <div className="w-14 h-14 bg-primary rounded-full flex items-center justify-center kawaii-shadow border-4 border-surface overflow-hidden mb-2">
-          <span className="font-display font-black text-white text-lg uppercase">
-            {(username || "OP").substring(0, 2)}
-          </span>
-        </div>
-
         {navItems.map((item) => {
           const isActive = location.pathname === item.path;
           return (
